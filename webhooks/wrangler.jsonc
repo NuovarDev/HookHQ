@@ -12,12 +12,6 @@
     "binding": "ASSETS",
     "directory": ".open-next/assets"
   },
-  "kv_namespaces": [
-    {
-      "binding": "KV",
-      "id": "bf13f60ddf30477cb36bdb701b3e75ae"
-    }
-  ],
   "d1_databases": [
     {
       "binding": "DATABASE",

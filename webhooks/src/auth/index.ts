@@ -1,4 +1,3 @@
-import { KVNamespace } from "@cloudflare/workers-types";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
@@ -22,8 +21,6 @@ async function authBuilder() {
                         debugLogs: true, // Optional
                     },
                 },
-                // Make sure "KV" is the binding in your wrangler.toml
-                kv: process.env.KV as KVNamespace<string>,
             },
             // Your core Better Auth configuration (see Better Auth docs for all options)
             {
@@ -75,7 +72,6 @@ export const auth = betterAuth({
             autoDetectIpAddress: true,
             geolocationTracking: true,
             cf: {},
-            // No actual database or KV instance is needed here, only schema-affecting options
         },
         {
             // Include only configurations that influence the Drizzle schema,

@@ -1,6 +1,5 @@
 export interface CloudflareBindings {
     DATABASE: D1Database;
-    KV: KVNamespace;
 }
 
 declare global {
