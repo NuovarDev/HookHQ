@@ -1,0 +1,455 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Key, Plus, Trash2, Copy } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ApiKeyPermission, getPermissionDisplayName, getPermissionPresets } from "@/lib/apiKeys";
+import { getCurrentEnvironment } from "@/lib/environmentState";
+
+export interface ApiKey {
+    id: string;
+    name: string;
+    key: string | undefined | null;
+    start?: string; // First few characters of the key from Better Auth
+    permissions: ApiKeyPermission[];
+    enabled: boolean;
+    createdAt: string;
+    lastUsed?: string;
+    lastRequest?: string; // Last request date from Better Auth
+    showRawKey?: boolean; // Only true immediately after creation
+}
+
+interface ApiKeyManagerProps {
+    apiKeys: ApiKey[];
+    onCreateKey: (name: string, permissions: ApiKeyPermission[], environment: string) => Promise<void>;
+    onDeleteKey: (id: string) => Promise<void>;
+    onToggleKey: (id: string, enabled: boolean) => Promise<void>;
+    onDismissRawKey?: (id: string) => void;
+}
+
+export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onToggleKey, onDismissRawKey }: ApiKeyManagerProps) {
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newKeyName, setNewKeyName] = useState("");
+    const [selectedPermissions, setSelectedPermissions] = useState<ApiKeyPermission[]>(["all_permissions"]);
+    const [isCreating, setIsCreating] = useState(false);
+    const [selectedPreset, setSelectedPreset] = useState<string>("Full Access");
+    const [currentEnvironment, setCurrentEnvironment] = useState<string | null>(null);
+    const [currentEnvironmentName, setCurrentEnvironmentName] = useState<string | null>(null);
+
+    // Load current environment on component mount and when dialog opens
+    useEffect(() => {
+        const loadCurrentEnvironment = async () => {
+            const env = await getCurrentEnvironment();
+            setCurrentEnvironment(env);
+            
+            // Fetch environment name if we have an environment ID
+            if (env) {
+                try {
+                    const response = await fetch("/api/environments");
+                    if (response.ok) {
+                        const data = await response.json() as { environments: Array<{ id: string; name: string }> };
+                        const environment = data.environments.find(e => e.id === env);
+                        setCurrentEnvironmentName(environment?.name || env);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch environment name:", error);
+                    setCurrentEnvironmentName(env);
+                }
+            }
+        };
+        loadCurrentEnvironment();
+    }, []);
+
+    // Refresh environment when dialog opens
+    useEffect(() => {
+        if (isCreateDialogOpen) {
+            const refreshEnvironment = async () => {
+                const env = await getCurrentEnvironment();
+                setCurrentEnvironment(env);
+                
+                // Fetch environment name if we have an environment ID
+                if (env) {
+                    try {
+                        const response = await fetch("/api/environments");
+                        if (response.ok) {
+                            const data = await response.json() as { environments: Array<{ id: string; name: string }> };
+                            const environment = data.environments.find(e => e.id === env);
+                            setCurrentEnvironmentName(environment?.name || env);
+                        }
+                    } catch (error) {
+                        console.error("Failed to fetch environment name:", error);
+                        setCurrentEnvironmentName(env);
+                    }
+                }
+            };
+            refreshEnvironment();
+        }
+    }, [isCreateDialogOpen]);
+
+    const handleCreateKey = async () => {
+        if (!newKeyName.trim() || !currentEnvironment) return;
+        
+        setIsCreating(true);
+        try {
+            await onCreateKey(newKeyName.trim(), selectedPermissions, currentEnvironment);
+            setNewKeyName("");
+            setSelectedPermissions(["all_permissions"]);
+            setIsCreateDialogOpen(false);
+        } catch (error) {
+            console.error("Failed to create API key:", error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handlePermissionChange = (permission: ApiKeyPermission, checked: boolean) => {
+        let newPermissions: ApiKeyPermission[];
+        
+        if (checked) {
+            if (permission === "all_permissions") {
+                // If selecting all_permissions, clear all granular permissions
+                newPermissions = ["all_permissions"];
+            } else {
+                // If selecting a granular permission, remove all_permissions and add the new permission
+                newPermissions = [
+                    ...selectedPermissions.filter(p => p !== "all_permissions"),
+                    permission
+                ];
+            }
+        } else {
+            // Simply remove the permission
+            newPermissions = selectedPermissions.filter(p => p !== permission);
+        }
+        
+        setSelectedPermissions(newPermissions);
+        updatePresetFromPermissions(newPermissions);
+    };
+
+    const updatePresetFromPermissions = (permissions: ApiKeyPermission[]) => {
+        const presets = getPermissionPresets();
+        
+        // Check if current permissions match any preset
+        for (const [presetName, presetPermissions] of Object.entries(presets)) {
+            // Sort both arrays to compare them properly
+            const sortedCurrent = [...permissions].sort();
+            const sortedPreset = [...presetPermissions].sort();
+            
+            if (sortedCurrent.length === sortedPreset.length && 
+                sortedCurrent.every((perm, index) => perm === sortedPreset[index])) {
+                setSelectedPreset(presetName);
+                return;
+            }
+        }
+        
+        // If no preset matches, set to "Custom"
+        setSelectedPreset("Custom");
+    };
+
+    const handlePresetChange = (preset: string) => {
+        setSelectedPreset(preset);
+        if (preset === "Custom") {
+            // Don't change permissions when selecting Custom
+            return;
+        }
+        const presets = getPermissionPresets();
+        setSelectedPermissions(presets[preset] || []);
+    };
+
+    const copyToClipboard = async (text: string | undefined | null) => {
+        if (!text) {
+            console.error("No key to copy");
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            // You could add a toast notification here
+        } catch (error) {
+            console.error("Failed to copy to clipboard:", error);
+        }
+    };
+
+    const formatKey = (key: string | undefined | null, start?: string) => {
+        // Use start field from Better Auth if available, otherwise fallback to key substring
+        if (start) {
+            return `${start}${'*'.repeat(20)}`; // Show start + 20 asterisks
+        }
+        
+        if (key) {
+            return key;
+        }
+        
+        return "No key available";
+    };
+
+    return (
+        <div className="space-y-6 w-full">
+            <div className="flex justify-between items-center">
+                <div>
+                    <p className="text-gray-600">Manage your API keys for accessing the webhook service</p>
+                </div>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create API Key
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create New API Key</DialogTitle>
+                            <DialogDescription>
+                                Create a new API key with specific permissions for your application.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="key-name">Key Name</Label>
+                                <Input
+                                    id="key-name"
+                                    placeholder="e.g., Production App, Development"
+                                    value={newKeyName}
+                                    onChange={(e) => setNewKeyName(e.target.value)}
+                                />
+                            </div>
+                            {currentEnvironment && (
+                                <div className="space-y-2">
+                                    <Label>Environment</Label>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                                        <span className="text-sm text-blue-800 font-medium">
+                                            {currentEnvironmentName || currentEnvironment}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-600">
+                                        This API key will be scoped to the current environment
+                                    </p>
+                                </div>
+                            )}
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Permission Presets</Label>
+                                    <select
+                                        value={selectedPreset}
+                                        onChange={(e) => handlePresetChange(e.target.value)}
+                                        className="w-full p-2 border rounded-md"
+                                    >
+                                        {Object.keys(getPermissionPresets()).map((preset) => (
+                                            <option key={preset} value={preset}>
+                                                {preset}
+                                            </option>
+                                        ))}
+                                        <option value="Custom">Custom</option>
+                                    </select>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label>Custom Permissions</Label>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <h4 className="text-sm font-medium mb-2">Endpoints</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {["create", "read", "update", "delete"].map((op) => (
+                                                    <div key={`endpoints:${op}`} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`endpoints:${op}`}
+                                                            checked={selectedPermissions.includes(`endpoints:${op}` as ApiKeyPermission)}
+                                                            onChange={(e) => handlePermissionChange(`endpoints:${op}` as ApiKeyPermission, e.target.checked)}
+                                                            className="rounded"
+                                                        />
+                                                        <Label htmlFor={`endpoints:${op}`} className="text-sm capitalize">
+                                                            {op}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <h4 className="text-sm font-medium mb-2">Messages</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {["create", "read", "update", "delete"].map((op) => (
+                                                    <div key={`messages:${op}`} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`messages:${op}`}
+                                                            checked={selectedPermissions.includes(`messages:${op}` as ApiKeyPermission)}
+                                                            onChange={(e) => handlePermissionChange(`messages:${op}` as ApiKeyPermission, e.target.checked)}
+                                                            className="rounded"
+                                                        />
+                                                        <Label htmlFor={`messages:${op}`} className="text-sm capitalize">
+                                                            {op}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="border-t pt-2">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="all_permissions"
+                                                    checked={selectedPermissions.includes("all_permissions")}
+                                                    onChange={(e) => handlePermissionChange("all_permissions", e.target.checked)}
+                                                    className="rounded"
+                                                />
+                                                <Label htmlFor="all_permissions" className="text-sm font-medium">
+                                                    All Permissions
+                                                </Label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                onClick={handleCreateKey} 
+                                disabled={!newKeyName.trim() || !currentEnvironment || isCreating}
+                            >
+                                {isCreating ? "Creating..." : "Create Key"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            {apiKeys.length === 0 ? (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <Key className="h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">No API Keys</h3>
+                        <p className="text-gray-600 text-center mb-4">
+                            Create your first API key to start using the webhook service.
+                        </p>
+                        <Button onClick={() => setIsCreateDialogOpen(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Your First API Key
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid gap-4">
+                    {apiKeys.map((apiKey) => (
+                        <Card key={apiKey.id} className="gap-2">
+                            <CardHeader>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="text-lg flex items-center gap-2 mb-1">
+                                            {apiKey.name}
+                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                apiKey.enabled 
+                                                    ? "bg-green-100 text-green-800" 
+                                                    : "bg-red-100 text-red-800"
+                                            }`}>
+                                                {apiKey.enabled ? "Active" : "Disabled"}
+                                            </span>
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Created {new Date(apiKey.createdAt).toLocaleDateString()}
+                                            <span> • {
+                                                (apiKey.lastRequest || apiKey.lastUsed) 
+                                                    ? `Last used ${new Date(apiKey.lastRequest || apiKey.lastUsed!).toLocaleDateString()}`
+                                                    : "Never Used"
+                                            }</span>
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant={apiKey.enabled ? "outline" : "default"}
+                                            size="sm"
+                                            onClick={() => onToggleKey(apiKey.id, !apiKey.enabled)}
+                                        >
+                                            {apiKey.enabled ? "Disable" : "Enable"}
+                                        </Button>
+                                        {apiKey.showRawKey && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => copyToClipboard(apiKey.key)}
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </>
+                                        )}
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => onDeleteKey(apiKey.id)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {apiKey.showRawKey && (
+                                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                                            <div className="flex items-start">
+                                                <div className="flex-shrink-0">
+                                                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                                <div className="ml-3 flex-1">
+                                                    <h3 className="text-sm font-medium text-yellow-800">
+                                                        Important: Save this key now
+                                                    </h3>
+                                                    <div className="mt-1 text-sm text-yellow-700">
+                                                        <p>This is the only time you'll be able to see the full API key. Make sure to copy and save it securely.</p>
+                                                    </div>
+                                                </div>
+                                                {onDismissRawKey && (
+                                                    <div className="ml-3 flex-shrink-0">
+                                                        <button
+                                                            onClick={() => onDismissRawKey(apiKey.id)}
+                                                            className="text-yellow-400 hover:text-yellow-600"
+                                                        >
+                                                            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <Label className="text-sm font-medium">API Key</Label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono flex-1">
+                                                {formatKey(apiKey.key, apiKey.start)}
+                                            </code>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label className="text-sm font-medium">Permissions</Label>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {apiKey.permissions.map((permission) => (
+                                                <span
+                                                    key={permission}
+                                                    className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                                                >
+                                                    {getPermissionDisplayName(permission)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}

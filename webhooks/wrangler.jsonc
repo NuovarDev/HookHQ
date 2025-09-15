@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "webhooks",
+  "main": "entryPoint.js",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "observability": { "enabled": true },
+  "placement": {
+    "mode": "smart"
+  },
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "bf13f60ddf30477cb36bdb701b3e75ae"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DATABASE",
+      "database_name": "webhooks-db",
+      "database_id": "cbac2463-e4c9-4455-8a46-99b0a284ab41",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "queue": "webhooks-queue",
+        "binding": "WEBHOOKS"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "webhooks-queue",
+        "dead_letter_queue": "webhooks-dlq",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 9
+      }
+    ]
+  },
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  }
+}
