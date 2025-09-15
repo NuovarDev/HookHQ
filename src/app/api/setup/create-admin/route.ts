@@ -80,10 +80,11 @@ export async function POST(request: NextRequest) {
 
         let environmentId: string;
 
+        const now = new Date();
+
         if (existingEnvironments.length === 0) {
             // Create default environment
             environmentId = generateEnvironmentId();
-            const now = new Date();
 
             await db.insert(environments).values({
                 id: environmentId,
