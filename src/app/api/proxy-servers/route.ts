@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateEnvironmentId } from "@/lib/initEnvironments";
 import { randomBytes } from "crypto";
 
-// GET /api/proxy-servers - List proxy servers for the current environment
+
 export async function GET(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
         }
 
-        // Generate proxy server ID and secret
-        const proxyId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+        // Generate proxy server ID with prefix and secret
+        const proxyId = `proxy_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
         const secret = randomBytes(32).toString('hex');
         const now = new Date();
 

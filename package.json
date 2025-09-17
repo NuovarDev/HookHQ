@@ -6,11 +6,11 @@
     "clean": "rm -rf .open-next && rm -rf .wrangler && rm -rf node_modules && rm -rf .next",
     "clean-deploy": "pnpm clean && pnpm i && pnpm run deploy",
     "dev": "next dev",
-    "build": "opennextjs-cloudflare build",
+    "build": "next build",
     "start": "next start",
     "format": "prettier --write .",
     "lint": "next lint",
-    "deploy": "npm run db:migrate:prod && opennextjs-cloudflare deploy",
+    "deploy": "opennextjs-cloudflare build && npx wrangler d1 migrations apply DATABASE --remote; opennextjs-cloudflare deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "auth:generate": "npx --yes @better-auth/cli@latest generate --config src/auth/index.ts --output src/db/auth.schema.ts -y",
     "auth:format": "npx --yes prettier --write src/db/auth.schema.ts",
@@ -20,7 +20,8 @@
     "db:migrate:prod": "wrangler d1 migrations apply DATABASE --remote",
     "db:studio:dev": "drizzle-kit studio",
     "db:studio:prod": "NODE_ENV=production drizzle-kit studio",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "docs:generate": "npx next-swagger-doc-cli next-swagger-doc.json --output src/lib/openapi.json"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.8",
@@ -31,6 +32,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.12",
+    "@scalar/nextjs-api-reference": "^0.8.19",
     "better-auth": "^1.2.7",
     "better-auth-cloudflare": "latest",
     "class-variance-authority": "^0.7.1",
@@ -38,6 +40,7 @@
     "drizzle-orm": "^0.43.1",
     "lucide-react": "^0.509.0",
     "next": "15.3.1",
+    "next-swagger-doc": "0.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.2.0"
@@ -55,6 +58,16 @@
     "tailwindcss": "^3.4.15",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5",
-    "wrangler": "^4.13.2"
+    "wrangler": "^4.37.1"
+  },
+  "cloudflare": {
+    "bindings": {
+      "AUTH_SECRET": {
+        "description": "Generate a random string using `openssl rand -base64 32`."
+      },
+      "API_DOCS_ENABLED": {
+        "description": "Whether to enable public API docs at /api and /api/auth/reference"
+      }
+    }
   }
 }

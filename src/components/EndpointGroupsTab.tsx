@@ -14,7 +14,10 @@ import {
     Edit,
     Trash2,
     Power,
-    PowerOff
+    PowerOff,
+    Hash,
+    Copy,
+    Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -43,6 +46,7 @@ export default function EndpointGroupsTab() {
     const [error, setError] = useState<string | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<EndpointGroup | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -202,6 +206,17 @@ export default function EndpointGroupsTab() {
         return endpoint ? endpoint.name : endpointId;
     };
 
+    const copyToClipboard = async (text: string, id: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
+
+
     if (loading) {
         return (
             <div className="flex justify-center items-center py-8">
@@ -351,6 +366,26 @@ export default function EndpointGroupsTab() {
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Hash className="h-3 w-3 text-gray-400" />
+                                        <span className="text-gray-500">Group ID:</span>
+                                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1">
+                                            {group.id}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-4 w-4 p-0 hover:bg-gray-200"
+                                                onClick={() => copyToClipboard(group.id, `group-${group.id}`)}
+                                            >
+                                                {copiedId === `group-${group.id}` ? (
+                                                    <Check className="h-3 w-3 text-green-600" />
+                                                ) : (
+                                                    <Copy className="h-3 w-3" />
+                                                )}
+                                            </Button>
+                                        </span>
+                                    </div>
+                                    
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Badge variant={group.enabled ? "default" : "secondary"}>

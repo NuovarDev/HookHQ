@@ -7,7 +7,17 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { generateEnvironmentId } from "@/lib/initEnvironments";
 
-// GET /api/endpoints - List endpoints for the current environment
+/**
+ * @swagger
+ * /api/endpoints:
+ *   get:
+ *     description: List endpoints for the current environment
+ *     tags:
+ *       - Endpoints
+ *     responses:
+ *       200:
+ *         description: List of endpoints
+ */
 export async function GET(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -74,7 +84,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/endpoints - Create new endpoint
+/**
+ * @swagger
+ * /api/endpoints:
+ *   post:
+ *     description: Create new endpoint
+ *     tags:
+ *       - Endpoints
+ *     responses:
+ *       200:
+ *         description: Endpoint created
+ */
 export async function POST(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -127,8 +147,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
         }
 
-        // Generate endpoint ID (environmentId + random string)
-        const endpointId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+        // Generate endpoint ID with prefix (ep_{environmentId}_{random})
+        const endpointId = `ep_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
         const now = new Date();
 
         await db.insert(endpoints).values({

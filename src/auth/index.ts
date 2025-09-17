@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, apiKey, admin } from "better-auth/plugins";
-import { getDb, schema } from "../db";
+import { getDb } from "../db";
 
 // Define an asynchronous function to build your auth configuration
 async function authBuilder() {
@@ -17,30 +17,33 @@ async function authBuilder() {
                 d1: {
                     db: dbInstance,
                     options: {
-                        usePlural: true, // Optional: Use plural table names (e.g., "users" instead of "user")
-                        debugLogs: true, // Optional
+                        usePlural: true,
                     },
                 },
             },
-            // Your core Better Auth configuration (see Better Auth docs for all options)
             {
                 rateLimit: {
                     enabled: true,
-                    // ... other rate limiting options
                 },
-                plugins: [openAPI(), apiKey({ enableMetadata: true }), admin()],
+                plugins: [
+                    ...process.env.API_DOCS_ENABLED === 'true' ? [openAPI()] : [],
+                    apiKey({ enableMetadata: true }),
+                    admin()],
                 emailAndPassword: {
                     enabled: true,
-                    requireEmailVerification: false, // Disable email verification for admin-created users
+                    requireEmailVerification: false,
                 },
                 user: {
+                    deleteUser: { 
+                        enabled: true
+                    },
                     additionalFields: {
                         lastEnvironment: {
                             type: "string",
                             required: false,
                         }
                     }
-                }
+                },
             }
         )
     );
@@ -74,13 +77,10 @@ export const auth = betterAuth({
             cf: {},
         },
         {
-            // Include only configurations that influence the Drizzle schema,
-            // e.g., if certain features add tables or columns.
-            // socialProviders: { /* ... */ } // If they add specific tables/columns
+            // Include only configurations that influence the Drizzle schema
             plugins: [openAPI(), apiKey({ enableMetadata: true }), admin()],
             emailAndPassword: {
                 enabled: true,
-                requireEmailVerification: false, // Disable email verification for admin-created users
             },
             user: {
                 additionalFields: {
@@ -97,6 +97,5 @@ export const auth = betterAuth({
     database: drizzleAdapter({} as D1Database, {
         provider: "sqlite",
         usePlural: true,
-        debugLogs: true
     }),
 });

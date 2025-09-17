@@ -1,0 +1,21 @@
+import { ApiReference } from '@scalar/nextjs-api-reference'
+import { NextResponse } from 'next/server';
+import ApiDocs from '@/lib/openapi.json'
+
+// Combine JSDoc API endpoints with BetterAuth schema
+const config = {
+  sources: [
+    {
+      title: 'Webhooks',
+      content: ApiDocs,
+    },
+    {
+      url: '/api/auth/open-api/generate-schema',
+      title: 'Auth',
+    },
+  ]
+}
+
+export const GET = process.env.API_DOCS_ENABLED === 'true' ? ApiReference(config) : () => { 
+  return new NextResponse(null, { status: 404 });
+}

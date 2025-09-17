@@ -64,6 +64,13 @@
       "when": 1757901885667,
       "tag": "0008_early_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1757990263807,
+      "tag": "0009_fancy_white_queen",
+      "breakpoints": true
     }
   ]
 }

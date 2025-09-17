@@ -7,16 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Globe } from "lucide-react";
-import { useState, useEffect } from "react";
-import { getCurrentEnvironment, updateUserLastEnvironment } from "@/lib/environmentState";
-
-export interface Environment {
-    id: string;
-    name: string;
-    description?: string;
-    isDefault: boolean;
-    createdAt: string;
-}
+import { useState } from "react";
+import { useEnvironment, Environment } from "./EnvironmentProvider";
 
 interface EnvironmentSwitcherProps {
     selectedEnvironment: Environment | null;
@@ -29,51 +21,11 @@ export default function EnvironmentSwitcher({
     onEnvironmentChange, 
     onCreateEnvironment 
 }: EnvironmentSwitcherProps) {
-    const [environments, setEnvironments] = useState<Environment[]>([]);
+    const { environments, loading, setSelectedEnvironment } = useEnvironment();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [newEnvName, setNewEnvName] = useState("");
     const [newEnvDescription, setNewEnvDescription] = useState("");
     const [isCreating, setIsCreating] = useState(false);
-    const [loading, setLoading] = useState(true);
-
-    const fetchEnvironments = async () => {
-        try {
-            const response = await fetch("/api/environments");
-            if (!response.ok) {
-                throw new Error("Failed to fetch environments");
-            }
-            const data = await response.json() as { environments: Environment[] };
-            setEnvironments(data.environments);
-            
-            // Set current environment if none selected
-            if (!selectedEnvironment && data.environments.length > 0) {
-                const currentEnvId = await getCurrentEnvironment();
-                let envToSelect: Environment | undefined;
-                
-                if (currentEnvId) {
-                    // Try to find the environment from cookie/database
-                    envToSelect = data.environments.find((env: Environment) => env.id === currentEnvId);
-                }
-                
-                // Fallback to default or first environment
-                if (!envToSelect) {
-                    envToSelect = data.environments.find((env: Environment) => env.isDefault) || data.environments[0];
-                }
-                
-                if (envToSelect) {
-                    onEnvironmentChange(envToSelect);
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching environments:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchEnvironments();
-    }, []);
 
     const handleCreateEnvironment = async () => {
         if (!newEnvName.trim()) return;
@@ -84,10 +36,6 @@ export default function EnvironmentSwitcher({
             setNewEnvName("");
             setNewEnvDescription("");
             setIsCreateDialogOpen(false);
-            await fetchEnvironments(); // Refresh the list
-            
-            // The newly created environment will be automatically selected
-            // and updateUserLastEnvironment will be called via the Select onValueChange
         } catch (error) {
             console.error("Failed to create environment:", error);
         } finally {
@@ -124,9 +72,8 @@ export default function EnvironmentSwitcher({
                         onValueChange={async (value) => {
                             const env = environments.find(e => e.id === value);
                             if (env) {
+                                await setSelectedEnvironment(env);
                                 onEnvironmentChange(env);
-                                // Update user's last environment in database and cookie
-                                await updateUserLastEnvironment(env.id);
                             }
                         }}
                     >

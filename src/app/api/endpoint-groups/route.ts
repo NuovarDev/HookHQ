@@ -6,7 +6,17 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/endpoint-groups - List endpoint groups for the current environment
+/**
+ * @swagger
+ * /api/endpoint-groups:
+ *   get:
+ *     description: List endpoint groups for the current environment
+ *     tags:
+ *       - Endpoint Groups
+ *     responses:
+ *       200:
+ *         description: List of endpoint groups
+ */
 export async function GET(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -68,7 +78,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/endpoint-groups - Create new endpoint group
+/**
+ * @swagger
+ * /api/endpoint-groups:
+ *   post:
+ *     description: Create new endpoint group
+ *     tags:
+ *       - Endpoint Groups
+ *     responses:
+ *       200:
+ *         description: Endpoint group created
+ */
 export async function POST(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -109,8 +129,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Name is required" }, { status: 400 });
         }
 
-        // Generate endpoint group ID (environmentId + random string)
-        const groupId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+        // Generate endpoint group ID with prefix (grp_{environmentId}_{random})
+        const groupId = `grp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
         const now = new Date();
 
         await db.insert(endpointGroups).values({

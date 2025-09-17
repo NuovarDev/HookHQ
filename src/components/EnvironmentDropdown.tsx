@@ -7,74 +7,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Globe, Plus, Check, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getCurrentEnvironment, updateUserLastEnvironment } from "@/lib/environmentState";
-
-export interface Environment {
-    id: string;
-    name: string;
-    description?: string;
-    isDefault: boolean;
-    createdAt: string;
-}
+import { useEnvironment, Environment } from "./EnvironmentProvider";
 
 interface EnvironmentDropdownProps {
     onEnvironmentChange?: (environment: Environment) => void;
 }
 
 export default function EnvironmentDropdown({ onEnvironmentChange }: EnvironmentDropdownProps) {
-    const [environments, setEnvironments] = useState<Environment[]>([]);
-    const [selectedEnvironment, setSelectedEnvironment] = useState<Environment | null>(null);
+    const { environments, selectedEnvironment, loading, setSelectedEnvironment, createEnvironment } = useEnvironment();
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [newEnvName, setNewEnvName] = useState("");
     const [newEnvDescription, setNewEnvDescription] = useState("");
     const [isCreating, setIsCreating] = useState(false);
-    const [loading, setLoading] = useState(true);
 
-    const fetchEnvironments = async () => {
-        try {
-            const response = await fetch("/api/environments");
-            if (!response.ok) {
-                throw new Error("Failed to fetch environments");
-            }
-            const data = await response.json() as { environments: Environment[] };
-            setEnvironments(data.environments);
-            
-            // Set current environment if none selected
-            if (!selectedEnvironment && data.environments.length > 0) {
-                const currentEnvId = await getCurrentEnvironment();
-                let envToSelect: Environment | undefined;
-                
-                if (currentEnvId) {
-                    // Try to find the environment from cookie/database
-                    envToSelect = data.environments.find((env: Environment) => env.id === currentEnvId);
-                }
-                
-                // Fallback to default or first environment
-                if (!envToSelect) {
-                    envToSelect = data.environments.find((env: Environment) => env.isDefault) || data.environments[0];
-                }
-                
-                if (envToSelect) {
-                    setSelectedEnvironment(envToSelect);
-                    onEnvironmentChange?.(envToSelect);
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching environments:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Notify parent when environment changes
     useEffect(() => {
-        fetchEnvironments();
-    }, []);
+        if (selectedEnvironment) {
+            onEnvironmentChange?.(selectedEnvironment);
+        }
+    }, [selectedEnvironment, onEnvironmentChange]);
 
     const handleEnvironmentSelect = async (environment: Environment) => {
-        setSelectedEnvironment(environment);
-        onEnvironmentChange?.(environment);
-        await updateUserLastEnvironment(environment.id);
+        await setSelectedEnvironment(environment);
         setIsPopoverOpen(false);
     };
 
@@ -83,32 +38,11 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
         
         setIsCreating(true);
         try {
-            const response = await fetch("/api/environments", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ 
-                    name: newEnvName.trim(), 
-                    description: newEnvDescription.trim() || undefined 
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to create environment");
-            }
-
-            const newEnv = await response.json() as Environment;
-            
-            // Set as current environment
-            setSelectedEnvironment(newEnv);
-            onEnvironmentChange?.(newEnv);
-            await updateUserLastEnvironment(newEnv.id);
+            await createEnvironment(newEnvName.trim(), newEnvDescription.trim() || undefined);
             
             setNewEnvName("");
             setNewEnvDescription("");
             setIsCreateDialogOpen(false);
-            await fetchEnvironments(); // Refresh the list
         } catch (error) {
             console.error("Failed to create environment:", error);
         } finally {

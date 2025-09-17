@@ -172,7 +172,6 @@ export default function MetricsTab() {
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold">Webhook Metrics</h2>
                     <p className="text-gray-600">Monitor your webhook performance and delivery statistics</p>
                 </div>
                 <div className="flex items-center gap-2">

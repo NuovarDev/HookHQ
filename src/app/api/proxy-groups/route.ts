@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Generate proxy group ID
-        const groupId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+        // Generate proxy group ID with prefix (grp_{environmentId}_{random})
+        const groupId = `proxygrp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
         const now = new Date();
 
         await db.insert(proxyGroups).values({

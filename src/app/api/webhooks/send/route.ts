@@ -4,7 +4,74 @@ import { webhookMessages } from "@/db/webhooks.schema";
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-// POST /webhooks/send - Send webhook (add to queue)
+/**
+ * @swagger
+ * /api/webhooks/send:
+ *   post:
+ *     description: |
+ *       Send a webhook to the specified endpoints.
+ * 
+ *        Webhooks can be sent to endpoints and/or endpoint groups. 
+ *        In order to send a webhook to an endpoint group, the eventType must be specified, then the webhook will be dispatched to all endpoints in the group that are subscribed to the eventType.
+ *     tags:
+ *       - Webhooks
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               endpoints:
+ *                 description: List of endpoints or endpoint groups to send the webhook to
+ *                 type: array
+ *                 required: true
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - ep_a1b2_abcd1234
+ *                   - grp_a1b2_efgh5678
+ *               eventType:
+ *                 description: Event type to send the webhook to. Required if sending to an endpoint group.
+ *                 type: string
+ *                 required: false
+ *                 example:
+ *                   user.created
+ *               payload:
+ *                 description: Payload to send with the webhook
+ *                 type: object
+ *                 required: true
+ *                 example:
+ *                   { userId: "abcd1234" }
+ *               eventId:
+ *                 description: Optional unique event ID to track the webhook
+ *                 type: string
+ *                 required: false
+ *                 example:
+ *                   abcdef1234567890
+ *     parameters:
+ *       - name: Idempotency-Key
+ *         in: header
+ *         required: false
+ *         description: Optional idempotency key
+ *         schema:
+ *           type: string
+ *         example:
+ *           1234567890
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Webhook sent
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
 export async function POST(request: NextRequest) {
   try {
     const { env } = await getCloudflareContext({ async: true });
@@ -21,9 +88,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { endpointIds, endpointGroups, eventType, eventId, payload, logPayload } = body as { 
-        endpointIds?: string[]; 
-        endpointGroups?: string[]; 
+    const { endpoints, eventType, eventId, payload, logPayload } = body as { 
+        endpoints?: string[]; 
         eventType: string; 
         payload: any; 
         eventId?: string;
@@ -32,13 +98,17 @@ export async function POST(request: NextRequest) {
     const idempotencyKey = request.headers.get("Idempotency-Key");
 
     // Request must have endpointId and/or endpointGroup
-    if (!endpointIds && !endpointGroups) {
-      return NextResponse.json({ error: "Endpoint ID or endpoint groups is required" }, { status: 400 });
+    if (!endpoints) {
+      return NextResponse.json({ error: "Endpoints are required" }, { status: 400 });
     }
 
-    // Request must have eventType
-    if (!eventType) {
-      return NextResponse.json({ error: "Event type is required" }, { status: 400 });
+    // Check if any endpoints are endpointGroups
+    const endpointGroups = endpoints.filter(endpoint => endpoint.startsWith("grp_"));
+    const endpointIds = endpoints.filter(endpoint => !endpoint.startsWith("grp_"));
+
+    // If endpointGroup is provided, eventType is required
+    if (endpointGroups.length > 0 && !eventType) {
+      return NextResponse.json({ error: "eventType must be specified when endpointGroups are provided" }, { status: 400 });
     }
 
     // Request must have payload
@@ -54,14 +124,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
-    if ([endpointIds, endpointGroups].some(ids => ids?.some(id => !id.startsWith(environmentId)))) {
+    if ([endpointIds, endpointGroups].some(ids => ids?.some(id => !(id.startsWith(`ep_${environmentId}_`) || id.startsWith(`grp_${environmentId}_`))))) {
       return NextResponse.json({ 
         error: "Forbidden",
-        message: "API key does not have permissions on all endpointIds and/or endpointGroups"
+        message: "API key does not have permissions on all endpoints"
       }, { status: 403 });
     }
-
-    // Validate that the endpointIds and endpointGroups are in the environment
 
     // TO-DO: Enforce unique eventId
 

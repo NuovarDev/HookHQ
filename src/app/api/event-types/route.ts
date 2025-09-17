@@ -6,7 +6,17 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/event-types - List event types for the current environment
+/**
+ * @swagger
+ * /api/event-types:
+ *   get:
+ *     description: List event types for the current environment
+ *     tags:
+ *       - Event Types
+ *     responses:
+ *       200:
+ *         description: List of event types
+ */
 export async function GET(request: NextRequest) {
     try {
         const authInstance = await initAuth();
@@ -68,7 +78,17 @@ export async function GET(request: NextRequest) {
     }
 }
 
-// POST /api/event-types - Create new event type
+/**
+ * @swagger
+ * /api/event-types:
+ *   post:
+ *     description: Create new event type
+ *     tags:
+ *       - Event Types
+ *     responses:
+ *       200:
+ *         description: Event type created
+ */
 export async function POST(request: NextRequest) {
     try {
         const authInstance = await initAuth();

@@ -1,0 +1,54 @@
+{
+  "apiFolder": "src/app/api",
+  "definition": {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Workers Webhooks API",
+      "version": "1.0"
+    },
+    "servers": [
+      {
+        "url": "/api/webhooks"
+      }
+    ],
+    "components": {
+      "securitySchemes": {
+        "apiKeyCookie": {
+          "type": "apiKey",
+          "in": "cookie",
+          "name": "apiKeyCookie",
+          "description": "API Key authentication via cookie"
+        },
+        "bearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "Bearer token authentication"
+        }
+      }
+    },
+    "security": [
+      {
+        "apiKeyCookie": [],
+        "bearerAuth": []
+      }
+    ],
+    "tags": [
+      {
+        "name": "Webhooks",
+        "description": "Webhooks API"
+      },
+      {
+        "name": "Endpoints",
+        "description": "Endpoints API"
+      },
+      {
+        "name": "Endpoint Groups",
+        "description": "Endpoint Groups API"
+      },
+      {
+        "name": "Event Types",
+        "description": "Event Types API"
+      }
+    ]
+  }
+}

@@ -54,7 +54,7 @@ export const eventTypes = sqliteTable("event_types", {
 export const webhookMessages = sqliteTable("webhook_messages", {
     id: text("id").primaryKey(), // UUID from producer
     eventId: text("event_id"), // Optional event ID from user
-    eventType: text("event_type").notNull(),
+    eventType: text("event_type"),
     environmentId: text("environment_id").notNull(),
     
     // Target information

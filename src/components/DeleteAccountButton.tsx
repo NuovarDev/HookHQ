@@ -3,11 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import authClient from "@/auth/authClient";
 
 export default function DeleteAccountButton() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -17,33 +17,20 @@ export default function DeleteAccountButton() {
     const router = useRouter();
 
     const handleDeleteAccount = async () => {
-        if (confirmationText !== "DELETE MY ACCOUNT") {
-            setError("Please type 'DELETE MY ACCOUNT' exactly as shown");
-            return;
-        }
-
         setIsDeleting(true);
         setError(null);
 
         try {
-            const response = await fetch("/api/account/delete", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ confirmationText }),
+            let result = await authClient.deleteUser({
+                password: confirmationText,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to delete account");
+            if (result.error) {
+                setError(result.error.message || "An unexpected error occurred");
+                return;
             }
 
-            // Account deleted successfully, redirect to home page
-            alert("Your account has been deleted successfully. You will be redirected to the home page.");
             router.push("/");
-            
         } catch (err) {
             setError(err instanceof Error ? err.message : "An unexpected error occurred");
         } finally {
@@ -86,23 +73,20 @@ export default function DeleteAccountButton() {
                                 Delete Account
                             </DialogTitle>
                             <DialogDescription className="space-y-2">
-                                <p>This action cannot be undone. This will permanently delete:</p>
-                                <ul className="list-disc list-inside space-y-1 text-sm">
-                                    <li>Your account and profile</li>
-                                    <li>All your API keys</li>
-                                    <li>All your sessions</li>
-                                    <li>All associated data</li>
-                                </ul>
+                                This action cannot be undone. Are you sure you want to delete your account?
+
+                                Deleting your account will also delete any API keys you have created.
                             </DialogDescription>
                         </DialogHeader>
                         
                         <div className="space-y-4">
                             <div className="p-4 bg-red-50 border border-red-200 rounded-md">
                                 <p className="text-sm text-red-800 font-medium mb-2">
-                                    To confirm, please type <span className="font-mono bg-red-100 px-1 rounded">DELETE MY ACCOUNT</span> in the box below:
+                                    To confirm, please enter your password below:
                                 </p>
                                 <Input
-                                    placeholder="Type DELETE MY ACCOUNT"
+                                    placeholder="Password"
+                                    type="password"
                                     value={confirmationText}
                                     onChange={(e) => setConfirmationText(e.target.value)}
                                     className="border-red-300 focus:border-red-500"
@@ -127,7 +111,7 @@ export default function DeleteAccountButton() {
                             <Button 
                                 variant="destructive" 
                                 onClick={handleDeleteAccount}
-                                disabled={isDeleting || confirmationText !== "DELETE MY ACCOUNT"}
+                                disabled={isDeleting}
                             >
                                 {isDeleting ? "Deleting Account..." : "Delete Account"}
                             </Button>

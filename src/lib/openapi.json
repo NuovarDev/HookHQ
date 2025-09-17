@@ -1,0 +1,339 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Workers Webhooks API",
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "/api/webhooks"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKeyCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "apiKeyCookie",
+        "description": "API Key authentication via cookie"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Bearer token authentication"
+      }
+    }
+  },
+  "security": [
+    {
+      "apiKeyCookie": [],
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Webhooks",
+      "description": "Webhooks API"
+    },
+    {
+      "name": "Endpoints",
+      "description": "Endpoints API"
+    },
+    {
+      "name": "Endpoint Groups",
+      "description": "Endpoint Groups API"
+    },
+    {
+      "name": "Event Types",
+      "description": "Event Types API"
+    }
+  ],
+  "paths": {
+    "/api/endpoint-groups/{id}": {
+      "delete": {
+        "description": "Delete an endpoint group",
+        "tags": [
+          "Endpoint Groups"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint group deleted"
+          }
+        }
+      },
+      "patch": {
+        "description": "Update an endpoint group",
+        "tags": [
+          "Endpoint Groups"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint group updated"
+          }
+        }
+      }
+    },
+    "/api/endpoint-groups": {
+      "get": {
+        "description": "List endpoint groups for the current environment",
+        "tags": [
+          "Endpoint Groups"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of endpoint groups"
+          }
+        }
+      },
+      "post": {
+        "description": "Create new endpoint group",
+        "tags": [
+          "Endpoint Groups"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint group created"
+          }
+        }
+      }
+    },
+    "/api/endpoints/{id}": {
+      "delete": {
+        "description": "Delete an endpoint",
+        "tags": [
+          "Endpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint deleted"
+          }
+        }
+      },
+      "patch": {
+        "description": "Update an endpoint",
+        "tags": [
+          "Endpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint updated"
+          }
+        }
+      }
+    },
+    "/api/endpoints": {
+      "get": {
+        "description": "List endpoints for the current environment",
+        "tags": [
+          "Endpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of endpoints"
+          }
+        }
+      },
+      "post": {
+        "description": "Create new endpoint",
+        "tags": [
+          "Endpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint created"
+          }
+        }
+      }
+    },
+    "/api/event-types/{id}": {
+      "delete": {
+        "description": "Delete an event type",
+        "tags": [
+          "Event Types"
+        ],
+        "responses": {
+          "200": {
+            "description": "Event type deleted"
+          }
+        }
+      },
+      "patch": {
+        "description": "Update an event type",
+        "tags": [
+          "Event Types"
+        ],
+        "parameters": [
+          {
+            "name": "ID",
+            "in": "path",
+            "required": true,
+            "description": "Event type ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user.created"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "description": "Event type name",
+                    "type": "string",
+                    "example": "User Created"
+                  },
+                  "description": {
+                    "description": "Event type description",
+                    "type": "string",
+                    "example": "User created event"
+                  },
+                  "schema": {
+                    "description": "Event type schema",
+                    "type": "object",
+                    "example": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "enabled": {
+                    "description": "Event type enabled status",
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event type updated"
+          }
+        }
+      }
+    },
+    "/api/event-types": {
+      "get": {
+        "description": "List event types for the current environment",
+        "tags": [
+          "Event Types"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of event types"
+          }
+        }
+      },
+      "post": {
+        "description": "Create new event type",
+        "tags": [
+          "Event Types"
+        ],
+        "responses": {
+          "200": {
+            "description": "Event type created"
+          }
+        }
+      }
+    },
+    "/api/webhooks/send": {
+      "post": {
+        "description": "Send a webhook to the specified endpoints.\n\n Webhooks can be sent to endpoints and/or endpoint groups. \n In order to send a webhook to an endpoint group, the eventType must be specified, then the webhook will be dispatched to all endpoints in the group that are subscribed to the eventType.\n",
+        "tags": [
+          "Webhooks"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "endpoints": {
+                    "description": "List of endpoints or endpoint groups to send the webhook to",
+                    "type": "array",
+                    "required": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "ep_a1b2_abcd1234",
+                      "grp_a1b2_efgh5678"
+                    ]
+                  },
+                  "eventType": {
+                    "description": "Event type to send the webhook to. Required if sending to an endpoint group.",
+                    "type": "string",
+                    "required": false,
+                    "example": "user.created"
+                  },
+                  "payload": {
+                    "description": "Payload to send with the webhook",
+                    "type": "object",
+                    "required": true,
+                    "example": {
+                      "userId": "abcd1234"
+                    }
+                  },
+                  "eventId": {
+                    "description": "Optional unique event ID to track the webhook",
+                    "type": "string",
+                    "required": false,
+                    "example": "abcdef1234567890"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Optional idempotency key",
+            "schema": {
+              "type": "string"
+            },
+            "example": 1234567890
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook sent"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  }
+}

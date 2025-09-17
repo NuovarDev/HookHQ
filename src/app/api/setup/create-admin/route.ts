@@ -2,9 +2,7 @@ import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { users } from "@/db/auth.schema";
 import { environments } from "@/db/environments.schema";
-import { apikeys } from "@/db/auth.schema";
 import { generateEnvironmentId } from "@/lib/initEnvironments";
-import { generateApiKey, generateApiKeyId, serializePermissions, getDefaultPermissions } from "@/lib/apiKeys";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -102,24 +100,6 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Using existing environment: ${environmentId}`);
         }
 
-        // Create default API key for the admin user
-        const apiKeyId = generateApiKeyId();
-        const apiKey = generateApiKey();
-
-        await db.insert(apikeys).values({
-            id: apiKeyId,
-            name: `${name}'s Default Key`,
-            metadata: JSON.stringify({ environment: environmentId }),
-            key: apiKey,
-            userId: newUser.id,
-            permissions: serializePermissions(getDefaultPermissions()),
-            enabled: true,
-            createdAt: now,
-            updatedAt: now,
-        });
-
-        console.log(`✅ Default API key created for admin user`);
-
         // Set user's last environment
         await db
             .update(users)
@@ -145,10 +125,6 @@ export async function POST(request: NextRequest) {
             environment: {
                 id: environmentId,
                 name: environment[0]?.name || "Unknown",
-            },
-            apiKey: {
-                id: apiKeyId,
-                key: apiKey, // Only returned during setup
             }
         });
 

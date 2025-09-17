@@ -19,7 +19,10 @@ import {
   Trash2,
   UserPlus,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Key,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 interface User {
@@ -40,6 +43,13 @@ export default function AdminUsersTab() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  
+  // Edit dialog states
+  const [showEditEmailDialog, setShowEditEmailDialog] = useState(false);
+  const [showEditPasswordDialog, setShowEditPasswordDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,6 +57,16 @@ export default function AdminUsersTab() {
     name: "",
     role: "user" as "admin" | "user",
     sendInviteEmail: true,
+  });
+
+  // Edit form states
+  const [editEmailData, setEditEmailData] = useState({
+    email: "",
+  });
+
+  const [editPasswordData, setEditPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
   });
 
   useEffect(() => {
@@ -147,6 +167,111 @@ export default function AdminUsersTab() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete user");
     }
+  };
+
+  const handleEditEmail = (user: User) => {
+    setEditingUser(user);
+    setEditEmailData({ email: user.email });
+    setShowEditEmailDialog(true);
+  };
+
+  const handleEditPassword = (user: User) => {
+    setEditingUser(user);
+    setEditPasswordData({ newPassword: "", confirmPassword: "" });
+    setShowEditPasswordDialog(true);
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!editingUser) return;
+
+    if (!editEmailData.email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`/api/admin/users/${editingUser.id}/email`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: editEmailData.email.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update email");
+      }
+
+      setUsers(prev =>
+        prev.map(user =>
+          user.id === editingUser.id ? { ...user, email: editEmailData.email.trim() } : user
+        )
+      );
+      setShowEditEmailDialog(false);
+      setEditingUser(null);
+      setSuccess("Email updated successfully!");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update email");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!editingUser) return;
+
+    if (!editPasswordData.newPassword.trim()) {
+      setError("New password is required");
+      return;
+    }
+
+    if (editPasswordData.newPassword !== editPasswordData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (editPasswordData.newPassword.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch(`/api/admin/users/${editingUser.id}/password`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: editPasswordData.newPassword }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update password");
+      }
+
+      setShowEditPasswordDialog(false);
+      setEditingUser(null);
+      setEditPasswordData({ newPassword: "", confirmPassword: "" });
+      setSuccess("Password updated successfully!");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update password");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditEmailDialog(false);
+    setShowEditPasswordDialog(false);
+    setEditingUser(null);
+    setEditEmailData({ email: "" });
+    setEditPasswordData({ newPassword: "", confirmPassword: "" });
+    setError(null);
   };
 
   const getRoleBadge = (role: string) => {
@@ -349,7 +474,23 @@ export default function AdminUsersTab() {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-end space-x-2 mt-4">
+                <div className="flex items-center justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditEmail(user)}
+                    title="Edit Email"
+                  >
+                    <Mail className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditPassword(user)}
+                    title="Change Password"
+                  >
+                    <Key className="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -373,18 +514,115 @@ export default function AdminUsersTab() {
         </div>
       )}
 
-      {/* Admin Notice */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="flex items-start space-x-3 p-4">
-          <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-          <div>
-            <h4 className="font-semibold text-blue-900">Admin Users</h4>
-            <p className="text-blue-800 text-sm mt-1">
-              Admin users cannot be deleted and have full access to all platform features including this admin panel.
-            </p>
+      {/* Edit Email Dialog */}
+      <Dialog open={showEditEmailDialog} onOpenChange={setShowEditEmailDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User Email</DialogTitle>
+            <DialogDescription>
+              Update the email address for {editingUser?.name || editingUser?.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-email">Email Address</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editEmailData.email}
+                onChange={(e) => setEditEmailData({ email: e.target.value })}
+                placeholder="user@example.com"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdateEmail} 
+                disabled={updating || !editEmailData.email.trim()}
+              >
+                {updating ? "Updating..." : "Update Email"}
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Password Dialog */}
+      <Dialog open={showEditPasswordDialog} onOpenChange={setShowEditPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change User Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {editingUser?.name || editingUser?.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showPassword ? "text" : "password"}
+                  value={editPasswordData.newPassword}
+                  onChange={(e) => setEditPasswordData({ ...editPasswordData, newPassword: e.target.value })}
+                  placeholder="Enter new password"
+                  minLength={8}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type={showPassword ? "text" : "password"}
+                value={editPasswordData.confirmPassword}
+                onChange={(e) => setEditPasswordData({ ...editPasswordData, confirmPassword: e.target.value })}
+                placeholder="Confirm new password"
+                minLength={8}
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <div className="flex">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Important
+                  </h3>
+                  <div className="mt-1 text-sm text-yellow-700">
+                    The user will need to use this new password to log in. Consider notifying them of this change.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={handleCancelEdit}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpdatePassword} 
+                disabled={updating || !editPasswordData.newPassword.trim() || !editPasswordData.confirmPassword.trim()}
+              >
+                {updating ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

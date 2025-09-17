@@ -1,46 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEnvironment } from "./EnvironmentProvider";
 import OnboardingFlow from "./OnboardingFlow";
-
-interface Environment {
-    id: string;
-    name: string;
-    description?: string;
-    isDefault: boolean;
-    createdAt: string;
-}
 
 interface EnvironmentGateProps {
     children: React.ReactNode;
 }
 
 export default function EnvironmentGate({ children }: EnvironmentGateProps) {
-    const [hasEnvironments, setHasEnvironments] = useState<boolean | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const checkEnvironments = async () => {
-        try {
-            const response = await fetch("/api/environments");
-            if (!response.ok) {
-                throw new Error("Failed to fetch environments");
-            }
-            const data = await response.json();
-            setHasEnvironments(data.environments.length > 0);
-        } catch (error) {
-            console.error("Error checking environments:", error);
-            setHasEnvironments(false);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        checkEnvironments();
-    }, []);
+    const { loading, hasEnvironments, refreshEnvironments } = useEnvironment();
 
     const handleOnboardingComplete = () => {
-        setHasEnvironments(true);
+        // Refresh environments to pick up the newly created one
+        refreshEnvironments();
     };
 
     if (loading) {

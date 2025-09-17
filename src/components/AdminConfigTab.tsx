@@ -189,7 +189,7 @@ export default function AdminConfigTab() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="cloudflareApiKey">Cloudflare API Key</Label>
+              <Label htmlFor="cloudflareApiKey" className="mb-2">Cloudflare API Key</Label>
               <Input
                 id="cloudflareApiKey"
                 type="password"
@@ -199,7 +199,7 @@ export default function AdminConfigTab() {
               />
             </div>
             <div>
-              <Label htmlFor="cloudflareAccountId">Account ID</Label>
+              <Label htmlFor="cloudflareAccountId" className="mb-2">Account ID</Label>
               <Input
                 id="cloudflareAccountId"
                 value={formData.cloudflareAccountId}
@@ -238,7 +238,7 @@ export default function AdminConfigTab() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="defaultMaxRetries">Default Max Retries</Label>
+              <Label htmlFor="defaultMaxRetries" className="mb-2">Default Max Retries</Label>
               <Input
                 id="defaultMaxRetries"
                 type="number"
@@ -247,7 +247,7 @@ export default function AdminConfigTab() {
               />
             </div>
             <div>
-              <Label htmlFor="defaultTimeoutMs">Default Timeout (ms)</Label>
+              <Label htmlFor="defaultTimeoutMs" className="mb-2">Default Timeout (ms)</Label>
               <Input
                 id="defaultTimeoutMs"
                 type="number"
@@ -258,7 +258,7 @@ export default function AdminConfigTab() {
           </div>
 
           <div>
-            <Label htmlFor="defaultBackoffStrategy">Default Backoff Strategy</Label>
+            <Label htmlFor="defaultBackoffStrategy" className="mb-2">Default Backoff Strategy</Label>
             <Select 
               value={formData.defaultBackoffStrategy} 
               onValueChange={(value) => setFormData({ ...formData, defaultBackoffStrategy: value })}
@@ -290,7 +290,7 @@ export default function AdminConfigTab() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="logRetentionDays">Log Retention (days)</Label>
+              <Label htmlFor="logRetentionDays" className="mb-2">Log Retention (days)</Label>
               <Input
                 id="logRetentionDays"
                 type="number"
@@ -302,7 +302,7 @@ export default function AdminConfigTab() {
               </p>
             </div>
             <div>
-              <Label htmlFor="payloadRetentionDays">Payload Retention (days)</Label>
+              <Label htmlFor="payloadRetentionDays" className="mb-2">Payload Retention (days)</Label>
               <Input
                 id="payloadRetentionDays"
                 type="number"

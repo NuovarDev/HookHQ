@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Users, Shield } from "lucide-react";
-import EnvironmentGate from "@/components/EnvironmentGate";
+import { Settings, Users, Globe } from "lucide-react";
 import AdminConfigTab from "@/components/AdminConfigTab";
 import AdminUsersTab from "@/components/AdminUsersTab";
+import AdminEnvironmentsTab from "@/components/AdminEnvironmentsTab";
 
-type TabType = "config" | "users";
+type TabType = "config" | "users" | "environments";
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>("config");
@@ -25,22 +23,17 @@ export default function AdminPage() {
       name: "User Management",
       icon: Users,
       description: "Manage users and permissions"
+    },
+    {
+      id: "environments" as TabType,
+      name: "Environments",
+      icon: Globe,
+      description: "Manage and delete environments"
     }
   ];
 
   return (
-    <EnvironmentGate>
-      <div className="space-y-6">
-        <div className="flex items-center space-x-3">
-          <Shield className="h-8 w-8 text-blue-600" />
-          <div>
-            <h2 className="text-2xl font-bold">Admin Panel</h2>
-            <p className="text-muted-foreground">
-              Server configuration and user management
-            </p>
-          </div>
-        </div>
-
+    <div className="space-y-6">
         {/* Tab Navigation */}
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -68,8 +61,8 @@ export default function AdminPage() {
         <div className="mt-6">
           {activeTab === "config" && <AdminConfigTab />}
           {activeTab === "users" && <AdminUsersTab />}
+          {activeTab === "environments" && <AdminEnvironmentsTab />}
         </div>
       </div>
-    </EnvironmentGate>
   );
 }

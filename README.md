@@ -27,6 +27,8 @@ To deploy `workers-webhooks` to Cloudflare, click the button below.
 
 This will automatically setup the worker, D1 database, R2 bucket, and Queues for you.
 
+When prompted, enter a `AUTH_SECRET` value. You can generate one using `openssl rand -base64 32`.
+
 ### Manual Deployment
 
 To deploy `workers-webhooks` manually, follow the steps below.
@@ -34,14 +36,26 @@ To deploy `workers-webhooks` manually, follow the steps below.
 1. Clone the repository
 2. Install dependencies
     - `npm install`
-3. Create the D1 database
+3. Copy the `.env.example` file to `.env`
+    - `cp .env.example .env`
+4. Set the `AUTH_SECRET` environment variable
+    - `AUTH_SECRET=YOUR_AUTH_SECRET`
+5. Create the D1 database
     - `npx wrangler d1 create webhooks-db`
-4. Create the R2 bucket
+6. Create the R2 bucket
     - `npx wrangler r2 create webhooks-r2`
-5. Create the Queues
+7. Create the Queues
     - `npx wrangler queues create webhooks-queue`
     - `npx wrangler queues create webhooks-dlq`
-6. Build the project
+8. Build the project
     - `npm run build`
-7. Deploy the project
+9. Deploy the project
     - `npm run deploy`
+
+## API Documentation
+
+The API documentation is available at `/api` and has tabs for both the webhooks and auth APIs.
+
+To disable the API documentation, set the `API_DOCS_ENABLED` environment variable to `false`.
+
+The webhooks docs are generated based on the JSDoc comments in the `src/app/api` folder. To update the docs, run `npm run docs:generate`.

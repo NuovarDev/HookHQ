@@ -17,7 +17,11 @@ import {
     Edit,
     Trash2,
     Power,
-    PowerOff
+    PowerOff,
+    Hash,
+    Users,
+    Copy,
+    Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -53,6 +57,7 @@ export default function EndpointsTab() {
     const [error, setError] = useState<string | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -184,6 +189,17 @@ export default function EndpointsTab() {
             proxyGroupId: "none"
         });
     };
+
+    const copyToClipboard = async (text: string, id: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
+
 
     const openEditDialog = (endpoint: Endpoint) => {
         setFormData({
@@ -453,6 +469,49 @@ export default function EndpointsTab() {
                                         <div className="text-sm text-gray-600 break-all">
                                             {endpoint.url}
                                         </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-2 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <Hash className="h-3 w-3 text-gray-400" />
+                                            <span className="text-gray-500">Endpoint ID:</span>
+                                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1">
+                                                {endpoint.id}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-4 w-4 p-0 hover:bg-gray-200"
+                                                    onClick={() => copyToClipboard(endpoint.id, `endpoint-${endpoint.id}`)}
+                                                >
+                                                    {copiedId === `endpoint-${endpoint.id}` ? (
+                                                        <Check className="h-3 w-3 text-green-600" />
+                                                    ) : (
+                                                        <Copy className="h-3 w-3" />
+                                                    )}
+                                                </Button>
+                                            </span>
+                                        </div>
+                                        {endpoint.proxyGroupId && (
+                                            <div className="flex items-center gap-2">
+                                                <Users className="h-3 w-3 text-gray-400" />
+                                                <span className="text-gray-500">Proxy Group ID:</span>
+                                                <span className="font-mono text-xs bg-blue-100 px-2 py-1 rounded flex items-center gap-1">
+                                                    {endpoint.proxyGroupId}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-4 w-4 p-0 hover:bg-blue-200"
+                                                        onClick={() => copyToClipboard(endpoint.proxyGroupId!, `proxy-${endpoint.proxyGroupId}`)}
+                                                    >
+                                                        {copiedId === `proxy-${endpoint.proxyGroupId}` ? (
+                                                            <Check className="h-3 w-3 text-green-600" />
+                                                        ) : (
+                                                            <Copy className="h-3 w-3" />
+                                                        )}
+                                                    </Button>
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     <div className="flex items-center justify-between">

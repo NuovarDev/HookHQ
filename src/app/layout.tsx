@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "better-auth-cloudflare",
-    description: "Example app using our plugin",
+    title: "Workers Webhooks",
+    description: "Cloudflare Workers Webhooks-as-a-service",
 };
 
 export default function RootLayout({

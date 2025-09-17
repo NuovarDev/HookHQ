@@ -2,7 +2,6 @@ import { initAuth } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import MessagesTab from "@/components/MessagesTab";
-import EnvironmentGate from "@/components/EnvironmentGate";
 
 export default async function MessagesPage() {
   const authInstance = await initAuth();
@@ -14,12 +13,10 @@ export default async function MessagesPage() {
   }
 
   return (
-    <EnvironmentGate>
-      <div className="flex flex-col min-h-screen font-[family-name:var(--font-geist-sans)]">
-        <main className="flex flex-col justify-center">
-          <MessagesTab />
-        </main>
-      </div>
-    </EnvironmentGate>
+    <div className="flex flex-col min-h-screen font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col justify-center">
+        <MessagesTab />
+      </main>
+    </div>
   );
 }

@@ -9,6 +9,8 @@ import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.share
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import EnvironmentDropdown from '@/components/EnvironmentDropdown';
+import { EnvironmentProvider } from '@/components/EnvironmentProvider';
+import EnvironmentGate from '@/components/EnvironmentGate';
 
 const handleSignOut = async (router: AppRouterInstance) => {
   await authClient.signOut({
@@ -38,11 +40,11 @@ const navigation = [
   { name: 'Proxy', href: '/dashboard/proxy', current: false },
   { name: 'Log', href: '/dashboard/log', current: false },
   { name: 'Metrics', href: '/dashboard/metrics', current: false },
-  { name: 'API Keys', href: '/dashboard/api-keys', current: false },
   { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true },
 ]
 const userNavigation = (router: AppRouterInstance) => [
   { name: 'Account', href: '/dashboard/account', current: false },
+  { name: 'API Keys', href: '/dashboard/api-keys', current: false },
   { name: 'Sign out', href: '#', onClick: () => handleSignOut(router) },
 ]
 
@@ -62,8 +64,9 @@ export default function AppLayout({
   const currentPathName = [...navigation, ...userNavigation(router)].map((item) => ({ ...item, current: item.href === pathname })).find(item => item.current)?.name;
 
   return (
-    <>
-      <div className="min-h-full">
+    <EnvironmentProvider>
+      <EnvironmentGate>
+        <div className="min-h-full">
         <div className="relative bg-gray-800 pb-32">
           <Disclosure as="nav" className="bg-gray-800">
             <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -74,7 +77,7 @@ export default function AppLayout({
                     <div className="hidden md:block">
                       <div className="ml-10 flex items-baseline space-x-4">
                         {nav.map((item) => (
-                          <a
+                          <Link
                             key={item.name}
                             href={item.href}
                             aria-current={item.current ? 'page' : undefined}
@@ -86,7 +89,7 @@ export default function AppLayout({
                             )}
                           >
                             {item.name}
-                          </a>
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -142,9 +145,8 @@ export default function AppLayout({
             <DisclosurePanel className="border-b border-white/10 md:hidden">
               <div className="space-y-1 px-2 py-3 sm:px-3">
                 {nav.map((item) => (
-                  <DisclosureButton
+                  <Link
                     key={item.name}
-                    as="a"
                     href={item.href}
                     aria-current={item.current ? 'page' : undefined}
                     className={classNames(
@@ -153,7 +155,7 @@ export default function AppLayout({
                     )}
                   >
                     {item.name}
-                  </DisclosureButton>
+                  </Link>
                 ))}
               </div>
               <div className="border-t border-white/10 pt-4 pb-3">
@@ -172,14 +174,23 @@ export default function AppLayout({
                 </div>
                 <div className="mt-3 space-y-1 px-2">
                   {userNavigation(router).map((item) => (
-                    <DisclosureButton
-                      key={item.name}
-                      as="a"
-                      href={item.href}
-                      className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-                    >
-                      {item.name}
-                    </DisclosureButton>
+                    item.onClick ? (
+                      <button
+                        key={item.name}
+                        onClick={item.onClick}
+                        className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
+                      >
+                        {item.name}
+                      </button>
+                    ) : (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
+                      >
+                        {item.name}
+                      </Link>
+                    )
                   ))}
                 </div>
               </div>
@@ -199,7 +210,8 @@ export default function AppLayout({
             </div>
           </div>
         </main>
-      </div>
-    </>
+        </div>
+      </EnvironmentGate>
+    </EnvironmentProvider>
   )
 }
