@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * @swagger
- * /api/endpoint-groups/{id}:
+ * /endpoint-groups/{id}:
  *   delete:
  *     description: Delete an endpoint group
  *     tags:
@@ -71,7 +71,7 @@ export async function DELETE(
 
 /**
  * @swagger
- * /api/endpoint-groups/{id}:
+ * /endpoint-groups/{id}:
  *   patch:
  *     description: Update an endpoint group
  *     tags:

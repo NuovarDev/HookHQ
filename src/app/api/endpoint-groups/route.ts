@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * @swagger
- * /api/endpoint-groups:
+ * /endpoint-groups:
  *   get:
  *     description: List endpoint groups for the current environment
  *     tags:
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * @swagger
- * /api/endpoint-groups:
+ * /endpoint-groups:
  *   post:
  *     description: Create new endpoint group
  *     tags:

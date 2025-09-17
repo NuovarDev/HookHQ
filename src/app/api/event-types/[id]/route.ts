@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * @swagger
- * /api/event-types/{id}:
+ * /event-types/{id}:
  *   delete:
  *     description: Delete an event type
  *     tags:
@@ -70,7 +70,7 @@ export async function DELETE(
 
 /**
  * @swagger
- * /api/event-types/{id}:
+ * /event-types/{id}:
  *   patch:
  *     description: Update an event type
  *     tags:

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * @swagger
- * /api/event-types:
+ * /event-types:
  *   get:
  *     description: List event types for the current environment
  *     tags:
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * @swagger
- * /api/event-types:
+ * /event-types:
  *   post:
  *     description: Create new event type
  *     tags:

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users } from "lucide-react";
+import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users, LoaderCircle } from "lucide-react";
 
 interface ProxyServer {
   id: string;
@@ -151,15 +151,6 @@ export default function ProxyServersTab() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading proxy servers...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -294,7 +285,16 @@ export default function ProxyServersTab() {
         </Dialog>
       </div>
 
-      {proxyServers.length === 0 ? (
+      {loading && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+              <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+            </CardContent>
+        </Card>
+      )}
+
+      {!loading && proxyServers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Server className="h-12 w-12 text-muted-foreground mb-4" />

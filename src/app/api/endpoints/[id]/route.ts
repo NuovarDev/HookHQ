@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * @swagger
- * /api/endpoints/{id}:
+ * /endpoints/{id}:
  *   delete:
  *     description: Delete an endpoint
  *     tags:
@@ -70,7 +70,7 @@ export async function DELETE(
 
 /**
  * @swagger
- * /api/endpoints/{id}:
+ * /endpoints/{id}:
  *   patch:
  *     description: Update an endpoint
  *     tags:

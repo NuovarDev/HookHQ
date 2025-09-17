@@ -13,7 +13,9 @@ import {
     Trash2,
     Power,
     PowerOff,
-    Code
+    Code,
+    LoaderCircle,
+    CircleX
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -195,22 +197,6 @@ export default function EventTypesTab() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center py-8">
-                <div className="text-gray-600">Loading event types...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex justify-center items-center py-8">
-                <div className="text-red-600">Error: {error}</div>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
@@ -299,7 +285,28 @@ export default function EventTypesTab() {
                 </Dialog>
             </div>
 
-            {eventTypes.length === 0 ? (
+            {loading && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+                        <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+                    </CardContent>
+                </Card>
+            )}
+
+            {error && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <CircleX className="h-12 w-12 text-red-400 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Error</h3>
+                        <p className="text-red-600 text-center">
+                            {error}
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {!loading && !error && (eventTypes.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                         <Zap className="h-12 w-12 text-gray-400 mb-4" />
@@ -383,7 +390,7 @@ export default function EventTypesTab() {
                         </Card>
                     ))}
                 </div>
-            )}
+            ))}
         </div>
     );
 }

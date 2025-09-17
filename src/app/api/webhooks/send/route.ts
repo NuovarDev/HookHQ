@@ -6,7 +6,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 /**
  * @swagger
- * /api/webhooks/send:
+ * /webhooks/send:
  *   post:
  *     description: |
  *       Send a webhook to the specified endpoints.

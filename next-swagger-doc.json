@@ -8,7 +8,7 @@
     },
     "servers": [
       {
-        "url": "/api/webhooks"
+        "url": "/api"
       }
     ],
     "components": {

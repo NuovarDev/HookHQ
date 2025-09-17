@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "/api/webhooks"
+      "url": "/api"
     }
   ],
   "components": {
@@ -49,7 +49,7 @@
     }
   ],
   "paths": {
-    "/api/endpoint-groups/{id}": {
+    "/endpoint-groups/{id}": {
       "delete": {
         "description": "Delete an endpoint group",
         "tags": [
@@ -73,7 +73,7 @@
         }
       }
     },
-    "/api/endpoint-groups": {
+    "/endpoint-groups": {
       "get": {
         "description": "List endpoint groups for the current environment",
         "tags": [
@@ -97,7 +97,7 @@
         }
       }
     },
-    "/api/endpoints/{id}": {
+    "/endpoints/{id}": {
       "delete": {
         "description": "Delete an endpoint",
         "tags": [
@@ -121,7 +121,7 @@
         }
       }
     },
-    "/api/endpoints": {
+    "/endpoints": {
       "get": {
         "description": "List endpoints for the current environment",
         "tags": [
@@ -145,7 +145,7 @@
         }
       }
     },
-    "/api/event-types/{id}": {
+    "/event-types/{id}": {
       "delete": {
         "description": "Delete an event type",
         "tags": [
@@ -225,7 +225,7 @@
         }
       }
     },
-    "/api/event-types": {
+    "/event-types": {
       "get": {
         "description": "List event types for the current environment",
         "tags": [
@@ -249,7 +249,7 @@
         }
       }
     },
-    "/api/webhooks/send": {
+    "/webhooks/send": {
       "post": {
         "description": "Send a webhook to the specified endpoints.\n\n Webhooks can be sent to endpoints and/or endpoint groups. \n In order to send a webhook to an endpoint group, the eventType must be specified, then the webhook will be dispatched to all endpoints in the group that are subscribed to the eventType.\n",
         "tags": [

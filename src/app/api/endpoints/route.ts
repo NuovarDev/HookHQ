@@ -9,7 +9,7 @@ import { generateEnvironmentId } from "@/lib/initEnvironments";
 
 /**
  * @swagger
- * /api/endpoints:
+ * /endpoints:
  *   get:
  *     description: List endpoints for the current environment
  *     tags:
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * @swagger
- * /api/endpoints:
+ * /endpoints:
  *   post:
  *     description: Create new endpoint
  *     tags:

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, LoaderCircle, CircleX } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface WebhookMessage {
@@ -126,22 +126,6 @@ export default function MessagesTab() {
         return `${Math.round(duration / 60000)}m`;
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center py-8">
-                <div className="text-gray-600">Loading messages...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex justify-center items-center py-8">
-                <div className="text-red-600">Error: {error}</div>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
@@ -169,7 +153,28 @@ export default function MessagesTab() {
                 </div>
             </div>
 
-            {messages.length === 0 ? (
+            {loading && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+                        <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+                    </CardContent>
+                </Card>
+            )}
+
+            {error && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <CircleX className="h-12 w-12 text-red-400 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Error</h3>
+                        <p className="text-red-600 text-center">
+                            {error}
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {!loading && !error && messages.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                         <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />

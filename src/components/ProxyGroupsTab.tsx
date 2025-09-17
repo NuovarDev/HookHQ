@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, RefreshCw, Users, Settings, Server, Globe } from "lucide-react";
+import { Plus, RefreshCw, Users, Settings, Server, Globe, LoaderCircle } from "lucide-react";
 
 interface ProxyServer {
   id: string;
@@ -142,15 +142,6 @@ export default function ProxyGroupsTab() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <RefreshCw className="h-6 w-6 animate-spin" />
-        <span className="ml-2">Loading proxy groups...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -263,7 +254,16 @@ export default function ProxyGroupsTab() {
         </Dialog>
       </div>
 
-      {proxyGroups.length === 0 ? (
+      {loading && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+              <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+            </CardContent>
+        </Card>
+      )}
+
+      {!loading && proxyGroups.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
