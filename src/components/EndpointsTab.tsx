@@ -25,6 +25,7 @@ import {
     LoaderCircle,
     CircleX
 } from "lucide-react";
+import EditableTemplate from "./EditableTemplate";
 import { useState, useEffect } from "react";
 
 interface Endpoint {
@@ -74,6 +75,7 @@ export default function EndpointsTab() {
         customHeaders: "",
         proxyGroupId: "none"
     });
+
 
     const fetchEndpoints = async () => {
         try {
@@ -201,6 +203,7 @@ export default function EndpointsTab() {
             console.error('Failed to copy to clipboard:', err);
         }
     };
+
 
 
     const openEditDialog = (endpoint: Endpoint) => {
@@ -434,6 +437,18 @@ export default function EndpointsTab() {
                         <p className="text-gray-600 text-center">
                             Create your first webhook endpoint to start receiving notifications.
                         </p>
+                        <code className="text-sm m-4 p-4 bg-slate-700 rounded-md text-white min-w-[500px]">
+                            <EditableTemplate
+                                template={`curl {{baseUrl}}/api/endpoints \\
+-H 'Content-Type: application/json' \\
+-H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
+-d '{
+    "name": "My First Endpoint",
+    "url": "https://example.com/webhook" 
+}'`}
+                                className="whitespace-pre"
+                            />
+                        </code>
                     </CardContent>
                 </Card>
             ) : (

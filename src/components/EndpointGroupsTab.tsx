@@ -22,6 +22,7 @@ import {
     CircleX
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import EditableTemplate from "./EditableTemplate";
 
 interface Endpoint {
     id: string;
@@ -335,6 +336,17 @@ export default function EndpointGroupsTab() {
                         <p className="text-gray-600 text-center">
                             Create your first endpoint group to send notifications to multiple endpoints at once.
                         </p>
+                        <code className="text-sm m-4 p-4 bg-slate-700 rounded-md text-white min-w-[500px]">
+                            <EditableTemplate
+                                template={`curl {{baseUrl}}/api/endpoint-groups \\
+-H 'Content-Type: application/json' \\
+-H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
+-d '{
+    "name": "My First Endpoint Group"
+}'`}
+                                className="whitespace-pre"
+                            />
+                        </code>
                     </CardContent>
                 </Card>
             ) : (

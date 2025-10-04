@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Github, Package, Mail, Lock, Shield, AlertCircle } from "lucide-react";
+import { Mail, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -91,19 +91,6 @@ export default function Home() {
     return (
         <div className="flex items-center justify-center min-h-screen p-8 font-[family-name:var(--font-geist-sans)]">
             <div className="w-full max-w-md space-y-6">
-                {/* Admin Notice */}
-                <Card className="border-blue-200 bg-blue-50">
-                    <CardContent className="flex items-start space-x-3 p-4">
-                        <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                            <h3 className="font-semibold text-blue-900">Admin Access Required</h3>
-                            <p className="text-blue-800 text-sm mt-1">
-                                User accounts are managed by administrators. Contact your admin for access.
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
-
                 {/* Login Form */}
                 <Card>
                     <CardHeader>
@@ -157,27 +144,7 @@ export default function Home() {
             </div>
             <footer className="absolute bottom-0 w-full text-center text-sm text-gray-500 py-4">
                 <div className="space-y-3">
-                    <div>Powered by better-auth-cloudflare</div>
-                    <div className="flex items-center justify-center gap-4">
-                        <a
-                            href="https://github.com/zpg6/better-auth-cloudflare"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                        >
-                            <Github size={16} />
-                            <span>GitHub</span>
-                        </a>
-                        <a
-                            href="https://www.npmjs.com/package/better-auth-cloudflare"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 hover:text-gray-700 transition-colors"
-                        >
-                            <Package size={16} />
-                            <span>npm</span>
-                        </a>
-                    </div>
+                    <div>&copy; {new Date().getFullYear()} HookHQ</div>
                 </div>
             </footer>
         </div>

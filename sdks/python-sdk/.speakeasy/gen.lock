@@ -1,0 +1,172 @@
+lockVersion: 2.0.0
+id: 4b14d6c7-bc7c-4f98-89fc-54e64f92cdf8
+management:
+  docChecksum: 037c228487f3261201e70e0ce2251986
+  docVersion: "1.0"
+  speakeasyVersion: 1.633.1
+  generationVersion: 2.720.1
+  releaseVersion: 0.0.2
+  configChecksum: 700f11f24b286ba717249044cf83d8b7
+features:
+  python:
+    additionalDependencies: 1.0.0
+    constsAndDefaults: 1.0.5
+    core: 5.22.0
+    defaultEnabledRetries: 0.2.0
+    devContainers: 3.0.0
+    enumUnions: 0.1.0
+    envVarSecurityUsage: 0.3.2
+    flatRequests: 1.0.1
+    flattening: 3.1.1
+    globalSecurity: 3.0.4
+    globalSecurityCallbacks: 1.0.0
+    globalServerURLs: 3.1.1
+    groups: 3.0.0
+    methodArguments: 1.0.2
+    nameOverrides: 3.0.1
+    responseFormat: 1.0.1
+    retries: 3.0.2
+    sdkHooks: 1.1.0
+generatedFiles:
+  - .devcontainer/README.md
+  - .devcontainer/devcontainer.json
+  - .devcontainer/setup.sh
+  - .gitattributes
+  - .vscode/settings.json
+  - USAGE.md
+  - docs/models/customheaders.md
+  - docs/models/deleteendpointgroupsidrequest.md
+  - docs/models/deleteendpointsidrequest.md
+  - docs/models/deleteeventtypesidrequest.md
+  - docs/models/getendpointsrequest.md
+  - docs/models/patchendpointgroupsidrequest.md
+  - docs/models/patchendpointsidrequest.md
+  - docs/models/patcheventtypesidrequest.md
+  - docs/models/patcheventtypesidrequestbody.md
+  - docs/models/patcheventtypesidschema.md
+  - docs/models/payload.md
+  - docs/models/postendpointgroupsrequest.md
+  - docs/models/postendpointsrequest.md
+  - docs/models/posteventtypesrequest.md
+  - docs/models/posteventtypesschema.md
+  - docs/models/postwebhookssendrequest.md
+  - docs/models/postwebhookssendrequestbody.md
+  - docs/models/retrypolicy.md
+  - docs/models/security.md
+  - docs/models/utils/retryconfig.md
+  - docs/sdks/endpointgroups/README.md
+  - docs/sdks/endpoints/README.md
+  - docs/sdks/eventtypes/README.md
+  - docs/sdks/hookhq/README.md
+  - docs/sdks/webhooks/README.md
+  - py.typed
+  - pylintrc
+  - pyproject.toml
+  - scripts/publish.sh
+  - src/hookhq/__init__.py
+  - src/hookhq/_hooks/__init__.py
+  - src/hookhq/_hooks/sdkhooks.py
+  - src/hookhq/_hooks/types.py
+  - src/hookhq/_version.py
+  - src/hookhq/basesdk.py
+  - src/hookhq/endpointgroups.py
+  - src/hookhq/endpoints.py
+  - src/hookhq/errors/__init__.py
+  - src/hookhq/errors/hookhqdefaulterror.py
+  - src/hookhq/errors/hookhqerror.py
+  - src/hookhq/errors/no_response_error.py
+  - src/hookhq/errors/responsevalidationerror.py
+  - src/hookhq/eventtypes.py
+  - src/hookhq/httpclient.py
+  - src/hookhq/models/__init__.py
+  - src/hookhq/models/delete_endpoint_groups_id_op.py
+  - src/hookhq/models/delete_endpoints_id_op.py
+  - src/hookhq/models/delete_event_types_id_op.py
+  - src/hookhq/models/get_endpointsop.py
+  - src/hookhq/models/patch_endpoint_groups_id_op.py
+  - src/hookhq/models/patch_endpoints_id_op.py
+  - src/hookhq/models/patch_event_types_id_op.py
+  - src/hookhq/models/post_endpoint_groupsop.py
+  - src/hookhq/models/post_endpointsop.py
+  - src/hookhq/models/post_event_typesop.py
+  - src/hookhq/models/post_webhooks_sendop.py
+  - src/hookhq/models/security.py
+  - src/hookhq/py.typed
+  - src/hookhq/sdk.py
+  - src/hookhq/sdkconfiguration.py
+  - src/hookhq/types/__init__.py
+  - src/hookhq/types/basemodel.py
+  - src/hookhq/utils/__init__.py
+  - src/hookhq/utils/annotations.py
+  - src/hookhq/utils/datetimes.py
+  - src/hookhq/utils/enums.py
+  - src/hookhq/utils/eventstreaming.py
+  - src/hookhq/utils/forms.py
+  - src/hookhq/utils/headers.py
+  - src/hookhq/utils/logger.py
+  - src/hookhq/utils/metadata.py
+  - src/hookhq/utils/queryparams.py
+  - src/hookhq/utils/requestbodies.py
+  - src/hookhq/utils/retries.py
+  - src/hookhq/utils/security.py
+  - src/hookhq/utils/serializers.py
+  - src/hookhq/utils/unmarshal_json_response.py
+  - src/hookhq/utils/url.py
+  - src/hookhq/utils/values.py
+  - src/hookhq/webhooks.py
+examples:
+  delete_/endpoint-groups/{id}:
+    speakeasy-default-delete-/endpoint-groups/{id}:
+      parameters:
+        path:
+          id: "grp_a1b2_efgh5678"
+  patch_/endpoint-groups/{id}:
+    speakeasy-default-patch-/endpoint-groups/{id}:
+      parameters:
+        path:
+          id: "grp_a1b2_efgh5678"
+  get_/endpoint-groups: {}
+  post_/endpoint-groups:
+    speakeasy-default-post-/endpoint-groups:
+      requestBody:
+        application/json: {"name": "My Endpoint Group", "description": "My Endpoint Group description", "endpointIds": ["ep_a1b2_efgh5678"], "enabled": true}
+  delete_/endpoints/{id}:
+    speakeasy-default-delete-/endpoints/{id}:
+      parameters:
+        path:
+          id: "ep_a1b2_abcd1234"
+  patch_/endpoints/{id}:
+    speakeasy-default-patch-/endpoints/{id}:
+      parameters:
+        path:
+          id: "ep_a1b2_abcd1234"
+  get_/endpoints: {}
+  post_/endpoints:
+    speakeasy-default-post-/endpoints:
+      requestBody:
+        application/json: {"name": "My Webhook Endpoint", "description": "My Webhook Endpoint description", "url": "https://example.com/webhook", "enabled": true, "retryPolicy": "exponential", "maxAttempts": 3, "timeoutMs": 30000, "customHeaders": {}, "proxyGroupId": "proxygrp_a1b2_efgh5678"}
+  delete_/event-types/{id}:
+    speakeasy-default-delete-/event-types/{id}:
+      parameters:
+        path:
+          id: "user.created"
+  patch_/event-types/{id}:
+    speakeasy-default-patch-/event-types/{id}:
+      parameters:
+        path:
+          id: "user.created"
+      requestBody:
+        application/json: {"name": "User Created", "description": "User created event", "schema": {}, "enabled": true}
+  get_/event-types: {}
+  post_/event-types:
+    speakeasy-default-post-/event-types:
+      requestBody:
+        application/json: {"name": "User Created", "description": "User created event", "schema": {}, "enabled": true}
+  post_/webhooks/send:
+    speakeasy-default-post-/webhooks/send:
+      parameters:
+        header:
+          Idempotency-Key: "1234567890"
+      requestBody:
+        application/json: {"endpoints": ["ep_a1b2_abcd1234", "grp_a1b2_efgh5678"], "eventType": "user.created", "payload": {}, "eventId": "abcdef1234567890"}
+examplesVersion: 1.0.2

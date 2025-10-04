@@ -24,20 +24,11 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
-
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role: "admin" | "user";
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastLoginAt?: string;
-}
+import authClient from "@/auth/authClient";
+import { UserWithRole } from "better-auth/plugins";
 
 export default function AdminUsersTab() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -47,7 +38,7 @@ export default function AdminUsersTab() {
   // Edit dialog states
   const [showEditEmailDialog, setShowEditEmailDialog] = useState(false);
   const [showEditPasswordDialog, setShowEditPasswordDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -57,6 +48,7 @@ export default function AdminUsersTab() {
     name: "",
     role: "user" as "admin" | "user",
     sendInviteEmail: true,
+    password: "",
   });
 
   // Edit form states
@@ -74,38 +66,45 @@ export default function AdminUsersTab() {
   }, []);
 
   const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/admin/users");
-      if (!response.ok) {
-        throw new Error("Failed to fetch users");
-      }
-      const data = await response.json() as { users: User[] };
-      setUsers(data.users || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
+    const { data, error } = await authClient.admin.listUsers({
+      query: {
+          searchValue: "some name",
+          searchField: "name",
+          searchOperator: "contains",
+          limit: 100,
+          offset: 100,
+          sortBy: "name",
+          sortDirection: "desc",
+          filterField: "email",
+          filterValue: "hello@example.com",
+          filterOperator: "eq",
+      },
+    });
+
+    if (error) {
+      setError(error.message || "An error occurred");
+    } else {
+      setUsers(data.users);
     }
+
+    setLoading(false);
   };
 
   const handleCreateUser = async () => {
-    try {
-      setCreating(true);
-      setError(null);
-      setSuccess(null);
+    setCreating(true);
+    setError(null);
+    setSuccess(null);
 
-      const response = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    const { data: newUser, error } = await authClient.admin.createUser({
+      email: formData.email,
+      password: formData.password,
+      name: formData.name,
+      role: formData.role,
+  });
 
-      if (!response.ok) {
-        throw new Error("Failed to create user");
-      }
-
-      const newUser = await response.json() as { user: User };
+    if (error) {
+      setError(error.message || "Failed to create user");
+    } else {
       setUsers(prev => [...prev, newUser.user]);
       setShowCreateDialog(false);
       setFormData({
@@ -113,38 +112,33 @@ export default function AdminUsersTab() {
         name: "",
         role: "user",
         sendInviteEmail: true,
+        password: "",
       });
       setSuccess("User created successfully!");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create user");
-    } finally {
-      setCreating(false);
     }
+
+    setCreating(false);
   };
 
   const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive }),
+    if (isActive) {
+      await authClient.admin.unbanUser({
+        userId: userId,
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update user status");
-      }
-
-      setUsers(prev =>
-        prev.map(user =>
-          user.id === userId ? { ...user, isActive } : user
-        )
-      );
-      setSuccess(`User ${isActive ? 'activated' : 'deactivated'} successfully!`);
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update user");
+    } else {
+      await authClient.admin.banUser({
+        userId: userId,
+      });
     }
+
+    setUsers(prev =>
+      prev.map(user =>
+        user.id === userId ? { ...user, isActive } : user
+      )
+    );
+    setSuccess(`User ${isActive ? 'activated' : 'deactivated'} successfully!`);
+    setTimeout(() => setSuccess(null), 3000);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -152,30 +146,26 @@ export default function AdminUsersTab() {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE",
-      });
+    const { data: deletedUser, error } = await authClient.admin.removeUser({
+        userId: userId,
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to delete user");
-      }
-
+    if (error) {
+      setError(error.message || "Failed to delete user");
+    } else {
       setUsers(prev => prev.filter(user => user.id !== userId));
       setSuccess("User deleted successfully!");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete user");
     }
   };
 
-  const handleEditEmail = (user: User) => {
+  const handleEditEmail = (user: UserWithRole) => {
     setEditingUser(user);
     setEditEmailData({ email: user.email });
     setShowEditEmailDialog(true);
   };
 
-  const handleEditPassword = (user: User) => {
+  const handleEditPassword = (user: UserWithRole) => {
     setEditingUser(user);
     setEditPasswordData({ newPassword: "", confirmPassword: "" });
     setShowEditPasswordDialog(true);
@@ -189,35 +179,32 @@ export default function AdminUsersTab() {
       return;
     }
 
-    try {
       setUpdating(true);
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`/api/admin/users/${editingUser.id}/email`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: editEmailData.email.trim() }),
+      const { data, error } = await authClient.admin.updateUser({
+        userId: editingUser.id,
+        data: {
+          email: editEmailData.email.trim(),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update email");
+      if (error) {
+        setError(error.message || "Failed to update email");
+      } else {
+        setUsers(prev =>
+          prev.map(user =>
+            user.id === editingUser.id ? { ...user, email: editEmailData.email.trim() } : user
+          )
+        );
+        setShowEditEmailDialog(false);
+        setEditingUser(null);
+        setSuccess("Email updated successfully!");
+        setTimeout(() => setSuccess(null), 3000);
       }
 
-      setUsers(prev =>
-        prev.map(user =>
-          user.id === editingUser.id ? { ...user, email: editEmailData.email.trim() } : user
-        )
-      );
-      setShowEditEmailDialog(false);
-      setEditingUser(null);
-      setSuccess("Email updated successfully!");
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update email");
-    } finally {
       setUpdating(false);
-    }
   };
 
   const handleUpdatePassword = async () => {
@@ -238,31 +225,26 @@ export default function AdminUsersTab() {
       return;
     }
 
-    try {
-      setUpdating(true);
-      setError(null);
-      setSuccess(null);
+    setUpdating(true);
+    setError(null);
+    setSuccess(null);
 
-      const response = await fetch(`/api/admin/users/${editingUser.id}/password`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword: editPasswordData.newPassword }),
-      });
+    const { data, error } = await authClient.admin.setUserPassword({
+      newPassword: editPasswordData.newPassword,
+      userId: editingUser.id,
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to update password");
-      }
-
+    if (error) {
+      setError(error.message || "Failed to update password");
+    } else {
       setShowEditPasswordDialog(false);
       setEditingUser(null);
       setEditPasswordData({ newPassword: "", confirmPassword: "" });
       setSuccess("Password updated successfully!");
       setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update password");
-    } finally {
-      setUpdating(false);
     }
+
+    setUpdating(false);
   };
 
   const handleCancelEdit = () => {
@@ -290,10 +272,10 @@ export default function AdminUsersTab() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
@@ -314,7 +296,7 @@ export default function AdminUsersTab() {
       {/* Status Messages */}
       {error && (
         <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex items-center space-x-2 p-4">
+          <CardContent className="flex items-center space-x-2 px-4">
             <AlertTriangle className="h-5 w-5 text-red-600" />
             <span className="text-red-800">{error}</span>
           </CardContent>
@@ -323,7 +305,7 @@ export default function AdminUsersTab() {
 
       {success && (
         <Card className="border-green-200 bg-green-50">
-          <CardContent className="flex items-center space-x-2 p-4">
+          <CardContent className="flex items-center space-x-2 px-4">
             <CheckCircle className="h-5 w-5 text-green-600" />
             <span className="text-green-800">{success}</span>
           </CardContent>
@@ -370,6 +352,16 @@ export default function AdminUsersTab() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Enter password"
                 />
               </div>
               <div>
@@ -449,8 +441,8 @@ export default function AdminUsersTab() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {getRoleBadge(user.role)}
-                    {getStatusBadge(user.isActive)}
+                    {getRoleBadge(user.role || "user")}
+                    {getStatusBadge(user.banned || false)}
                   </div>
                 </div>
               </CardHeader>
@@ -461,15 +453,6 @@ export default function AdminUsersTab() {
                     <div>
                       <div className="font-medium">Created</div>
                       <div className="text-muted-foreground">{formatDate(user.createdAt)}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">Last Login</div>
-                      <div className="text-muted-foreground">
-                        {user.lastLoginAt ? formatDate(user.lastLoginAt) : "Never"}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -494,9 +477,9 @@ export default function AdminUsersTab() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleToggleUserStatus(user.id, !user.isActive)}
+                    onClick={() => handleToggleUserStatus(user.id, !user.banned)}
                   >
-                    {user.isActive ? "Deactivate" : "Activate"}
+                    {user.banned ? "Activate" : "Deactivate"}
                   </Button>
                   {user.role !== "admin" && (
                     <Button

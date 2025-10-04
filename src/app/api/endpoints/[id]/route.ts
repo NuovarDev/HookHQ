@@ -1,6 +1,7 @@
 import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { endpoints } from "@/db/webhooks.schema";
+import { authenticateApiRequest } from "@/lib/apiHelpers";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -8,13 +9,269 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * @swagger
  * /endpoints/{id}:
+ *   get:
+ *     summary: Get Endpoint
+ *     description: Get an endpoint by ID
+ *     tags:
+ *       - Endpoints
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Endpoint ID
+ *         schema:
+ *           type: string
+ *         example:
+ *           ep_a1b2_abcd1234
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   description: Endpoint ID
+ *                 environmentId:
+ *                   type: string
+ *                   description: Environment ID
+ *                 name:
+ *                   type: string
+ *                   description: Name
+ *                 description:
+ *                   type: string
+ *                   description: Description
+ *                 url:
+ *                   type: string
+ *                   description: URL
+ *                 enabled:
+ *                   type: boolean
+ *                   description: Whether the endpoint is enabled
+ *                 retryPolicy:
+ *                   type: string
+ *                   description: Retry policy
+ *                 maxAttempts:
+ *                   type: number
+ *                   description: Maximum number of attempts
+ *                 timeoutMs:
+ *                   type: number
+ *                   description: Timeout
+ *                 customHeaders:
+ *                   type: object
+ *                   description: Custom headers
+ *                 proxyGroupId:
+ *                   type: string
+ *                   description: Proxy group ID
+ *                 createdAt:
+ *                   type: string
+ *                   description: Created at
+ *                 updatedAt:
+ *                   type: string
+ *                   description: Updated at
+ *               example:
+ *                 id: ep_a1b2_abcd1234
+ *                 environmentId: a1b2
+ *                 name: My Webhook Endpoint
+ *                 description: My Webhook Endpoint description
+ *                 url: https://example.com/webhook
+ *                 enabled: true
+ *                 retryPolicy: exponential
+ *                 maxAttempts: 3
+ *                 timeoutMs: 30000
+ *                 customHeaders: {}
+ *                 proxyGroupId: proxygrp_a1b2_efgh5678
+ *                 createdAt: 2021-01-01T00:00:00.000Z
+ *                 updatedAt: 2021-01-01T00:00:00.000Z
+ *       404:
+ *         description: Not Found. The requested resource was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint not found"
+ *       400:
+ *         description: Bad Request. Usually due to missing parameters, or invalid parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint ID is required"
+ *       401:
+ *         description: Unauthorized. Due to missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Unauthorized"
+ *       403:
+ *         description: Forbidden. You do not have permission to access this resource or to perform this action.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Forbidden"
+ *       429:
+ *         description: Too Many Requests. You have exceeded the rate limit. Try again later.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Rate limit exceeded"
+ *       500:
+ *         description: Internal Server Error. This is a problem with the server that you cannot fix.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Internal server error"
+ *     x-speakeasy-name-override: "list"
+ */
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+    const authResult = await authenticateApiRequest(request, { endpoints: ["read"] });
+    
+    if (!authResult.success) {
+        return authResult.response;
+    }
+
+    const endpointId = params.id;
+
+    if (!endpointId) {
+        return NextResponse.json({ error: "Endpoint ID is required" }, { status: 400 });
+    }
+
+    const db = await getDb();
+
+    // Check if endpoint exists and belongs to user's environment
+    const endpoint = await db
+        .select()
+        .from(endpoints)
+        .where(eq(endpoints.id, endpointId))
+        .limit(1);
+
+    if (endpoint.length === 0) {
+        return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
+    }
+    
+    const { environmentId } = authResult;
+
+    // Format the response
+    const formattedEndpoint = {
+        id: endpoint[0].id,
+        environmentId: endpoint[0].environmentId,
+        name: endpoint[0].name,
+        description: endpoint[0].description,
+        url: endpoint[0].url,
+        enabled: endpoint[0].isActive,
+        retryPolicy: endpoint[0].retryPolicy,
+        maxAttempts: endpoint[0].maxRetries,
+        timeoutMs: endpoint[0].timeoutMs,
+        customHeaders: endpoint[0].headers ? JSON.parse(endpoint[0].headers) : {},
+        proxyGroupId: endpoint[0].proxyGroupId,
+        createdAt: endpoint[0].createdAt.toISOString(),
+        updatedAt: endpoint[0].updatedAt.toISOString()
+    };
+
+    return NextResponse.json({ formattedEndpoint });
+}
+
+/**
+ * @swagger
+ * /endpoints/{id}:
  *   delete:
+ *     summary: Delete Endpoint
  *     description: Delete an endpoint
  *     tags:
  *       - Endpoints
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Endpoint ID
+ *         schema:
+ *           type: string
+ *         example:
+ *           ep_a1b2_abcd1234
  *     responses:
  *       200:
- *         description: Endpoint deleted
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Message
+ *                 deletedEndpoint:
+ *                   type: object
+ *                   description: Deleted endpoint
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: Endpoint ID
+ *                     name:
+ *                       type: string
+ *                       description: Endpoint name
+ *               example:
+ *                 message: "Endpoint deleted successfully"
+ *                 deletedEndpoint: { id: "ep_a1b2_abcd1234", name: "My Webhook Endpoint" }
+ *       400:
+ *         description: Bad Request. Usually due to missing parameters, or invalid parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint ID is required"
+ *       404:
+ *         description: Not Found. The requested resource was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint not found"
+ *       401:
+ *         description: Unauthorized. Due to missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Unauthorized"
+ *       403:
+ *         description: Forbidden. You do not have permission to access this resource or to perform this action.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Forbidden"
+ *       429:
+ *         description: Too Many Requests. You have exceeded the rate limit. Try again later.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Rate limit exceeded"
+ *       500:
+ *         description: Internal Server Error. This is a problem with the server that you cannot fix.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Internal server error"
+ *     x-speakeasy-name-override: "delete"
  */
 export async function DELETE(
     request: NextRequest,
@@ -72,12 +329,125 @@ export async function DELETE(
  * @swagger
  * /endpoints/{id}:
  *   patch:
+ *     summary: Update Endpoint
  *     description: Update an endpoint
  *     tags:
  *       - Endpoints
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Endpoint ID
+ *         schema:
+ *           type: string
+ *         example:
+ *           ep_a1b2_abcd1234
  *     responses:
  *       200:
- *         description: Endpoint updated
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Message
+ *                 endpoint:
+ *                   type: object
+ *                   description: Endpoint
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       description: Endpoint ID
+ *                     environmentId:
+ *                       type: string
+ *                       description: Environment ID
+ *                     name:
+ *                       type: string
+ *                       description: Endpoint name
+ *                     description:
+ *                       type: string
+ *                       description: Endpoint description
+ *                     url:
+ *                       type: string
+ *                       description: Endpoint URL
+ *                     enabled:
+ *                       type: boolean
+ *                       description: Whether the endpoint is enabled
+ *                     retryPolicy:
+ *                       type: string
+ *                       description: Retry policy
+ *                     maxAttempts:
+ *                       type: number
+ *                       description: Maximum number of attempts
+ *                     timeoutMs:
+ *                       type: number
+ *                       description: Timeout
+ *                     customHeaders:
+ *                       type: object
+ *                       description: Custom headers
+ *                     proxyGroupId:
+ *                       type: string
+ *                       description: Proxy group ID
+ *                     createdAt:
+ *                       type: string
+ *                       description: Created at
+ *                     updatedAt:
+ *                       type: string
+ *                       description: Updated at
+ *               example:
+ *                 message: "Endpoint updated successfully"
+ *                 endpoint: { id: "ep_a1b2_abcd1234", environmentId: "a1b2", name: "My Webhook Endpoint", description: "My Webhook Endpoint description", url: "https://example.com/webhook", enabled: true, retryPolicy: "exponential", maxAttempts: 3, timeoutMs: 30000, customHeaders: {}, proxyGroupId: "proxygrp_a1b2_efgh5678", createdAt: "2021-01-01T00:00:00.000Z", updatedAt: "2021-01-01T00:00:00.000Z" }
+ *       400:
+ *         description: Bad Request. Usually due to missing parameters, or invalid parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint ID is required"
+ *       404:
+ *         description: Not Found. The requested resource was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Endpoint not found"
+ *       401:
+ *         description: Unauthorized. Due to missing or invalid authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Unauthorized"
+ *       403:
+ *         description: Forbidden. You do not have permission to access this resource or to perform this action.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Forbidden"
+ *       429:
+ *         description: Too Many Requests. You have exceeded the rate limit. Try again later.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Rate limit exceeded"
+ *       500:
+ *         description: Internal Server Error. This is a problem with the server that you cannot fix.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/responses/ErrorResponse"
+ *               example:
+ *                 error: "Internal server error"
+ *     x-speakeasy-name-override: "update"
  */
 export async function PATCH(
     request: NextRequest,
@@ -92,7 +462,17 @@ export async function PATCH(
         }
 
         const endpointId = params.id;
-        const body = await request.json();
+        const body = await request.json() as {
+            name?: string;
+            description?: string;
+            url?: string;
+            isActive?: boolean;
+            retryPolicy?: string;
+            maxRetries?: number;
+            timeoutMs?: number;
+            headers?: Record<string, string>;
+            proxyGroupId?: string;
+        };
 
         if (!endpointId) {
             return NextResponse.json({ error: "Endpoint ID is required" }, { status: 400 });

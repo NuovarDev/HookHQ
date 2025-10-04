@@ -27,7 +27,13 @@ async function authBuilder() {
                 },
                 plugins: [
                     ...process.env.API_DOCS_ENABLED === 'true' ? [openAPI()] : [],
-                    apiKey({ enableMetadata: true }),
+                    apiKey({
+                        enableMetadata: true,
+                        defaultPrefix: 'wh_',
+                        rateLimit: {
+                            enabled: false,
+                        },
+                    }),
                     admin()],
                 emailAndPassword: {
                     enabled: true,
@@ -78,7 +84,7 @@ export const auth = betterAuth({
         },
         {
             // Include only configurations that influence the Drizzle schema
-            plugins: [openAPI(), apiKey({ enableMetadata: true }), admin()],
+            plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: 'wh_' }), admin()],
             emailAndPassword: {
                 enabled: true,
             },

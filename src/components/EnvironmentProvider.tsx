@@ -16,9 +16,11 @@ interface EnvironmentContextType {
     selectedEnvironment: Environment | null;
     loading: boolean;
     hasEnvironments: boolean;
+    environmentError: string | null;
     setSelectedEnvironment: (environment: Environment) => void;
     refreshEnvironments: () => Promise<void>;
     createEnvironment: (name: string, description?: string) => Promise<Environment>;
+    validateCurrentEnvironment: () => Promise<boolean>;
 }
 
 const EnvironmentContext = createContext<EnvironmentContextType | undefined>(undefined);
@@ -32,9 +34,11 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
     const [selectedEnvironment, setSelectedEnvironmentState] = useState<Environment | null>(null);
     const [loading, setLoading] = useState(true);
     const [hasEnvironments, setHasEnvironments] = useState(false);
+    const [environmentError, setEnvironmentError] = useState<string | null>(null);
 
     const fetchEnvironments = async () => {
         try {
+            setEnvironmentError(null);
             const response = await fetch("/api/environments");
             if (!response.ok) {
                 throw new Error("Failed to fetch environments");
@@ -51,6 +55,11 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
                 if (currentEnvId) {
                     // Try to find the environment from cookie/database
                     envToSelect = data.environments.find((env: Environment) => env.id === currentEnvId);
+                    
+                    // If current environment doesn't exist, show error
+                    if (!envToSelect) {
+                        setEnvironmentError(`The environment "${currentEnvId}" no longer exists. Please select a different environment.`);
+                    }
                 }
                 
                 // Fallback to default or first environment
@@ -65,6 +74,7 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
         } catch (error) {
             console.error("Error fetching environments:", error);
             setHasEnvironments(false);
+            setEnvironmentError("Failed to load environments. Please refresh the page.");
         } finally {
             setLoading(false);
         }
@@ -101,10 +111,35 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
         // Add to environments list
         setEnvironments(prev => [...prev, newEnv]);
         
+        // Clear any environment errors
+        setEnvironmentError(null);
+        
         // Set as current environment
         await setSelectedEnvironment(newEnv);
         
         return newEnv;
+    };
+
+    const validateCurrentEnvironment = async (): Promise<boolean> => {
+        try {
+            const currentEnvId = await getCurrentEnvironment();
+            if (!currentEnvId) {
+                return false;
+            }
+            
+            const environment = environments.find(env => env.id === currentEnvId);
+            if (!environment) {
+                setEnvironmentError(`The environment "${currentEnvId}" no longer exists. Please select a different environment.`);
+                return false;
+            }
+            
+            setEnvironmentError(null);
+            return true;
+        } catch (error) {
+            console.error("Error validating environment:", error);
+            setEnvironmentError("Failed to validate environment.");
+            return false;
+        }
     };
 
     useEffect(() => {
@@ -116,9 +151,11 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
         selectedEnvironment,
         loading,
         hasEnvironments,
+        environmentError,
         setSelectedEnvironment,
         refreshEnvironments,
         createEnvironment,
+        validateCurrentEnvironment,
     };
 
     return (

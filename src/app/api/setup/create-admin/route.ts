@@ -58,13 +58,14 @@ export async function POST(request: NextRequest) {
 
         // Initialize auth and create user
         const authInstance = await initAuth();
-        
-        const result = await authInstance.api.signUpEmail({
+
+        const result = await authInstance.api.createUser({
             body: {
-                email,
-                password,
-                name,
-            }
+                email: email,
+                password: password,
+                name: name,
+                role: "admin",
+            },
         });
 
         const newUser = result.user;

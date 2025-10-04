@@ -18,6 +18,7 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyAuthResult> 
     try {
         // Basic format validation
         if (!isValidApiKeyFormat(apiKey)) {
+            console.error("Invalid API key format");
             return {
                 valid: false,
                 error: "Invalid API key format"
@@ -37,6 +38,7 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyAuthResult> 
             .limit(1);
 
         if (keyRecord.length === 0) {
+            console.error("Invalid or disabled API key");
             return {
                 valid: false,
                 error: "Invalid or disabled API key"
@@ -47,6 +49,7 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyAuthResult> 
         
         // Check if the key has expired
         if (key.expiresAt && new Date() > key.expiresAt) {
+            console.error("API key has expired");
             return {
                 valid: false,
                 error: "API key has expired"
@@ -73,6 +76,7 @@ export async function validateApiKey(apiKey: string): Promise<ApiKeyAuthResult> 
         };
     } catch (error) {
         console.error("Error validating API key:", error);
+        console.error(error);
         return {
             valid: false,
             error: "Internal server error"

@@ -1,0 +1,21 @@
+workflowVersion: 1.0.0
+speakeasyVersion: latest
+sources:
+    Workers Webhooks API:
+        inputs:
+            - location: ../../src/lib/openapi.json
+        overlays:
+            - location: .speakeasy/speakeasy-modifications-overlay.yaml
+        output: .speakeasy/out.openapi.yaml
+        registry:
+            location: registry.speakeasyapi.dev/nuovar/hookhq/workers-webhooks-api
+targets:
+    hookhq:
+        target: typescript
+        source: Workers Webhooks API
+        codeSamples:
+            registry:
+                location: registry.speakeasyapi.dev/nuovar/hookhq/workers-webhooks-api-typescript-code-samples
+            labelOverride:
+                fixedValue: Typescript (SDK)
+            blocking: false

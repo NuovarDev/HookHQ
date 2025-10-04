@@ -18,6 +18,7 @@ import {
     CircleX
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import EditableTemplate from "./EditableTemplate";
 
 interface EventType {
     id: string;
@@ -44,6 +45,7 @@ export default function EventTypesTab() {
         schema: "",
         enabled: true
     });
+    
 
     const fetchEventTypes = async () => {
         try {
@@ -314,6 +316,17 @@ export default function EventTypesTab() {
                         <p className="text-gray-600 text-center">
                             Create your first event type to define structured webhook notifications.
                         </p>
+                        <code className="text-sm m-4 p-4 bg-slate-700 rounded-md text-white min-w-[500px]">
+                            <EditableTemplate
+                                template={`curl {{baseUrl}}/api/event-types \\
+-H 'Content-Type: application/json' \\
+-H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
+-d '{
+    "name": "My First Event Type"
+}'`}
+                                className="whitespace-pre"
+                            />
+                        </code>
                     </CardContent>
                 </Card>
             ) : (

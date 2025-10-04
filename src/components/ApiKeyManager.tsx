@@ -7,25 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Key, Plus, Trash2, Copy } from "lucide-react";
 import { useState, useEffect } from "react";
-import { ApiKeyPermission, getPermissionDisplayName, getPermissionPresets } from "@/lib/apiKeys";
 import { getCurrentEnvironment } from "@/lib/environmentState";
+import { ApiKey } from "@/lib/apiKeys";
+import { useEnvironment } from "./EnvironmentProvider";
+import CopyableCode from "./CopyableCode";
 
-export interface ApiKey {
-    id: string;
-    name: string;
-    key: string | undefined | null;
-    start?: string; // First few characters of the key from Better Auth
-    permissions: ApiKeyPermission[];
-    enabled: boolean;
-    createdAt: string;
-    lastUsed?: string;
-    lastRequest?: string; // Last request date from Better Auth
-    showRawKey?: boolean; // Only true immediately after creation
+const fullPermission = {
+    "endpoints": ["create", "read", "update", "delete"],
+    "messages": ["create", "read", "update", "delete"]
 }
 
 interface ApiKeyManagerProps {
     apiKeys: ApiKey[];
-    onCreateKey: (name: string, permissions: ApiKeyPermission[], environment: string) => Promise<void>;
+    onCreateKey: (name: string, permissions: Record<string, string[]>, environment: string) => Promise<void>;
     onDeleteKey: (id: string) => Promise<void>;
     onToggleKey: (id: string, enabled: boolean) => Promise<void>;
     onDismissRawKey?: (id: string) => void;
@@ -34,35 +28,40 @@ interface ApiKeyManagerProps {
 export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onToggleKey, onDismissRawKey }: ApiKeyManagerProps) {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
-    const [selectedPermissions, setSelectedPermissions] = useState<ApiKeyPermission[]>(["all_permissions"]);
+    const [selectedPermissions, setSelectedPermissions] = useState<Record<string, string[]>>(fullPermission);
     const [isCreating, setIsCreating] = useState(false);
-    const [selectedPreset, setSelectedPreset] = useState<string>("Full Access");
     const [currentEnvironment, setCurrentEnvironment] = useState<string | null>(null);
     const [currentEnvironmentName, setCurrentEnvironmentName] = useState<string | null>(null);
+    const [environmentValidationError, setEnvironmentValidationError] = useState<string | null>(null);
+    
+    const { environments, environmentError, validateCurrentEnvironment } = useEnvironment();
 
     // Load current environment on component mount and when dialog opens
     useEffect(() => {
         const loadCurrentEnvironment = async () => {
             const env = await getCurrentEnvironment();
             setCurrentEnvironment(env);
+            setEnvironmentValidationError(null);
             
-            // Fetch environment name if we have an environment ID
+            // Validate environment exists
             if (env) {
-                try {
-                    const response = await fetch("/api/environments");
-                    if (response.ok) {
-                        const data = await response.json() as { environments: Array<{ id: string; name: string }> };
-                        const environment = data.environments.find(e => e.id === env);
-                        setCurrentEnvironmentName(environment?.name || env);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch environment name:", error);
-                    setCurrentEnvironmentName(env);
+                const isValid = await validateCurrentEnvironment();
+                if (!isValid) {
+                    setEnvironmentValidationError(environmentError || "Environment validation failed");
+                    return;
+                }
+                
+                // Find environment name from the environments list
+                const environment = environments.find(e => e.id === env);
+                if (environment) {
+                    setCurrentEnvironmentName(environment.name);
+                } else {
+                    setEnvironmentValidationError(`Environment "${env}" not found`);
                 }
             }
         };
         loadCurrentEnvironment();
-    }, []);
+    }, [environments, environmentError, validateCurrentEnvironment]);
 
     // Refresh environment when dialog opens
     useEffect(() => {
@@ -70,93 +69,50 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
             const refreshEnvironment = async () => {
                 const env = await getCurrentEnvironment();
                 setCurrentEnvironment(env);
+                setEnvironmentValidationError(null);
                 
-                // Fetch environment name if we have an environment ID
+                // Validate environment exists
                 if (env) {
-                    try {
-                        const response = await fetch("/api/environments");
-                        if (response.ok) {
-                            const data = await response.json() as { environments: Array<{ id: string; name: string }> };
-                            const environment = data.environments.find(e => e.id === env);
-                            setCurrentEnvironmentName(environment?.name || env);
-                        }
-                    } catch (error) {
-                        console.error("Failed to fetch environment name:", error);
-                        setCurrentEnvironmentName(env);
+                    const isValid = await validateCurrentEnvironment();
+                    if (!isValid) {
+                        setEnvironmentValidationError(environmentError || "Environment validation failed");
+                        return;
+                    }
+                    
+                    // Find environment name from the environments list
+                    const environment = environments.find(e => e.id === env);
+                    if (environment) {
+                        setCurrentEnvironmentName(environment.name);
+                    } else {
+                        setEnvironmentValidationError(`Environment "${env}" not found`);
                     }
                 }
             };
             refreshEnvironment();
         }
-    }, [isCreateDialogOpen]);
+    }, [isCreateDialogOpen, environments, environmentError, validateCurrentEnvironment]);
 
     const handleCreateKey = async () => {
         if (!newKeyName.trim() || !currentEnvironment) return;
+        
+        // Validate environment before creating API key
+        const isValid = await validateCurrentEnvironment();
+        if (!isValid) {
+            setEnvironmentValidationError(environmentError || "Environment validation failed");
+            return;
+        }
         
         setIsCreating(true);
         try {
             await onCreateKey(newKeyName.trim(), selectedPermissions, currentEnvironment);
             setNewKeyName("");
-            setSelectedPermissions(["all_permissions"]);
+            setSelectedPermissions(fullPermission);
             setIsCreateDialogOpen(false);
         } catch (error) {
             console.error("Failed to create API key:", error);
         } finally {
             setIsCreating(false);
         }
-    };
-
-    const handlePermissionChange = (permission: ApiKeyPermission, checked: boolean) => {
-        let newPermissions: ApiKeyPermission[];
-        
-        if (checked) {
-            if (permission === "all_permissions") {
-                // If selecting all_permissions, clear all granular permissions
-                newPermissions = ["all_permissions"];
-            } else {
-                // If selecting a granular permission, remove all_permissions and add the new permission
-                newPermissions = [
-                    ...selectedPermissions.filter(p => p !== "all_permissions"),
-                    permission
-                ];
-            }
-        } else {
-            // Simply remove the permission
-            newPermissions = selectedPermissions.filter(p => p !== permission);
-        }
-        
-        setSelectedPermissions(newPermissions);
-        updatePresetFromPermissions(newPermissions);
-    };
-
-    const updatePresetFromPermissions = (permissions: ApiKeyPermission[]) => {
-        const presets = getPermissionPresets();
-        
-        // Check if current permissions match any preset
-        for (const [presetName, presetPermissions] of Object.entries(presets)) {
-            // Sort both arrays to compare them properly
-            const sortedCurrent = [...permissions].sort();
-            const sortedPreset = [...presetPermissions].sort();
-            
-            if (sortedCurrent.length === sortedPreset.length && 
-                sortedCurrent.every((perm, index) => perm === sortedPreset[index])) {
-                setSelectedPreset(presetName);
-                return;
-            }
-        }
-        
-        // If no preset matches, set to "Custom"
-        setSelectedPreset("Custom");
-    };
-
-    const handlePresetChange = (preset: string) => {
-        setSelectedPreset(preset);
-        if (preset === "Custom") {
-            // Don't change permissions when selecting Custom
-            return;
-        }
-        const presets = getPermissionPresets();
-        setSelectedPermissions(presets[preset] || []);
     };
 
     const copyToClipboard = async (text: string | undefined | null) => {
@@ -172,17 +128,23 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
         }
     };
 
-    const formatKey = (key: string | undefined | null, start?: string) => {
-        // Use start field from Better Auth if available, otherwise fallback to key substring
+    const formatKey = (key: string | undefined | null, start?: string | null) => {
+        if (key) {
+            return key;
+        }
+
         if (start) {
             return `${start}${'*'.repeat(20)}`; // Show start + 20 asterisks
         }
         
-        if (key) {
-            return key;
-        }
-        
         return "No key available";
+    };
+
+    const handlePermissionChange = (permission: string, operation: string, checked: boolean) => {
+        setSelectedPermissions(prev => ({
+            ...prev,
+            [permission]: checked ? [...prev[permission], operation] : prev[permission].filter(op => op !== operation)
+        }));
     };
 
     return (
@@ -218,33 +180,37 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                             {currentEnvironment && (
                                 <div className="space-y-2">
                                     <Label>Environment</Label>
-                                    <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                                        <span className="text-sm text-blue-800 font-medium">
-                                            {currentEnvironmentName || currentEnvironment}
-                                        </span>
-                                    </div>
+                                    {environmentValidationError ? (
+                                        <div className="bg-red-50 border border-red-200 rounded-md px-3 py-2">
+                                            <div className="flex items-start">
+                                                <div className="flex-shrink-0">
+                                                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                                <div className="ml-3">
+                                                    <h3 className="text-sm font-medium text-red-800">
+                                                        Environment Error
+                                                    </h3>
+                                                    <div className="mt-1 text-sm text-red-700">
+                                                        <p>{environmentValidationError}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                                            <span className="text-sm text-blue-800 font-medium">
+                                                {currentEnvironmentName || currentEnvironment}
+                                            </span>
+                                        </div>
+                                    )}
                                     <p className="text-xs text-gray-600">
                                         This API key will be scoped to the current environment
                                     </p>
                                 </div>
                             )}
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Permission Presets</Label>
-                                    <select
-                                        value={selectedPreset}
-                                        onChange={(e) => handlePresetChange(e.target.value)}
-                                        className="w-full p-2 border rounded-md"
-                                    >
-                                        {Object.keys(getPermissionPresets()).map((preset) => (
-                                            <option key={preset} value={preset}>
-                                                {preset}
-                                            </option>
-                                        ))}
-                                        <option value="Custom">Custom</option>
-                                    </select>
-                                </div>
-                                
+                            <div className="space-y-4">                
                                 <div className="space-y-2">
                                     <Label>Custom Permissions</Label>
                                     <div className="space-y-3">
@@ -256,8 +222,8 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                         <input
                                                             type="checkbox"
                                                             id={`endpoints:${op}`}
-                                                            checked={selectedPermissions.includes(`endpoints:${op}` as ApiKeyPermission)}
-                                                            onChange={(e) => handlePermissionChange(`endpoints:${op}` as ApiKeyPermission, e.target.checked)}
+                                                            checked={selectedPermissions.endpoints.includes(op)}
+                                                            onChange={(e) => handlePermissionChange("endpoints", op, e.target.checked)}
                                                             className="rounded"
                                                         />
                                                         <Label htmlFor={`endpoints:${op}`} className="text-sm capitalize">
@@ -276,8 +242,8 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                         <input
                                                             type="checkbox"
                                                             id={`messages:${op}`}
-                                                            checked={selectedPermissions.includes(`messages:${op}` as ApiKeyPermission)}
-                                                            onChange={(e) => handlePermissionChange(`messages:${op}` as ApiKeyPermission, e.target.checked)}
+                                                            checked={selectedPermissions.messages.includes(op)}
+                                                            onChange={(e) => handlePermissionChange("messages", op, e.target.checked)}
                                                             className="rounded"
                                                         />
                                                         <Label htmlFor={`messages:${op}`} className="text-sm capitalize">
@@ -285,21 +251,6 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                         </Label>
                                                     </div>
                                                 ))}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="border-t pt-2">
-                                            <div className="flex items-center space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="all_permissions"
-                                                    checked={selectedPermissions.includes("all_permissions")}
-                                                    onChange={(e) => handlePermissionChange("all_permissions", e.target.checked)}
-                                                    className="rounded"
-                                                />
-                                                <Label htmlFor="all_permissions" className="text-sm font-medium">
-                                                    All Permissions
-                                                </Label>
                                             </div>
                                         </div>
                                     </div>
@@ -312,7 +263,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                             </Button>
                             <Button 
                                 onClick={handleCreateKey} 
-                                disabled={!newKeyName.trim() || !currentEnvironment || isCreating}
+                                disabled={!newKeyName.trim() || !currentEnvironment || isCreating || !!environmentValidationError}
                             >
                                 {isCreating ? "Creating..." : "Create Key"}
                             </Button>
@@ -355,8 +306,8 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                         <CardDescription>
                                             Created {new Date(apiKey.createdAt).toLocaleDateString()}
                                             <span> • {
-                                                (apiKey.lastRequest || apiKey.lastUsed) 
-                                                    ? `Last used ${new Date(apiKey.lastRequest || apiKey.lastUsed!).toLocaleDateString()}`
+                                                (apiKey.lastRequest) 
+                                                    ? `Last used ${new Date(apiKey.lastRequest!).toLocaleDateString()}`
                                                     : "Never Used"
                                             }</span>
                                         </CardDescription>
@@ -369,7 +320,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                         >
                                             {apiKey.enabled ? "Disable" : "Enable"}
                                         </Button>
-                                        {apiKey.showRawKey && (
+                                        {apiKey.key && (
                                             <>
                                                 <Button
                                                     variant="outline"
@@ -392,7 +343,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3">
-                                    {apiKey.showRawKey && (
+                                    {apiKey.key && (
                                         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
                                             <div className="flex items-start">
                                                 <div className="flex-shrink-0">
@@ -426,22 +377,42 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                     <div>
                                         <Label className="text-sm font-medium">API Key</Label>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono flex-1">
+                                            <CopyableCode 
+                                                className="bg-gray-100 px-2 py-1 rounded text-sm font-mono flex-1"
+                                                copyText={apiKey.key || ''}
+                                            >
                                                 {formatKey(apiKey.key, apiKey.start)}
-                                            </code>
+                                            </CopyableCode>
                                         </div>
                                     </div>
                                     <div>
                                         <Label className="text-sm font-medium">Permissions</Label>
                                         <div className="flex flex-wrap gap-1 mt-1">
-                                            {apiKey.permissions.map((permission) => (
-                                                <span
-                                                    key={permission}
-                                                    className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-                                                >
-                                                    {getPermissionDisplayName(permission)}
+                                            {!apiKey.permissions ? (
+                                                <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
+                                                    No permissions
                                                 </span>
-                                            ))}
+                                            ) : JSON.stringify(apiKey.permissions) === JSON.stringify(fullPermission) ? (
+                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                    Full Access
+                                                </span>
+                                            ) : (
+                                                Object.keys(apiKey.permissions || {}).map((permission) => {
+                                                    const operations = apiKey.permissions?.[permission];
+                                                    // Check if operations is an array before mapping
+                                                    if (!Array.isArray(operations)) {
+                                                        return null;
+                                                    }
+                                                    return operations.map((operation) => (
+                                                        <span
+                                                            key={`${permission}:${operation}`}
+                                                            className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                                                        >
+                                                            {permission.charAt(0).toUpperCase() + permission.slice(1)} - {operation.charAt(0).toUpperCase() + operation.slice(1)}
+                                                        </span>
+                                                    ));
+                                                }).filter(Boolean).flat()
+                                            )}
                                         </div>
                                     </div>
                                 </div>

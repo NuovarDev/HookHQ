@@ -1,0 +1,39 @@
+speakeasyVersion: 1.633.1
+sources:
+    Workers Webhooks API:
+        sourceNamespace: workers-webhooks-api
+        sourceRevisionDigest: sha256:7283802351f2d2898b3d92039276f5333a42ba09d15a79f3c4079b2461112ada
+        sourceBlobDigest: sha256:4d16bd378d8a2d53e46549d09854882086eebeed4878714876272005e64b473a
+        tags:
+            - latest
+            - "1.0"
+targets:
+    hookhq:
+        source: Workers Webhooks API
+        sourceNamespace: workers-webhooks-api
+        sourceRevisionDigest: sha256:7283802351f2d2898b3d92039276f5333a42ba09d15a79f3c4079b2461112ada
+        sourceBlobDigest: sha256:4d16bd378d8a2d53e46549d09854882086eebeed4878714876272005e64b473a
+        codeSamplesNamespace: workers-webhooks-api-typescript-code-samples
+        codeSamplesRevisionDigest: sha256:b1841917daa26b0e077650fa3ff34fcbc4522283023203f13ae241c5f8885d97
+workflow:
+    workflowVersion: 1.0.0
+    speakeasyVersion: latest
+    sources:
+        Workers Webhooks API:
+            inputs:
+                - location: ../src/lib/openapi.json
+            overlays:
+                - location: .speakeasy/speakeasy-modifications-overlay.yaml
+            output: .speakeasy/out.openapi.yaml
+            registry:
+                location: registry.speakeasyapi.dev/nuovar/hookhq/workers-webhooks-api
+    targets:
+        hookhq:
+            target: typescript
+            source: Workers Webhooks API
+            codeSamples:
+                registry:
+                    location: registry.speakeasyapi.dev/nuovar/hookhq/workers-webhooks-api-typescript-code-samples
+                labelOverride:
+                    fixedValue: Typescript (SDK)
+                blocking: false

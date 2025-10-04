@@ -2,20 +2,8 @@
 
 import ApiKeyManager from "./ApiKeyManager";
 import { useState, useEffect } from "react";
-import { ApiKeyPermission } from "@/lib/apiKeys";
-
-interface ApiKey {
-    id: string;
-    name: string;
-    key: string | undefined | null;
-    start?: string; // First few characters of the key from Better Auth
-    permissions: ApiKeyPermission[];
-    enabled: boolean;
-    createdAt: string;
-    lastUsed?: string;
-    lastRequest?: string; // Last request date from Better Auth
-    showRawKey?: boolean; // Only true immediately after creation
-}
+import authClient from "@/auth/authClient";
+import { ApiKey } from "@/lib/apiKeys";
 
 export default function ApiKeyTab() {
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -23,25 +11,22 @@ export default function ApiKeyTab() {
     const [error, setError] = useState<string | null>(null);
 
     const fetchApiKeys = async () => {
-        try {
-            const response = await fetch("/api/api-keys");
-            if (!response.ok) {
-                throw new Error("Failed to fetch API keys");
-            }
-            const data = await response.json();
-            setApiKeys((data as { apiKeys: ApiKey[] }).apiKeys);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "An error occurred");
-        } finally {
-            setLoading(false);
+        const { data, error } = await authClient.apiKey.list();
+
+        if (error) {
+            setError(error.message || "An error occurred");
+        } else {
+            setApiKeys(data as ApiKey[]);
         }
+        
+        setLoading(false);
     };
 
     useEffect(() => {
         fetchApiKeys();
     }, []);
 
-    const handleCreateKey = async (name: string, permissions: ApiKeyPermission[], environment: string) => {
+    const handleCreateKey = async (name: string, permissions: Record<string, string[]>, environment: string) => {
         try {
             const response = await fetch("/api/api-keys", {
                 method: "POST",
@@ -55,10 +40,9 @@ export default function ApiKeyTab() {
                 throw new Error("Failed to create API key");
             }
 
-            const newKeyData = await response.json() as { id: string; name: string; key: string; permissions: ApiKeyPermission[]; enabled: boolean; createdAt: string };
+            const newKeyData = await response.json() as ApiKey;
             // Mark the new key to show raw key with warning
-            const keyWithRawFlag: ApiKey = { ...newKeyData, showRawKey: true };
-            setApiKeys(prev => [...prev, keyWithRawFlag]);
+            setApiKeys(prev => [...prev, newKeyData]);
             
             // Auto-dismiss the warning after 30 seconds
             setTimeout(() => {
@@ -71,44 +55,27 @@ export default function ApiKeyTab() {
     };
 
     const handleDeleteKey = async (id: string) => {
-        try {
-            const response = await fetch(`/api/api-keys/${id}`, {
-                method: "DELETE",
-            });
+        const { data, error } = await authClient.apiKey.delete({
+            keyId: id,
+        });
 
-            if (!response.ok) {
-                throw new Error("Failed to delete API key");
-            }
-
+        if (error) {
+            setError(error.message || "An error occurred");
+        } else {
             setApiKeys(prev => prev.filter(key => key.id !== id));
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete API key");
-            throw err;
         }
     };
 
     const handleToggleKey = async (id: string, enabled: boolean) => {
-        try {
-            const response = await fetch(`/api/api-keys/${id}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ enabled }),
-            });
+        const { data, error } = await authClient.apiKey.update({
+            keyId: id,
+            enabled,
+        });
 
-            if (!response.ok) {
-                throw new Error("Failed to update API key");
-            }
-
-            setApiKeys(prev => 
-                prev.map(key => 
-                    key.id === id ? { ...key, enabled } : key
-                )
-            );
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update API key");
-            throw err;
+        if (error) {
+            setError(error.message || "An error occurred");
+        } else {
+            setApiKeys(prev => prev.map(key => key.id === id ? { ...key, enabled } : key));
         }
     };
 

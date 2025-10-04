@@ -11,160 +11,2053 @@
   ],
   "components": {
     "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Bearer token authentication"
+      },
       "apiKeyCookie": {
         "type": "apiKey",
         "in": "cookie",
         "name": "apiKeyCookie",
         "description": "API Key authentication via cookie"
-      },
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "Bearer token authentication"
+      }
+    },
+    "responses": {
+      "ErrorResponse": {
+        "description": "Error response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "description": "Error message"
+                }
+              }
+            },
+            "example": {
+              "error": "Internal server error"
+            }
+          }
+        }
       }
     }
   },
   "security": [
     {
-      "apiKeyCookie": [],
       "bearerAuth": []
+    },
+    {
+      "apiKeyCookie": []
     }
   ],
   "tags": [
     {
+      "name": "Send",
+      "description": "Operations for sending events"
+    },
+    {
       "name": "Webhooks",
-      "description": "Webhooks API"
+      "description": "Webhooks are the events that are sent to endpoints. Webhooks are sent to endpoints that are subscribed to the event type."
     },
     {
       "name": "Endpoints",
-      "description": "Endpoints API"
+      "description": "Endpoints are the destinations where events are sent. Endpoints can be subscribed to event types or events can be sent directly to an endpoint."
     },
     {
       "name": "Endpoint Groups",
-      "description": "Endpoint Groups API"
+      "description": "Endpoint Groups are collections of endpoints that can be subscribed to event types or used to organize endpoints. Endpoints can be added to multiple endpoint groups. Endpoint groups can be used to represent all endpoints owned by a user, tenant, application, etc."
     },
     {
       "name": "Event Types",
-      "description": "Event Types API"
+      "description": "Event Types are the types of events that can be sent to endpoints and can be used to specify schema to validate the payload of the event."
     }
   ],
+  "x-speakeasy-retries": {
+    "strategy": "backoff",
+    "statusCodes": [
+      "5XX"
+    ],
+    "retryConnectionErrors": true
+  },
   "paths": {
     "/endpoint-groups/{id}": {
+      "get": {
+        "summary": "Get Endpoint Group",
+        "description": "Get an endpoint group by ID",
+        "tags": [
+          "Endpoint Groups"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint group ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "grp_a1b2_efgh5678"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Endpoint group ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Endpoint group name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Endpoint group description"
+                    },
+                    "endpointIds": {
+                      "type": "array",
+                      "description": "Endpoint IDs"
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Whether the endpoint group is enabled"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "Created at"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "Updated at"
+                    }
+                  },
+                  "example": {
+                    "id": "grp_a1b2_efgh5678",
+                    "environmentId": "a1b2",
+                    "name": "My Endpoint Group",
+                    "description": "My Endpoint Group description",
+                    "endpointIds": [
+                      "ep_a1b2_efgh5678"
+                    ],
+                    "enabled": true,
+                    "createdAt": "2021-01-01T00:00:00.000Z",
+                    "updatedAt": "2021-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Group ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint group not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-speakeasy-group": "endpointGroups",
+        "x-speakeasy-name-override": "list"
+      },
       "delete": {
+        "summary": "Delete Endpoint Group",
         "description": "Delete an endpoint group",
         "tags": [
           "Endpoint Groups"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint group ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "grp_a1b2_efgh5678"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Endpoint group deleted"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "deletedGroup": {
+                      "type": "object",
+                      "description": "Deleted endpoint group",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Endpoint group ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Endpoint group name"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Endpoint group deleted successfully",
+                    "deletedGroup": {
+                      "id": "grp_a1b2_efgh5678",
+                      "name": "My Endpoint Group"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Group ID is required"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Unauthorized"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Endpoint group not found"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Rate limit exceeded"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Internal server error"
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "endpointGroups",
+        "x-speakeasy-name-override": "delete"
       },
       "patch": {
+        "summary": "Update Endpoint Group",
         "description": "Update an endpoint group",
         "tags": [
           "Endpoint Groups"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint group ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "grp_a1b2_efgh5678"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Endpoint group updated"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "group": {
+                      "type": "object",
+                      "description": "Endpoint group",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Endpoint group ID"
+                        },
+                        "environmentId": {
+                          "type": "string",
+                          "description": "Environment ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Endpoint group name"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Endpoint group description"
+                        },
+                        "endpointIds": {
+                          "type": "array",
+                          "description": "Endpoint IDs"
+                        },
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Whether the endpoint group is enabled"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Created at"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Updated at"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Endpoint group updated successfully",
+                    "group": {
+                      "id": "grp_a1b2_efgh5678",
+                      "environmentId": "a1b2",
+                      "name": "My Endpoint Group",
+                      "description": "My Endpoint Group description",
+                      "endpointIds": [
+                        "ep_a1b2_efgh5678"
+                      ],
+                      "enabled": true,
+                      "createdAt": "2021-01-01T00:00:00.000Z",
+                      "updatedAt": "2021-01-01T00:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Group ID is required"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Unauthorized"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Forbidden"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Endpoint group not found"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Rate limit exceeded"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Internal server error"
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "endpointGroups",
+        "x-speakeasy-name-override": "update"
       }
     },
     "/endpoint-groups": {
       "get": {
+        "summary": "List Endpoint Groups",
         "description": "List endpoint groups for the current environment",
         "tags": [
           "Endpoint Groups"
         ],
         "responses": {
           "200": {
-            "description": "List of endpoint groups"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "endpointGroups": {
+                      "type": "array",
+                      "description": "List of endpoint groups",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Endpoint group ID"
+                          },
+                          "environmentId": {
+                            "type": "string",
+                            "description": "Environment ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Name"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Description"
+                          },
+                          "endpointIds": {
+                            "type": "array",
+                            "description": "List of endpoint IDs"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Whether the endpoint group is enabled"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "Created at"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "Updated at"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "endpointGroups": [
+                      {
+                        "id": "grp_a1b2_efgh5678",
+                        "environmentId": "a1b2",
+                        "name": "My Endpoint Group",
+                        "description": "My Endpoint Group description",
+                        "endpointIds": [
+                          "ep_a1b2_efgh5678"
+                        ],
+                        "enabled": true,
+                        "createdAt": "2021-01-01T00:00:00.000Z",
+                        "updatedAt": "2021-01-01T00:00:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "endpointGroups",
+        "x-speakeasy-name-override": "list"
       },
       "post": {
+        "summary": "Create Endpoint Group",
         "description": "Create new endpoint group",
         "tags": [
           "Endpoint Groups"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the endpoint group",
+                    "example": "My Endpoint Group"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the endpoint group",
+                    "example": "My Endpoint Group description"
+                  },
+                  "endpointIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of endpoint IDs",
+                    "example": [
+                      "ep_a1b2_efgh5678"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the endpoint group is enabled",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Endpoint group created"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Endpoint group ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description"
+                    },
+                    "endpointIds": {
+                      "type": "array",
+                      "description": "List of endpoint IDs",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Whether the endpoint group is enabled"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "Created at"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "Updated at"
+                    }
+                  },
+                  "example": {
+                    "id": "grp_a1b2_efgh5678",
+                    "environmentId": "a1b2",
+                    "name": "My Endpoint Group",
+                    "description": "My Endpoint Group description",
+                    "endpointIds": [
+                      "ep_a1b2_efgh5678"
+                    ],
+                    "enabled": true,
+                    "createdAt": "2021-01-01T00:00:00.000Z",
+                    "updatedAt": "2021-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Name is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "endpointGroups",
+        "x-speakeasy-name-override": "create"
       }
     },
     "/endpoints/{id}": {
+      "get": {
+        "summary": "Get Endpoint",
+        "description": "Get an endpoint by ID",
+        "tags": [
+          "Endpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "ep_a1b2_abcd1234"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Endpoint ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "URL"
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Whether the endpoint is enabled"
+                    },
+                    "retryPolicy": {
+                      "type": "string",
+                      "description": "Retry policy"
+                    },
+                    "maxAttempts": {
+                      "type": "number",
+                      "description": "Maximum number of attempts"
+                    },
+                    "timeoutMs": {
+                      "type": "number",
+                      "description": "Timeout"
+                    },
+                    "customHeaders": {
+                      "type": "object",
+                      "description": "Custom headers"
+                    },
+                    "proxyGroupId": {
+                      "type": "string",
+                      "description": "Proxy group ID"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "Created at"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "Updated at"
+                    }
+                  },
+                  "example": {
+                    "id": "ep_a1b2_abcd1234",
+                    "environmentId": "a1b2",
+                    "name": "My Webhook Endpoint",
+                    "description": "My Webhook Endpoint description",
+                    "url": "https://example.com/webhook",
+                    "enabled": true,
+                    "retryPolicy": "exponential",
+                    "maxAttempts": 3,
+                    "timeoutMs": 30000,
+                    "customHeaders": {},
+                    "proxyGroupId": "proxygrp_a1b2_efgh5678",
+                    "createdAt": "2021-01-01T00:00:00.000Z",
+                    "updatedAt": "2021-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-speakeasy-name-override": "list"
+      },
       "delete": {
+        "summary": "Delete Endpoint",
         "description": "Delete an endpoint",
         "tags": [
           "Endpoints"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "ep_a1b2_abcd1234"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Endpoint deleted"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "deletedEndpoint": {
+                      "type": "object",
+                      "description": "Deleted endpoint",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Endpoint ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Endpoint name"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Endpoint deleted successfully",
+                    "deletedEndpoint": {
+                      "id": "ep_a1b2_abcd1234",
+                      "name": "My Webhook Endpoint"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-name-override": "delete"
       },
       "patch": {
+        "summary": "Update Endpoint",
         "description": "Update an endpoint",
         "tags": [
           "Endpoints"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "ep_a1b2_abcd1234"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Endpoint updated"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "endpoint": {
+                      "type": "object",
+                      "description": "Endpoint",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Endpoint ID"
+                        },
+                        "environmentId": {
+                          "type": "string",
+                          "description": "Environment ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Endpoint name"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Endpoint description"
+                        },
+                        "url": {
+                          "type": "string",
+                          "description": "Endpoint URL"
+                        },
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Whether the endpoint is enabled"
+                        },
+                        "retryPolicy": {
+                          "type": "string",
+                          "description": "Retry policy"
+                        },
+                        "maxAttempts": {
+                          "type": "number",
+                          "description": "Maximum number of attempts"
+                        },
+                        "timeoutMs": {
+                          "type": "number",
+                          "description": "Timeout"
+                        },
+                        "customHeaders": {
+                          "type": "object",
+                          "description": "Custom headers"
+                        },
+                        "proxyGroupId": {
+                          "type": "string",
+                          "description": "Proxy group ID"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Created at"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Updated at"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Endpoint updated successfully",
+                    "endpoint": {
+                      "id": "ep_a1b2_abcd1234",
+                      "environmentId": "a1b2",
+                      "name": "My Webhook Endpoint",
+                      "description": "My Webhook Endpoint description",
+                      "url": "https://example.com/webhook",
+                      "enabled": true,
+                      "retryPolicy": "exponential",
+                      "maxAttempts": 3,
+                      "timeoutMs": 30000,
+                      "customHeaders": {},
+                      "proxyGroupId": "proxygrp_a1b2_efgh5678",
+                      "createdAt": "2021-01-01T00:00:00.000Z",
+                      "updatedAt": "2021-01-01T00:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Endpoint not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-name-override": "update"
       }
     },
     "/endpoints": {
       "get": {
+        "summary": "List Endpoints",
         "description": "List endpoints for the current environment",
         "tags": [
           "Endpoints"
         ],
+        "parameters": [
+          {
+            "name": "enabled",
+            "in": "query",
+            "description": "Whether to filter endpoints by enabled status",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List of endpoints"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "endpoints": {
+                      "type": "array",
+                      "description": "List of endpoints",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Endpoint ID"
+                          },
+                          "environmentId": {
+                            "type": "string",
+                            "description": "Environment ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Name"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Description"
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "URL"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Whether the endpoint is enabled"
+                          },
+                          "retryPolicy": {
+                            "type": "string",
+                            "description": "Retry policy"
+                          },
+                          "maxAttempts": {
+                            "type": "number",
+                            "description": "Maximum number of attempts"
+                          },
+                          "timeoutMs": {
+                            "type": "number",
+                            "description": "Timeout"
+                          },
+                          "customHeaders": {
+                            "type": "object",
+                            "description": "Custom headers"
+                          },
+                          "proxyGroupId": {
+                            "type": "string",
+                            "description": "Proxy group ID"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "Created at"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "Updated at"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "endpoints": [
+                      {
+                        "id": "ep_a1b2_abcd1234",
+                        "environmentId": "a1b2",
+                        "name": "My Webhook Endpoint",
+                        "description": "My Webhook Endpoint description",
+                        "url": "https://example.com/webhook",
+                        "enabled": true,
+                        "retryPolicy": "exponential",
+                        "maxAttempts": 3,
+                        "timeoutMs": 30000,
+                        "customHeaders": {},
+                        "proxyGroupId": "proxygrp_a1b2_efgh5678",
+                        "createdAt": "2021-01-01T00:00:00.000Z",
+                        "updatedAt": "2021-01-01T00:00:00.000Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-name-override": "list"
       },
       "post": {
+        "summary": "Create Endpoint",
         "description": "Create new endpoint",
         "tags": [
           "Endpoints"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "url"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the endpoint",
+                    "example": "My Webhook Endpoint"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the endpoint",
+                    "example": "My Webhook Endpoint description"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "URL of the endpoint",
+                    "example": "https://example.com/webhook"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the endpoint is enabled",
+                    "default": true
+                  },
+                  "retryPolicy": {
+                    "type": "string",
+                    "description": "Retry policy of the endpoint",
+                    "default": "exponential",
+                    "enum": [
+                      "exponential",
+                      "linear",
+                      "fixed"
+                    ]
+                  },
+                  "maxAttempts": {
+                    "type": "number",
+                    "description": "Maximum number of attempts of the endpoint",
+                    "default": 3
+                  },
+                  "timeoutMs": {
+                    "type": "number",
+                    "description": "Timeout of the endpoint",
+                    "default": 30000
+                  },
+                  "customHeaders": {
+                    "type": "object",
+                    "description": "Custom headers of the endpoint",
+                    "example": {
+                      "Content-Type": "application/json"
+                    }
+                  },
+                  "proxyGroupId": {
+                    "type": "string",
+                    "description": "Proxy group ID of the endpoint",
+                    "example": "proxygrp_a1b2_efgh5678"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Endpoint created"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Endpoint ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "URL"
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Whether the endpoint is enabled"
+                    },
+                    "retryPolicy": {
+                      "type": "string",
+                      "description": "Retry policy"
+                    },
+                    "maxAttempts": {
+                      "type": "number",
+                      "description": "Maximum number of attempts"
+                    },
+                    "timeoutMs": {
+                      "type": "number",
+                      "description": "Timeout"
+                    },
+                    "customHeaders": {
+                      "type": "object",
+                      "description": "Custom headers"
+                    },
+                    "proxyGroupId": {
+                      "type": "string",
+                      "description": "Proxy group ID"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "Created at"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "Updated at"
+                    }
+                  },
+                  "example": {
+                    "id": "ep_a1b2_abcd1234",
+                    "environmentId": "a1b2",
+                    "name": "My Webhook Endpoint",
+                    "description": "My Webhook Endpoint description",
+                    "url": "https://example.com/webhook",
+                    "enabled": true,
+                    "retryPolicy": "exponential",
+                    "maxAttempts": 3,
+                    "timeoutMs": 30000,
+                    "customHeaders": {},
+                    "proxyGroupId": "proxygrp_a1b2_efgh5678",
+                    "createdAt": "2021-01-01T00:00:00.000Z",
+                    "updatedAt": "2021-01-01T00:00:00.000Z",
+                    "error": "Endpoint created"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Name and URL are required"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-name-override": "create"
       }
     },
     "/event-types/{id}": {
-      "delete": {
-        "description": "Delete an event type",
+      "get": {
+        "summary": "Get Event Type",
+        "description": "Get an event type by ID",
         "tags": [
           "Event Types"
         ],
         "responses": {
           "200": {
-            "description": "Event type deleted"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Event type ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Event type name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Event type description"
+                    },
+                    "schema": {
+                      "type": "object",
+                      "description": "Event type schema"
+                    },
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Event type enabled status"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "description": "Created at"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "description": "Updated at"
+                    }
+                  },
+                  "example": {
+                    "id": "user.created",
+                    "environmentId": "a1b2",
+                    "name": "User Created",
+                    "description": "User created event",
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "userId"
+                      ]
+                    },
+                    "enabled": true,
+                    "createdAt": "2021-01-01T00:00:00.000Z",
+                    "updatedAt": "2021-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Event type ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Event type not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "eventTypes",
+        "x-speakeasy-name-override": "list"
+      },
+      "delete": {
+        "summary": "Delete Event Type",
+        "description": "Delete an event type",
+        "tags": [
+          "Event Types"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Event type ID",
+            "schema": {
+              "type": "string"
+            },
+            "example": "user.created"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "deletedEventType": {
+                      "type": "object",
+                      "description": "Deleted event type",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Event type ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Event type name"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Event type deleted successfully",
+                    "deletedEventType": {
+                      "id": "user.created",
+                      "name": "User Created"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Event type ID is required"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Event type not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-speakeasy-group": "eventTypes",
+        "x-speakeasy-name-override": "delete"
       },
       "patch": {
+        "summary": "Update Event Type",
         "description": "Update an event type",
         "tags": [
           "Event Types"
         ],
         "parameters": [
           {
-            "name": "ID",
+            "name": "id",
             "in": "path",
             "required": true,
             "description": "Event type ID",
@@ -213,59 +2106,464 @@
             }
           }
         },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Event type updated"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "description": "Message"
+                    },
+                    "eventType": {
+                      "type": "object",
+                      "description": "Event type",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Event type ID"
+                        },
+                        "environmentId": {
+                          "type": "string",
+                          "description": "Environment ID"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Event type name"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Event type description"
+                        },
+                        "schema": {
+                          "type": "object",
+                          "description": "Event type schema"
+                        },
+                        "enabled": {
+                          "type": "boolean",
+                          "description": "Event type enabled status"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Created at"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "description": "Updated at"
+                        }
+                      }
+                    }
+                  },
+                  "example": {
+                    "message": "Event type updated successfully",
+                    "eventType": {
+                      "id": "user.created",
+                      "environmentId": "a1b2",
+                      "name": "User Created",
+                      "description": "User created event",
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "enabled": true,
+                      "createdAt": "2021-01-01T00:00:00.000Z",
+                      "updatedAt": "2021-01-01T00:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Invalid schema"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found. The requested resource was not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Event type not found"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "eventTypes",
+        "x-speakeasy-name-override": "update"
       }
     },
     "/event-types": {
       "get": {
+        "summary": "List Event Types",
         "description": "List event types for the current environment",
         "tags": [
           "Event Types"
         ],
         "responses": {
           "200": {
-            "description": "List of event types"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "eventTypes": {
+                      "type": "array",
+                      "description": "List of event types",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Event type ID"
+                          },
+                          "environmentId": {
+                            "type": "string",
+                            "description": "Environment ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Event type name"
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "Event type description"
+                          },
+                          "schema": {
+                            "type": "object",
+                            "description": "JSON Schema for event payload validation (must be valid JSON Schema)"
+                          },
+                          "enabled": {
+                            "type": "boolean",
+                            "description": "Whether the event type is enabled"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "Created at"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "description": "Updated at"
+                          }
+                        },
+                        "example": {
+                          "id": "user.created",
+                          "environmentId": "a1b2",
+                          "name": "User Created",
+                          "description": "User created event",
+                          "schema": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "userId"
+                            ]
+                          },
+                          "enabled": true,
+                          "createdAt": "2021-01-01T00:00:00.000Z",
+                          "updatedAt": "2021-01-01T00:00:00.000Z"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-group": "eventTypes",
+        "x-speakeasy-name-override": "list"
       },
       "post": {
+        "summary": "Create Event Type",
         "description": "Create new event type",
         "tags": [
           "Event Types"
         ],
-        "responses": {
-          "200": {
-            "description": "Event type created"
-          }
-        }
-      }
-    },
-    "/webhooks/send": {
-      "post": {
-        "description": "Send a webhook to the specified endpoints.\n\n Webhooks can be sent to endpoints and/or endpoint groups. \n In order to send a webhook to an endpoint group, the eventType must be specified, then the webhook will be dispatched to all endpoints in the group that are subscribed to the eventType.\n",
-        "tags": [
-          "Webhooks"
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "name"
+                ],
                 "properties": {
-                  "endpoints": {
-                    "description": "List of endpoints or endpoint groups to send the webhook to",
+                  "name": {
+                    "type": "string",
+                    "description": "Name of the event type",
+                    "example": "User Created"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the event type",
+                    "example": "User created event"
+                  },
+                  "schema": {
+                    "type": "object",
+                    "description": "JSON Schema for event payload validation (must be valid JSON Schema)",
+                    "example": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"userId\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\"userId\"]\n}\n"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether the event type is enabled",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Event type ID"
+                    },
+                    "environmentId": {
+                      "type": "string",
+                      "description": "Environment ID"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Event type name"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Event type description"
+                    },
+                    "schema": {
+                      "type": "object",
+                      "description": "JSON Schema for event payload validation (must be valid JSON Schema)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Invalid schema"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Unauthorized"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Forbidden"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Rate limit exceeded"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse",
+                  "example": {
+                    "error": "Internal server error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-speakeasy-group": "eventTypes",
+        "x-speakeasy-name-override": "create"
+      }
+    },
+    "/send": {
+      "post": {
+        "summary": "Send Event",
+        "description": "Send an event to the specified endpoints.\n\n Events can be sent to endpoints and/or endpoint groups. \n In order to send an event to an endpoint group, the eventType must be specified, then the event will be dispatched to all endpoints in the group that are subscribed to the eventType.\n\n API key requires the `webhooks:send` permission to access this endpoint.\n",
+        "tags": [
+          "Send"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "payload",
+                  "destinations"
+                ],
+                "properties": {
+                  "destinations": {
+                    "description": "List of endpoints or endpoint groups to send the event to",
                     "type": "array",
-                    "required": true,
                     "items": {
                       "type": "string"
                     },
@@ -275,23 +2573,20 @@
                     ]
                   },
                   "eventType": {
-                    "description": "Event type to send the webhook to. Required if sending to an endpoint group.",
+                    "description": "Event type to send the event to. Required if sending to an endpoint group.",
                     "type": "string",
-                    "required": false,
                     "example": "user.created"
                   },
                   "payload": {
-                    "description": "Payload to send with the webhook",
+                    "description": "Payload to send with the event",
                     "type": "object",
-                    "required": true,
                     "example": {
                       "userId": "abcd1234"
                     }
                   },
                   "eventId": {
-                    "description": "Optional unique event ID to track the webhook",
+                    "description": "Optional unique event ID to track the event",
                     "type": "string",
-                    "required": false,
                     "example": "abcdef1234567890"
                   }
                 }
@@ -311,28 +2606,127 @@
             "example": 1234567890
           }
         ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Webhook sent"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Unique server generated event ID"
+                    },
+                    "eventId": {
+                      "type": "string",
+                      "description": "Tracking ID provided in the request"
+                    },
+                    "eventType": {
+                      "type": "string",
+                      "description": "Event type"
+                    },
+                    "payload": {
+                      "type": "object",
+                      "description": "Payload"
+                    },
+                    "channels": {
+                      "type": "array",
+                      "description": "Channels the webhook was sent to",
+                      "items": {
+                        "type": "string",
+                        "description": "Channel ID"
+                      }
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "description": "Timestamp the webhook was sent"
+                    }
+                  },
+                  "example": {
+                    "id": "abcdef1234567890",
+                    "eventId": "abcdef1234567890",
+                    "eventType": "user.created",
+                    "payload": {
+                      "userId": "abcd1234"
+                    },
+                    "channels": [
+                      "ep_a1b2_abcd1234",
+                      "grp_a1b2_efgh5678"
+                    ],
+                    "timestamp": "2021-01-01T00:00:00.000Z"
+                  }
+                }
+              }
+            }
           },
           "400": {
-            "description": "Bad request"
+            "description": "Bad Request. Usually due to missing parameters, or invalid parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Bad request"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized. Due to missing or invalid authentication.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Unauthorized"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden"
+            "description": "Forbidden. You do not have permission to access this resource or to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Forbidden"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests. You have exceeded the rate limit. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Rate limit exceeded"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal server error"
+            "description": "Internal Server Error. This is a problem with the server that you cannot fix.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/responses/ErrorResponse"
+                },
+                "example": {
+                  "error": "Internal server error"
+                }
+              }
+            }
           }
-        }
+        },
+        "x-speakeasy-name-override": "send"
       }
     }
   }

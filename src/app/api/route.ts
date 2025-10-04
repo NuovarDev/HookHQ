@@ -4,6 +4,11 @@ import ApiDocs from '@/lib/openapi.json'
 
 // Combine JSDoc API endpoints with BetterAuth schema
 const config = {
+  theme: 'deepSpace' as const,
+  metaData: {
+    title: 'HookHQ API Reference',
+    description: 'API Reference for the HookHQ API',
+  },
   sources: [
     {
       title: 'Webhooks',

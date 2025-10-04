@@ -70,27 +70,13 @@ export default function AccountForm({ user }: AccountFormProps) {
     setIsUpdating(true);
     setMessage(null);
 
-    try {
-      const response = await fetch("/api/auth/update-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+    await authClient.updateUser({
+        name: formData.name,
+    })
 
-      if (!response.ok) {
-        throw new Error("Failed to update profile");
-      }
-
-      setMessage({ type: "success", text: "Profile updated successfully!" });
-      setIsEditing(false);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      setMessage({ type: "error", text: "Failed to update profile. Please try again." });
-    } finally {
-      setIsUpdating(false);
-    }
+    setMessage({ type: "success", text: "Profile updated successfully!" });
+    setIsEditing(false);
+    setIsUpdating(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -109,31 +95,22 @@ export default function AccountForm({ user }: AccountFormProps) {
     setIsChangingPasswordLoading(true);
     setMessage(null);
 
-    try {
-      const response = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentPassword: passwordData.currentPassword,
-          newPassword: passwordData.newPassword,
-        }),
-      });
+    const { data, error } = await authClient.changePassword({
+      newPassword: passwordData.newPassword,
+      currentPassword: passwordData.currentPassword,
+      revokeOtherSessions: false,
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to change password");
-      }
-
-      setMessage({ type: "success", text: "Password changed successfully!" });
+    if (error) {
+      setMessage({ type: "error", text: error.message || "Failed to change password" });
+      return;
+    } else {
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setIsChangingPassword(false);
-    } catch (error) {
-      console.error("Error changing password:", error);
-      setMessage({ type: "error", text: "Failed to change password. Please check your current password." });
-    } finally {
-      setIsChangingPasswordLoading(false);
+      setMessage({ type: "success", text: "Password changed successfully!" });
     }
+      
+    setIsChangingPassword(false);
+    setIsChangingPasswordLoading(false);
   };
 
   const handleCancel = () => {

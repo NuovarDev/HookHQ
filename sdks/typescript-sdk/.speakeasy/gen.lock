@@ -1,0 +1,248 @@
+lockVersion: 2.0.0
+id: 5ab404b3-b117-4d62-ae0a-de37a355c61e
+management:
+  docChecksum: fb3b9540f0c0b12b2e73e41b3cf4389a
+  docVersion: "1.0"
+  speakeasyVersion: 1.633.1
+  generationVersion: 2.720.1
+  releaseVersion: 0.1.12
+  configChecksum: 10f7b7b12c5cbfecd6596d1674b6cec4
+features:
+  typescript:
+    additionalDependencies: 0.1.0
+    constsAndDefaults: 0.1.12
+    core: 3.21.26
+    defaultEnabledRetries: 0.1.0
+    devContainers: 2.90.1
+    enumUnions: 0.1.0
+    envVarSecurityUsage: 0.1.2
+    globalSecurity: 2.82.14
+    globalSecurityCallbacks: 0.1.0
+    globalServerURLs: 2.82.5
+    groups: 2.81.2
+    methodArguments: 0.1.2
+    nameOverrides: 2.81.2
+    responseFormat: 0.2.3
+    retries: 2.83.0
+    sdkHooks: 0.3.0
+generatedFiles:
+  - .devcontainer/README.md
+  - .devcontainer/devcontainer.json
+  - .devcontainer/setup.sh
+  - .gitattributes
+  - .npmignore
+  - FUNCTIONS.md
+  - RUNTIMES.md
+  - USAGE.md
+  - docs/lib/utils/retryconfig.md
+  - docs/models/errors/notfounderror.md
+  - docs/models/errors/postapiportaltokenbadrequesterror.md
+  - docs/models/errors/postapiportaltokenforbiddenerror.md
+  - docs/models/errors/postapiportaltokeninternalservererror.md
+  - docs/models/errors/postapiportaltokentoomanyrequestserror.md
+  - docs/models/errors/postapiportaltokenunauthorizederror.md
+  - docs/models/errors/postwebhookssendbadrequesterror.md
+  - docs/models/errors/postwebhookssendforbiddenerror.md
+  - docs/models/errors/postwebhookssendinternalservererror.md
+  - docs/models/errors/postwebhookssendtoomanyrequestserror.md
+  - docs/models/errors/postwebhookssendunauthorizederror.md
+  - docs/models/operations/customheaders.md
+  - docs/models/operations/deleteendpointgroupsidrequest.md
+  - docs/models/operations/deleteendpointsidrequest.md
+  - docs/models/operations/deleteeventtypesidrequest.md
+  - docs/models/operations/endpointgroup.md
+  - docs/models/operations/getendpointsrequest.md
+  - docs/models/operations/patchendpointgroupsidrequest.md
+  - docs/models/operations/patchendpointsidrequest.md
+  - docs/models/operations/patcheventtypesidrequest.md
+  - docs/models/operations/patcheventtypesidrequestbody.md
+  - docs/models/operations/patcheventtypesidschema.md
+  - docs/models/operations/payloadrequest.md
+  - docs/models/operations/payloadresponse.md
+  - docs/models/operations/postapiportaltokenrequest.md
+  - docs/models/operations/postapiportaltokenresponse.md
+  - docs/models/operations/postendpointgroupsrequest.md
+  - docs/models/operations/postendpointsrequest.md
+  - docs/models/operations/posteventtypesrequest.md
+  - docs/models/operations/posteventtypesschema.md
+  - docs/models/operations/postwebhookssendrequest.md
+  - docs/models/operations/postwebhookssendrequestbody.md
+  - docs/models/operations/postwebhookssendresponse.md
+  - docs/models/operations/retrypolicy.md
+  - docs/models/security.md
+  - docs/sdks/endpointgroups/README.md
+  - docs/sdks/endpoints/README.md
+  - docs/sdks/eventtypes/README.md
+  - docs/sdks/hookhq/README.md
+  - docs/sdks/portal/README.md
+  - docs/sdks/webhooks/README.md
+  - eslint.config.mjs
+  - examples/.env.template
+  - examples/README.md
+  - examples/endpointGroupsDelete.example.ts
+  - examples/package.json
+  - jsr.json
+  - package.json
+  - src/core.ts
+  - src/funcs/endpointGroupsCreate.ts
+  - src/funcs/endpointGroupsDelete.ts
+  - src/funcs/endpointGroupsList.ts
+  - src/funcs/endpointGroupsUpdate.ts
+  - src/funcs/endpointsCreate.ts
+  - src/funcs/endpointsDelete.ts
+  - src/funcs/endpointsList.ts
+  - src/funcs/endpointsUpdate.ts
+  - src/funcs/eventTypesCreate.ts
+  - src/funcs/eventTypesDelete.ts
+  - src/funcs/eventTypesList.ts
+  - src/funcs/eventTypesUpdate.ts
+  - src/funcs/portalCreate.ts
+  - src/funcs/webhooksSend.ts
+  - src/hooks/hooks.ts
+  - src/hooks/index.ts
+  - src/hooks/types.ts
+  - src/index.ts
+  - src/lib/base64.ts
+  - src/lib/config.ts
+  - src/lib/dlv.ts
+  - src/lib/encodings.ts
+  - src/lib/env.ts
+  - src/lib/files.ts
+  - src/lib/http.ts
+  - src/lib/is-plain-object.ts
+  - src/lib/logger.ts
+  - src/lib/matchers.ts
+  - src/lib/primitives.ts
+  - src/lib/retries.ts
+  - src/lib/schemas.ts
+  - src/lib/sdks.ts
+  - src/lib/security.ts
+  - src/lib/url.ts
+  - src/models/errors/hookhqdefaulterror.ts
+  - src/models/errors/hookhqerror.ts
+  - src/models/errors/httpclienterrors.ts
+  - src/models/errors/index.ts
+  - src/models/errors/postapiportaltoken.ts
+  - src/models/errors/postwebhookssend.ts
+  - src/models/errors/responsevalidationerror.ts
+  - src/models/errors/sdkvalidationerror.ts
+  - src/models/index.ts
+  - src/models/operations/deleteendpointgroupsid.ts
+  - src/models/operations/deleteendpointsid.ts
+  - src/models/operations/deleteeventtypesid.ts
+  - src/models/operations/getendpoints.ts
+  - src/models/operations/index.ts
+  - src/models/operations/patchendpointgroupsid.ts
+  - src/models/operations/patchendpointsid.ts
+  - src/models/operations/patcheventtypesid.ts
+  - src/models/operations/postapiportaltoken.ts
+  - src/models/operations/postendpointgroups.ts
+  - src/models/operations/postendpoints.ts
+  - src/models/operations/posteventtypes.ts
+  - src/models/operations/postwebhookssend.ts
+  - src/models/security.ts
+  - src/sdk/endpointgroups.ts
+  - src/sdk/endpoints.ts
+  - src/sdk/eventtypes.ts
+  - src/sdk/index.ts
+  - src/sdk/portal.ts
+  - src/sdk/sdk.ts
+  - src/sdk/webhooks.ts
+  - src/types/async.ts
+  - src/types/blobs.ts
+  - src/types/constdatetime.ts
+  - src/types/enums.ts
+  - src/types/fp.ts
+  - src/types/index.ts
+  - src/types/operations.ts
+  - src/types/rfcdate.ts
+  - src/types/streams.ts
+  - tsconfig.json
+examples:
+  delete_/endpoint-groups/{id}:
+    speakeasy-default-delete-/endpoint-groups/{id}:
+      parameters:
+        path:
+          id: "grp_a1b2_efgh5678"
+  patch_/endpoint-groups/{id}:
+    speakeasy-default-patch-/endpoint-groups/{id}:
+      parameters:
+        path:
+          id: "grp_a1b2_efgh5678"
+  get_/endpoint-groups: {}
+  post_/endpoint-groups:
+    speakeasy-default-post-/endpoint-groups:
+      requestBody:
+        application/json: {"name": "My Endpoint Group", "description": "My Endpoint Group description", "endpointIds": ["ep_a1b2_efgh5678"], "enabled": true}
+  delete_/endpoints/{id}:
+    speakeasy-default-delete-/endpoints/{id}:
+      parameters:
+        path:
+          id: "ep_a1b2_abcd1234"
+  patch_/endpoints/{id}:
+    speakeasy-default-patch-/endpoints/{id}:
+      parameters:
+        path:
+          id: "ep_a1b2_abcd1234"
+  get_/endpoints: {}
+  post_/endpoints:
+    speakeasy-default-post-/endpoints:
+      requestBody:
+        application/json: {"name": "My Webhook Endpoint", "description": "My Webhook Endpoint description", "url": "https://example.com/webhook", "enabled": true, "retryPolicy": "exponential", "maxAttempts": 3, "timeoutMs": 30000, "customHeaders": {}, "proxyGroupId": "proxygrp_a1b2_efgh5678"}
+  delete_/event-types/{id}:
+    speakeasy-default-delete-/event-types/{id}:
+      parameters:
+        path:
+          id: "user.created"
+  patch_/event-types/{id}:
+    speakeasy-default-patch-/event-types/{id}:
+      parameters:
+        path:
+          id: "user.created"
+      requestBody:
+        application/json: {"name": "User Created", "description": "User created event", "schema": {}, "enabled": true}
+  get_/event-types: {}
+  post_/event-types:
+    speakeasy-default-post-/event-types:
+      requestBody:
+        application/json: {"name": "User Created", "description": "User created event", "schema": {}, "enabled": true}
+  post_/webhooks/send:
+    speakeasy-default-post-/webhooks/send:
+      parameters:
+        header:
+          Idempotency-Key: "1234567890"
+      requestBody:
+        application/json: {"endpoints": ["ep_a1b2_abcd1234", "grp_a1b2_efgh5678"], "eventType": "user.created", "payload": {}, "eventId": "abcdef1234567890"}
+      responses:
+        "200":
+          application/json: {"id": "abcdef1234567890", "eventId": "abcdef1234567890", "eventType": "user.created", "payload": {}, "channels": ["ep_a1b2_abcd1234", "grp_a1b2_efgh5678"], "timestamp": "2021-01-01T00:00:00.000Z"}
+        "400":
+          application/json: {"error": "Bad request"}
+        "401":
+          application/json: {"error": "Unauthorized"}
+        "403":
+          application/json: {"error": "Forbidden"}
+        "429":
+          application/json: {"error": "Rate limit exceeded"}
+        "500":
+          application/json: {"error": "Internal server error"}
+  post_/api/portal/token:
+    speakeasy-default-post-/api/portal/token:
+      requestBody:
+        application/json: {"endpointGroupId": "grp_a1b2_efgh5678", "allowedEventTypes": ["user.created", "user.updated"], "applicationName": "My Application", "returnUrl": "https://myapp.com/settings"}
+      responses:
+        "200":
+          application/json: {"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "portalUrl": "http://localhost:3000/portal?token=...", "expiresIn": 86400, "endpointGroup": {"id": "grp_a1b2_efgh5678", "name": "My Endpoint Group", "environmentId": "a12b"}}
+        "400":
+          application/json: {"error": "endpointGroupId is required"}
+        "401":
+          application/json: {"error": "Unauthorized"}
+        "403":
+          application/json: {"error": "Forbidden"}
+        "404":
+          application/json: {"error": "Endpoint group not found"}
+        "429":
+          application/json: {"error": "Rate limit exceeded"}
+        "500":
+          application/json: {"error": "Internal server error"}
+examplesVersion: 1.0.2

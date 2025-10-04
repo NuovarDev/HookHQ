@@ -1,8 +1,8 @@
 import { initAuth } from "@/auth";
 import { getDb } from "@/db";
-import { webhookMessages, webhookAttempts, webhookMetrics } from "@/db/webhooks.schema";
+import { webhookMessages, webhookAttempts, webhookMetrics, endpoints, endpointGroups } from "@/db/webhooks.schema";
 import { users } from "@/db/auth.schema";
-import { eq, desc, and, sql, count, avg, sum, gte } from "drizzle-orm";
+import { eq, desc, and, sql, count, avg, sum, gte, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -131,11 +131,14 @@ export async function GET(request: NextRequest) {
             .map(([hour, data]) => ({ hour, ...data }))
             .sort((a, b) => a.hour - b.hour);
 
-        // Group messages by event type
+        // Group messages by event type (only include non-empty event types)
         const eventTypeMap = new Map<string, number>();
         allMessages.forEach(msg => {
-            const current = eventTypeMap.get(msg.eventType) || 0;
-            eventTypeMap.set(msg.eventType, current + 1);
+            // Skip messages with empty, null, or undefined event types
+            if (msg.eventType && msg.eventType.trim() !== '') {
+                const current = eventTypeMap.get(msg.eventType) || 0;
+                eventTypeMap.set(msg.eventType, current + 1);
+            }
         });
 
         const topEventTypes = Array.from(eventTypeMap.entries())
@@ -144,19 +147,92 @@ export async function GET(request: NextRequest) {
             .slice(0, 10);
 
         // Get recent messages for activity feed
-        const recentMessages = await db
+        const recentMessagesData = await db
             .select({
                 id: webhookMessages.id,
+                eventId: webhookMessages.eventId,
                 eventType: webhookMessages.eventType,
                 status: webhookMessages.status,
                 createdAt: webhookMessages.createdAt,
                 responseTimeMs: webhookMessages.responseTimeMs,
-                attempts: webhookMessages.attempts
+                attempts: webhookMessages.attempts,
+                endpointIds: webhookMessages.endpointIds,
+                endpointGroupIds: webhookMessages.endpointGroupIds
             })
             .from(webhookMessages)
             .where(eq(webhookMessages.environmentId, environmentId))
             .orderBy(desc(webhookMessages.createdAt))
             .limit(10);
+
+        // Get all unique endpoint and endpoint group IDs from recent messages
+        const allEndpointIds = new Set<string>();
+        const allEndpointGroupIds = new Set<string>();
+        
+        recentMessagesData.forEach(msg => {
+            try {
+                const endpointIds = JSON.parse(msg.endpointIds || '[]');
+                const endpointGroupIds = JSON.parse(msg.endpointGroupIds || '[]');
+                endpointIds.forEach((id: string) => allEndpointIds.add(id));
+                endpointGroupIds.forEach((id: string) => allEndpointGroupIds.add(id));
+            } catch (e) {
+                // Skip invalid JSON
+            }
+        });
+
+        // Fetch endpoint and endpoint group names
+        const endpointNames = new Map<string, string>();
+        const endpointGroupNames = new Map<string, string>();
+
+        if (allEndpointIds.size > 0) {
+            const endpointsData = await db
+                .select({ id: endpoints.id, name: endpoints.name })
+                .from(endpoints)
+                .where(inArray(endpoints.id, Array.from(allEndpointIds)));
+            
+            endpointsData.forEach(ep => endpointNames.set(ep.id, ep.name));
+        }
+
+        if (allEndpointGroupIds.size > 0) {
+            const endpointGroupsData = await db
+                .select({ id: endpointGroups.id, name: endpointGroups.name })
+                .from(endpointGroups)
+                .where(inArray(endpointGroups.id, Array.from(allEndpointGroupIds)));
+            
+            endpointGroupsData.forEach(eg => endpointGroupNames.set(eg.id, eg.name));
+        }
+
+        // Process recent messages with destination names
+        const recentMessages = recentMessagesData.map(msg => {
+            const destinations: string[] = [];
+            
+            try {
+                const endpointIds = JSON.parse(msg.endpointIds || '[]');
+                const endpointGroupIds = JSON.parse(msg.endpointGroupIds || '[]');
+                
+                endpointIds.forEach((id: string) => {
+                    const name = endpointNames.get(id);
+                    if (name) destinations.push(name);
+                });
+                
+                endpointGroupIds.forEach((id: string) => {
+                    const name = endpointGroupNames.get(id);
+                    if (name) destinations.push(name);
+                });
+            } catch (e) {
+                // Skip invalid JSON
+            }
+
+            return {
+                id: msg.id,
+                eventId: msg.eventId,
+                eventType: msg.eventType,
+                status: msg.status,
+                createdAt: msg.createdAt.toISOString(),
+                responseTimeMs: msg.responseTimeMs,
+                attempts: msg.attempts,
+                destinations
+            };
+        });
 
         return NextResponse.json({
             timeRange,
@@ -190,11 +266,13 @@ export async function GET(request: NextRequest) {
             })),
             recentMessages: recentMessages.map(m => ({
                 id: m.id,
+                eventId: m.eventId,
                 eventType: m.eventType,
                 status: m.status,
-                createdAt: m.createdAt.toISOString(),
+                createdAt: m.createdAt,
                 responseTimeMs: m.responseTimeMs,
-                attempts: m.attempts
+                attempts: m.attempts,
+                destinations: m.destinations
             }))
         });
     } catch (error) {

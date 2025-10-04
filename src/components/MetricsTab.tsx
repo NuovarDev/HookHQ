@@ -50,11 +50,13 @@ interface MetricsData {
     }>;
     recentMessages: Array<{
         id: string;
+        eventId?: string;
         eventType: string;
         status: string;
         createdAt: string;
         responseTimeMs?: number;
         attempts: number;
+        destinations: string[];
     }>;
 }
 
@@ -326,26 +328,56 @@ export default function MetricsTab() {
                 <CardContent>
                     <div className="space-y-3">
                         {metrics.recentMessages.map((message) => (
-                            <div key={message.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    {getStatusIcon(message.status)}
-                                    <div>
-                                        <div className="font-medium text-sm">{message.eventType}</div>
-                                        <div className="text-xs text-gray-500">
-                                            {formatTimestamp(message.createdAt)}
+                            <div key={message.id} className="p-3 border rounded-lg space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        {getStatusIcon(message.status)}
+                                        <div>
+                                            <div className="font-medium text-sm">
+                                                {message.eventType && message.eventType.trim() !== '' 
+                                                    ? message.eventType 
+                                                    : 'No event type'
+                                                }
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                ID: {message.id}
+                                                {message.eventId && ` • Event ID: ${message.eventId}`}
+                                            </div>
                                         </div>
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        {getStatusBadge(message.status)}
+                                        <Badge variant="outline">
+                                            {message.attempts} {message.attempts === 1 ? 'attempt' : 'attempts'}
+                                        </Badge>
+                                        {message.responseTimeMs && (
+                                            <span className="text-xs text-gray-500">
+                                                {formatDuration(message.responseTimeMs)}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {getStatusBadge(message.status)}
-                                    <Badge variant="outline">
-                                        {message.attempts} attempts
-                                    </Badge>
-                                    {message.responseTimeMs && (
-                                        <span className="text-xs text-gray-500">
-                                            {formatDuration(message.responseTimeMs)}
-                                        </span>
-                                    )}
+                                
+                                {/* Destinations */}
+                                {message.destinations.length > 0 && (
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="text-xs text-gray-500 mr-1">Destinations:</span>
+                                        {message.destinations.slice(0, 3).map((destination, index) => (
+                                            <Badge key={index} variant="secondary" className="text-xs">
+                                                {destination}
+                                            </Badge>
+                                        ))}
+                                        {message.destinations.length > 3 && (
+                                            <Badge variant="outline" className="text-xs">
+                                                +{message.destinations.length - 3} more
+                                            </Badge>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {/* Timestamp */}
+                                <div className="text-xs text-gray-500">
+                                    {formatTimestamp(message.createdAt)}
                                 </div>
                             </div>
                         ))}

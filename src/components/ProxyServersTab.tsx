@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users, LoaderCircle } from "lucide-react";
+import CopyableCode from "./CopyableCode";
 
 interface ProxyServer {
   id: string;
@@ -417,21 +418,36 @@ export default function ProxyServersTab() {
                 <div>
                   <h5 className="font-medium mb-2">Docker</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">{newProxyConfig.docker.command}</code>
+                    <CopyableCode 
+                      className="text-sm"
+                      copyText={newProxyConfig.docker.command}
+                    >
+                      {newProxyConfig.docker.command}
+                    </CopyableCode>
                   </div>
                 </div>
 
                 <div>
                   <h5 className="font-medium mb-2">Google Cloud Run</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">{newProxyConfig.gcp.command}</code>
+                    <CopyableCode 
+                      className="text-sm"
+                      copyText={newProxyConfig.gcp.command}
+                    >
+                      {newProxyConfig.gcp.command}
+                    </CopyableCode>
                   </div>
                 </div>
 
                 <div>
                   <h5 className="font-medium mb-2">AWS ECS</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <code className="text-sm">{newProxyConfig.aws.command}</code>
+                    <CopyableCode 
+                      className="text-sm"
+                      copyText={newProxyConfig.aws.command}
+                    >
+                      {newProxyConfig.aws.command}
+                    </CopyableCode>
                   </div>
                 </div>
               </div>

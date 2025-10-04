@@ -97,7 +97,7 @@ export default function DashboardMetrics() {
             name: 'Failed Messages', 
             stat: metrics.summary.failedMessages.toLocaleString(), 
             icon: XCircle, 
-            change: `${((metrics.summary.failedMessages / metrics.summary.totalMessages) * 100).toFixed(1)}% of total`, 
+            change: `${metrics.summary.totalMessages > 0 ? ((metrics.summary.failedMessages / metrics.summary.totalMessages) * 100).toFixed(1) : '0'}% of total`, 
             changeType: 'decrease' as const
         },
     ] : [];
@@ -110,7 +110,7 @@ export default function DashboardMetrics() {
                 {stats.map((item) => (
                 <div
                     key={item.id}
-                    className="relative overflow-hidden rounded-lg bg-white px-4 pt-5 pb-12 shadow-sm sm:px-6 sm:pt-6"
+                    className="relative overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pt-5 pb-12 shadow-sm sm:px-6 sm:pt-6"
                 >
                     <dt>
                     <div className={`absolute rounded-md p-3 ${
