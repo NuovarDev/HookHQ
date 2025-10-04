@@ -246,11 +246,10 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { eventTypes: ["delete"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const eventTypeId = params.id;
@@ -435,11 +434,10 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { eventTypes: ["update"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const eventTypeId = params.id;

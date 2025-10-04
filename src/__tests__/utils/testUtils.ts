@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { vi, expect } from 'vitest';
 
 export interface TestEnvironment {
   id: string;
@@ -97,10 +98,10 @@ export class TestDataFactory {
   private static async getDb() {
     // Mock database for testing
     return {
-      insert: jest.fn().mockReturnValue({ values: jest.fn().mockResolvedValue({}) }),
-      select: jest.fn().mockReturnValue({ from: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ limit: jest.fn().mockResolvedValue([]) }) }) }),
-      delete: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue({}) }),
-      update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue({}) }) })
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
+      select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) }),
+      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+      update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }) })
     };
   }
 
@@ -147,7 +148,7 @@ export class TestDataFactory {
     data?: Partial<TestEndpoint>
   ): Promise<TestEndpoint> {
     const endpoint = {
-      id: data?.id || `${environmentId}_test_endpoint_${Date.now()}`,
+      id: data?.id || `ep_${environmentId}_test_endpoint_${Date.now()}`,
       environmentId,
       name: data?.name || 'Test Endpoint',
       url: data?.url || 'https://example.com/webhook',
@@ -174,7 +175,7 @@ export class TestDataFactory {
     const apiKey = {
       id: data?.id || `test_api_key_${Date.now()}`,
       name: data?.name || 'Test API Key',
-      key: data?.key || `test_key_${Date.now()}`,
+      key: data?.key || `wh_test_key_${Date.now()}`,
       userId,
       metadata: data?.metadata || JSON.stringify({ environment: environmentId }),
       enabled: data?.enabled !== undefined ? data.enabled : true,

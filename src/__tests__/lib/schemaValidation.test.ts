@@ -1,4 +1,5 @@
 import { validateSchema, validateData, validateEventPayload } from '@/lib/schemaValidation';
+import { describe, it, expect } from 'vitest';
 
 describe('Schema Validation', () => {
   describe('validateSchema', () => {

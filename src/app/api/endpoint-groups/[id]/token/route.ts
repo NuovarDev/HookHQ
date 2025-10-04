@@ -149,7 +149,7 @@ interface PortalTokenPayload {
  *         description: Internal server error
  */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const authResult = await authenticateApiRequest(request, { portal: ["create"] });
+  const authResult = await authenticateApiRequest(request, { endpoints: ["create", "read", "update", "delete"] });
     
   if (!authResult.success) {
     return authResult.response;

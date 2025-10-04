@@ -1,10 +1,24 @@
-import { POST } from '@/app/api/webhooks/send/route';
+import { POST } from '@/app/api/send/route';
 import { createMockRequestWithApiKey, TestDataFactory, assertApiResponse, assertApiError } from '../utils/testUtils';
+import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { authenticateApiRequest } from '@/lib/apiHelpers';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { NextResponse } from 'next/server';
+import { getDb } from '@/db';
 
 // Mock the authentication and database modules
-jest.mock('@/lib/apiHelpers');
-jest.mock('@/db');
-jest.mock('@opennextjs/cloudflare');
+vi.mock('@/lib/apiHelpers', () => ({
+  authenticateApiRequest: vi.fn()
+}));
+vi.mock('@/db', () => ({
+  getDb: vi.fn()
+}));
+vi.mock('@opennextjs/cloudflare', () => ({
+  getCloudflareContext: vi.fn()
+}));
+vi.mock('better-auth');
+vi.mock('better-auth-cloudflare');
+vi.mock('@noble/ciphers');
 
 describe('Webhook Send API', () => {
   let testEnvironment: any;
@@ -38,16 +52,41 @@ describe('Webhook Send API', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    
+    // Mock Cloudflare context
+    vi.mocked(getCloudflareContext).mockResolvedValue({
+      // @ts-ignore-next-line
+      env: {
+        WEBHOOKS: {
+          send: vi.fn().mockResolvedValue({}),
+          sendBatch: vi.fn().mockResolvedValue({})
+        }
+      }
+    });
+    
+    // Mock database
+    vi.mocked(getDb).mockResolvedValue({
+      insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
+      select: vi.fn().mockReturnValue({ 
+        from: vi.fn().mockReturnValue({ 
+          where: vi.fn().mockReturnValue({ 
+            limit: vi.fn().mockResolvedValue([]) 
+          }) 
+        }) 
+      }),
+      delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+      update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }) })
+    } as any);
   });
 
   describe('POST /api/webhooks/send', () => {
     it('should send webhook to endpoint successfully', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           payload: {
             userId: 'user123',
             email: 'test@example.com'
@@ -55,15 +94,13 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
       
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as { id: string, payload: any, channels: string[] };
       expect(data).toHaveProperty('id');
       expect(data).toHaveProperty('payload');
       expect(data).toHaveProperty('channels');
@@ -72,10 +109,10 @@ describe('Webhook Send API', () => {
 
     it('should validate payload against event type schema', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           eventType: 'user.created',
           payload: {
             userId: 'user123',
@@ -84,9 +121,7 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -98,10 +133,10 @@ describe('Webhook Send API', () => {
 
     it('should reject payload that violates event type schema', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           eventType: 'user.created',
           payload: {
             userId: 'user123',
@@ -110,9 +145,30 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
+
+      // Mock database to return event type schema for validation
+      vi.mocked(getDb).mockResolvedValue({
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
+        select: vi.fn().mockReturnValue({ 
+          from: vi.fn().mockReturnValue({ 
+            where: vi.fn().mockReturnValue({ 
+              limit: vi.fn().mockResolvedValue([{
+                schema: JSON.stringify({
+                  type: 'object',
+                  properties: {
+                    userId: { type: 'string' },
+                    email: { type: 'string', format: 'email' }
+                  },
+                  required: ['userId']
+                })
+              }]) 
+            }) 
+          }) 
+        }),
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }) })
+      } as any);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -125,10 +181,10 @@ describe('Webhook Send API', () => {
 
     it('should reject payload missing required fields', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           eventType: 'user.created',
           payload: {
             email: 'test@example.com'
@@ -137,25 +193,46 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
+
+      // Mock database to return event type schema for validation
+      vi.mocked(getDb).mockResolvedValue({
+        insert: vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue({}) }),
+        select: vi.fn().mockReturnValue({ 
+          from: vi.fn().mockReturnValue({ 
+            where: vi.fn().mockReturnValue({ 
+              limit: vi.fn().mockResolvedValue([{
+                schema: JSON.stringify({
+                  type: 'object',
+                  properties: {
+                    userId: { type: 'string' },
+                    email: { type: 'string', format: 'email' }
+                  },
+                  required: ['userId']
+                })
+              }]) 
+            }) 
+          }) 
+        }),
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }),
+        update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue({}) }) })
+      } as any);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
       
       expect(response.status).toBe(400);
-      const data = await response.json();
+      const data = await response.json() as { error: string, details: string[] };
       expect(data).toHaveProperty('error', 'Payload validation failed');
       expect(data.details.some((detail: string) => detail.includes('userId'))).toBe(true);
     });
 
     it('should skip validation when no event type is provided', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           payload: {
             anyData: 'any value',
             invalidStructure: true
@@ -163,9 +240,7 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -175,9 +250,9 @@ describe('Webhook Send API', () => {
       expect(data).toHaveProperty('payload');
     });
 
-    it('should reject request without endpoints', async () => {
+    it('should reject request without destinations', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
           payload: {
@@ -186,30 +261,26 @@ describe('Webhook Send API', () => {
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
       
       expect(response.status).toBe(400);
       const data = await response.json();
-      expect(data).toHaveProperty('error', 'Endpoints are required');
+      expect(data).toHaveProperty('error', 'Destinations are required');
     });
 
     it('should reject request without payload', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id]
+          destinations: [testEndpoint.id]
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -221,19 +292,17 @@ describe('Webhook Send API', () => {
 
     it('should require eventType when endpoint groups are provided', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: ['grp_test_group'],
+          destinations: ['grp_test_group'],
           payload: {
             userId: 'user123'
           }
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -251,19 +320,17 @@ describe('Webhook Send API', () => {
       });
 
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [otherEndpoint.id], // Endpoint from different environment
+          destinations: [otherEndpoint.id], // Endpoint from different environment
           payload: {
             userId: 'user123'
           }
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(testApiKey.key, 'POST', mockAuthResult.body);
       const response = await POST(request);
@@ -276,19 +343,17 @@ describe('Webhook Send API', () => {
 
     it('should handle idempotency key', async () => {
       const mockAuthResult = {
-        success: true,
+        success: true as const,
         environmentId: testEnvironment.id,
         body: {
-          endpoints: [testEndpoint.id],
+          destinations: [testEndpoint.id],
           payload: {
             userId: 'user123'
           }
         }
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey(
         testApiKey.key, 
@@ -305,16 +370,14 @@ describe('Webhook Send API', () => {
 
     it('should return 401 for unauthenticated requests', async () => {
       const mockAuthResult = {
-        success: false,
-        response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+        success: false as const,
+        response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       };
       
-      jest.doMock('@/lib/apiHelpers', () => ({
-        authenticateApiRequest: jest.fn().mockResolvedValue(mockAuthResult)
-      }));
+      vi.mocked(authenticateApiRequest).mockResolvedValue(mockAuthResult);
 
       const request = createMockRequestWithApiKey('invalid-key', 'POST', {
-        endpoints: [testEndpoint.id],
+        destinations: [testEndpoint.id],
         payload: { userId: 'user123' }
       });
       const response = await POST(request);

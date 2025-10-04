@@ -14,6 +14,8 @@ import CopyableCode from "./CopyableCode";
 
 const fullPermission = {
     "endpoints": ["create", "read", "update", "delete"],
+    "endpointGroups": ["create", "read", "update", "delete"],
+    "eventTypes": ["create", "read", "update", "delete"],
     "messages": ["create", "read", "update", "delete"]
 }
 
@@ -234,6 +236,46 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                             </div>
                                         </div>
                                         
+                                        <div>
+                                            <h4 className="text-sm font-medium mb-2">Endpoint Groups</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {["create", "read", "update", "delete"].map((op) => (
+                                                    <div key={`endpointGroups:${op}`} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`endpointGroups:${op}`}
+                                                            checked={selectedPermissions.endpointGroups.includes(op)}
+                                                            onChange={(e) => handlePermissionChange("endpointGroups", op, e.target.checked)}
+                                                            className="rounded"
+                                                        />
+                                                        <Label htmlFor={`endpointGroups:${op}`} className="text-sm capitalize">
+                                                            {op}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-sm font-medium mb-2">Event Types</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {["create", "read", "update", "delete"].map((op) => (
+                                                    <div key={`eventTypes:${op}`} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`eventTypes:${op}`}
+                                                            checked={selectedPermissions.eventTypes.includes(op)}
+                                                            onChange={(e) => handlePermissionChange("eventTypes", op, e.target.checked)}
+                                                            className="rounded"
+                                                        />
+                                                        <Label htmlFor={`eventTypes:${op}`} className="text-sm capitalize">
+                                                            {op}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <h4 className="text-sm font-medium mb-2">Messages</h4>
                                             <div className="grid grid-cols-2 gap-2">

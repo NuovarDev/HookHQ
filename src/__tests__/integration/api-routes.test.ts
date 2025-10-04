@@ -5,28 +5,30 @@
  * They serve as examples for testing the actual API endpoints.
  */
 
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+
 // Mock all external dependencies
-jest.mock('@/lib/apiHelpers', () => ({
-  authenticateApiRequest: jest.fn()
+vi.mock('@/lib/apiHelpers', () => ({
+  authenticateApiRequest: vi.fn()
 }));
 
-jest.mock('@/db', () => ({
-  getDb: jest.fn()
+vi.mock('@/db', () => ({
+  getDb: vi.fn()
 }));
 
-jest.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: jest.fn()
+vi.mock('@opennextjs/cloudflare', () => ({
+  getCloudflareContext: vi.fn()
 }));
 
 describe('API Routes Integration Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Event Types API', () => {
     it('should handle GET /api/event-types with authentication', async () => {
       // Mock successful authentication
-      const { authenticateApiRequest } = require('@/lib/apiHelpers');
+      import { authenticateApiRequest } from '@/lib/apiHelpers';
       authenticateApiRequest.mockResolvedValue({
         success: true,
         environmentId: 'test-env-id',
@@ -34,12 +36,12 @@ describe('API Routes Integration Tests', () => {
       });
 
       // Mock database response
-      const { getDb } = require('@/db');
+      import { getDb } from '@/db';
       const mockDb = {
-        select: jest.fn().mockReturnValue({
-          from: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue([
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue([
                 {
                   id: 'test-event-id',
                   environmentId: 'test-env-id',
@@ -58,8 +60,8 @@ describe('API Routes Integration Tests', () => {
       getDb.mockResolvedValue(mockDb);
 
       // Import and test the route handler
-      const { GET } = require('@/app/api/event-types/route');
-      const { createMockRequest } = require('../utils/testUtils');
+      import { GET } from '@/app/api/event-types/route';
+      import { createMockRequest } from '../utils/testUtils';
       
       const request = createMockRequest('GET');
       const response = await GET(request);
@@ -72,7 +74,7 @@ describe('API Routes Integration Tests', () => {
 
     it('should handle POST /api/event-types with schema validation', async () => {
       // Mock successful authentication
-      const { authenticateApiRequest } = require('@/lib/apiHelpers');
+      import { authenticateApiRequest } from '@/lib/apiHelpers';
       authenticateApiRequest.mockResolvedValue({
         success: true,
         environmentId: 'test-env-id',
@@ -91,17 +93,17 @@ describe('API Routes Integration Tests', () => {
       });
 
       // Mock database response
-      const { getDb } = require('@/db');
+      import { getDb } from '@/db';
       const mockDb = {
-        insert: jest.fn().mockReturnValue({
-          values: jest.fn().mockResolvedValue({})
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockResolvedValue({})
         })
       };
       getDb.mockResolvedValue(mockDb);
 
       // Import and test the route handler
-      const { POST } = require('@/app/api/event-types/route');
-      const { createMockRequest } = require('../utils/testUtils');
+      import { POST } from '@/app/api/event-types/route';
+      import { createMockRequest } from '../utils/testUtils';
       
       const request = createMockRequest('POST', {
         name: 'user.created',
@@ -126,7 +128,7 @@ describe('API Routes Integration Tests', () => {
 
     it('should reject invalid schema in POST request', async () => {
       // Mock successful authentication
-      const { authenticateApiRequest } = require('@/lib/apiHelpers');
+      import { authenticateApiRequest } from '@/lib/apiHelpers';
       authenticateApiRequest.mockResolvedValue({
         success: true,
         environmentId: 'test-env-id',
@@ -142,8 +144,8 @@ describe('API Routes Integration Tests', () => {
       });
 
       // Import and test the route handler
-      const { POST } = require('@/app/api/event-types/route');
-      const { createMockRequest } = require('../utils/testUtils');
+      import { POST } from '@/app/api/event-types/route';
+      import { createMockRequest } from '../utils/testUtils';
       
       const request = createMockRequest('POST', {
         name: 'user.created',
@@ -167,12 +169,12 @@ describe('API Routes Integration Tests', () => {
   describe('Webhook Send API', () => {
     it('should handle POST /api/webhooks/send with payload validation', async () => {
       // Mock successful authentication
-      const { authenticateApiRequest } = require('@/lib/apiHelpers');
+      import { authenticateApiRequest } from '@/lib/apiHelpers';
       authenticateApiRequest.mockResolvedValue({
         success: true,
         environmentId: 'test-env-id',
         body: {
-          endpoints: ['ep_test_env_test_endpoint'],
+          destinations: ['ep_test_env_test_endpoint'],
           eventType: 'user.created',
           payload: {
             userId: 'user123',
@@ -182,12 +184,12 @@ describe('API Routes Integration Tests', () => {
       });
 
       // Mock database response for event type lookup
-      const { getDb } = require('@/db');
+      import { getDb } from '@/db';
       const mockDb = {
-        select: jest.fn().mockReturnValue({
-          from: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              limit: jest.fn().mockResolvedValue([
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
                 {
                   schema: JSON.stringify({
                     type: 'object',
@@ -202,8 +204,8 @@ describe('API Routes Integration Tests', () => {
             })
           })
         }),
-        insert: jest.fn().mockReturnValue({
-          values: jest.fn().mockResolvedValue({})
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockResolvedValue({})
         })
       };
       getDb.mockResolvedValue(mockDb);
@@ -213,17 +215,17 @@ describe('API Routes Integration Tests', () => {
       getCloudflareContext.mockResolvedValue({
         env: {
           WEBHOOKS: {
-            send: jest.fn().mockResolvedValue({})
+            send: vi.fn().mockResolvedValue({})
           }
         }
       });
 
       // Import and test the route handler
-      const { POST } = require('@/app/api/webhooks/send/route');
-      const { createMockRequest } = require('../utils/testUtils');
+      import { POST } from '@/app/api/send/route';
+      import { createMockRequest } from '../utils/testUtils';
       
       const request = createMockRequest('POST', {
-        endpoints: ['ep_test_env_test_endpoint'],
+        destinations: ['ep_test_env_test_endpoint'],
         eventType: 'user.created',
         payload: {
           userId: 'user123',
@@ -242,12 +244,12 @@ describe('API Routes Integration Tests', () => {
 
     it('should reject payload that violates event type schema', async () => {
       // Mock successful authentication
-      const { authenticateApiRequest } = require('@/lib/apiHelpers');
+      import { authenticateApiRequest } from '@/lib/apiHelpers';
       authenticateApiRequest.mockResolvedValue({
         success: true,
         environmentId: 'test-env-id',
         body: {
-          endpoints: ['ep_test_env_test_endpoint'],
+          destinations: ['ep_test_env_test_endpoint'],
           eventType: 'user.created',
           payload: {
             userId: 'user123',
@@ -257,12 +259,12 @@ describe('API Routes Integration Tests', () => {
       });
 
       // Mock database response for event type lookup
-      const { getDb } = require('@/db');
+      import { getDb } from '@/db';
       const mockDb = {
-        select: jest.fn().mockReturnValue({
-          from: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              limit: jest.fn().mockResolvedValue([
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
                 {
                   schema: JSON.stringify({
                     type: 'object',
@@ -281,11 +283,11 @@ describe('API Routes Integration Tests', () => {
       getDb.mockResolvedValue(mockDb);
 
       // Import and test the route handler
-      const { POST } = require('@/app/api/webhooks/send/route');
-      const { createMockRequest } = require('../utils/testUtils');
+      import { POST } from '@/app/api/send/route';
+      import { createMockRequest } from '../utils/testUtils';
       
       const request = createMockRequest('POST', {
-        endpoints: ['ep_test_env_test_endpoint'],
+        destinations: ['ep_test_env_test_endpoint'],
         eventType: 'user.created',
         payload: {
           userId: 'user123',

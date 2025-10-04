@@ -1,9 +1,7 @@
-import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
 import { authenticateApiRequest } from "@/lib/apiHelpers";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -254,11 +252,10 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { endpointGroups: ["delete"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const groupId = params.id;
@@ -416,11 +413,10 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { endpointGroups: ["update"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const groupId = params.id;

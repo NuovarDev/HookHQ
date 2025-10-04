@@ -2,10 +2,12 @@ import { randomBytes } from "crypto";
 
 // Granular CRUD permissions
 export type CrudOperation = "create" | "read" | "update" | "delete";
-export type ResourceType = "endpoints" | "messages";
+export type ResourceType = "endpoints" | "endpointGroups" | "eventTypes" | "messages";
 
 export type ApiKeyPermission = 
     | `endpoints:${CrudOperation}`
+    | `endpointGroups:${CrudOperation}`
+    | `eventTypes:${CrudOperation}`
     | `messages:${CrudOperation}`
     | "all_permissions";
 
@@ -140,7 +142,7 @@ export function getPermissionDisplayName(permission: ApiKeyPermission): string {
     }
     
     const [resource, operation] = permission.split(":");
-    const resourceName = resource === "endpoints" ? "Endpoints" : "Messages";
+    const resourceName = resource === "endpoints" ? "Endpoints" : resource === "endpointGroups" ? "Endpoint Groups" : resource === "eventTypes" ? "Event Types" : "Messages";
     const operationName = operation.charAt(0).toUpperCase() + operation.slice(1);
     
     return `${resourceName} - ${operationName}`;
@@ -174,7 +176,11 @@ export function getPermissionPresets(): Record<string, ApiKeyPermission[]> {
             "endpoints:create",
             "endpoints:read", 
             "endpoints:update",
-            "endpoints:delete"
+            "endpoints:delete",
+            "endpointGroups:create",
+            "endpointGroups:read",
+            "endpointGroups:update",
+            "endpointGroups:delete"
         ],
         "Messages Only": [
             "messages:create",
@@ -185,6 +191,7 @@ export function getPermissionPresets(): Record<string, ApiKeyPermission[]> {
         "Create & Read": [
             "endpoints:create",
             "endpoints:read",
+            "endpointGroups:read",
             "messages:create",
             "messages:read"
         ]

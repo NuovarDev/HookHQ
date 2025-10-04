@@ -18,7 +18,7 @@ import { eq, and } from "drizzle-orm";
  *        Events can be sent to endpoints and/or endpoint groups. 
  *        In order to send an event to an endpoint group, the eventType must be specified, then the event will be dispatched to all endpoints in the group that are subscribed to the eventType.
  * 
- *        API key requires the `messages:create` permission to access this endpoint.
+ *        API key requires the `webhooks:send` permission to access this endpoint.
  *     tags:
  *       - Send
  *     requestBody:

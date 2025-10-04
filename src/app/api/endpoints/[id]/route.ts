@@ -278,11 +278,10 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { endpoints: ["delete"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const endpointId = params.id;
@@ -454,11 +453,10 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const authInstance = await initAuth();
-        const session = await authInstance.api.getSession({ headers: await headers() });
-
-        if (!session?.user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const authResult = await authenticateApiRequest(request, { endpoints: ["update"] });
+    
+        if (!authResult.success) {
+            return authResult.response;
         }
 
         const endpointId = params.id;
