@@ -2,12 +2,12 @@
 
 import authClient from "@/auth/authClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, AlertCircle } from "lucide-react";
+import { AlertCircle, Webhook, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link"
 
 export default function Home() {
     const { data: session, error: sessionError } = authClient.useSession();
@@ -17,6 +17,13 @@ export default function Home() {
     const [error, setError] = useState<string | null>(null);
     const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
     const router = useRouter();
+
+    const [isDark, setIsDark] = useState(false)
+
+    const toggleTheme = () => {
+        setIsDark(!isDark)
+        document.documentElement.classList.toggle("dark")
+    }
 
     // Check if setup is needed
     useEffect(() => {
@@ -83,25 +90,45 @@ export default function Home() {
     if (needsSetup === null) {
         return (
             <div className="flex justify-center items-center min-h-screen">
-                <div className="text-gray-600">Loading...</div>
+                <div className="text-muted-foreground">Loading...</div>
             </div>
         );
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen p-8 font-[family-name:var(--font-geist-sans)]">
-            <div className="w-full max-w-md space-y-6">
-                {/* Login Form */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-2xl flex items-center gap-2">
-                            <Mail className="h-6 w-6" />
-                            Sign In
-                        </CardTitle>
-                        <CardDescription>Access your webhook management dashboard</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-4">
-                        <div className="grid gap-2">
+        <div className={isDark ? "dark" : ""}>
+            <div className="min-h-screen bg-background flex items-center justify-center p-4 texture-overlay">
+                <Button variant="ghost" size="icon" onClick={toggleTheme} className="!absolute top-4 right-4 border-0">
+                {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+
+                <div className="w-full max-w-md">
+                    <div className="bg-card border border-border p-8">
+                        <div className="flex items-center gap-3 mb-8">
+                        <div className="h-10 w-10 bg-primary flex items-center justify-center">
+                            <Webhook className="h-6 w-6 text-primary-foreground" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-semibold text-foreground">HookHQ</h1>
+                            <p className="text-sm text-muted-foreground">Developer Dashboard</p>
+                        </div>
+                        </div>
+
+                        <div className="space-y-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-foreground mb-2">Sign in</h2>
+                            <p className="text-sm text-muted-foreground">Enter your credentials to access your dashboard</p>
+                        </div>
+
+                        {error && (
+                            <div className="text-red-500 dark:text-red-200 border border-red-200 dark:border-red-600 text-sm text-center py-3 px-4 bg-red-50 dark:bg-red-900 rounded-md flex items-center space-x-2">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>{error}</span>
+                            </div>
+                        )}
+
+                        <form className="space-y-4">
+                            <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
@@ -109,44 +136,46 @@ export default function Home() {
                                 placeholder="Enter your email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                className="border-border"
                                 required
                             />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="Enter your password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                onKeyPress={handleKeyPress}
-                                required
-                            />
-                        </div>
-                        {error && (
-                            <div className="text-red-500 text-sm text-center p-2 bg-red-50 rounded flex items-center space-x-2">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>{error}</span>
                             </div>
-                        )}
-                    </CardContent>
-                    <CardFooter>
-                        <Button 
-                            onClick={handleSignIn} 
-                            className="w-full" 
-                            disabled={isAuthActionInProgress || !email || !password}
-                        >
-                            {isAuthActionInProgress ? "Signing In..." : "Sign In"}
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-            <footer className="absolute bottom-0 w-full text-center text-sm text-gray-500 py-4">
-                <div className="space-y-3">
-                    <div>&copy; {new Date().getFullYear()} HookHQ</div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="password">Password</Label>
+                                    <Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                                    Forgot password?
+                                    </Link>
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    placeholder="Enter your password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onKeyDown={handleKeyPress}
+                                    className="border-border"
+                                    required
+                                />
+                            </div>
+
+                            <Button 
+                                onClick={handleSignIn} 
+                                className="w-full" 
+                                disabled={isAuthActionInProgress || !email || !password}
+                            >
+                                {isAuthActionInProgress ? "Signing In..." : "Sign In"}
+                            </Button>
+                        </form>
+                        <br/>
+                    </div> 
                 </div>
-            </footer>
+                <p className="text-center text-xs text-muted-foreground mt-8">
+                    &copy; {new Date().getFullYear()} HookHQ
+                </p> 
+            </div>
         </div>
+    </div>
     );
 }

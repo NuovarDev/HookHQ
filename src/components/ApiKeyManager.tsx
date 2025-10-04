@@ -153,7 +153,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-gray-600">Manage your API keys for accessing the webhook service</p>
+                    <p className="text-muted-foreground">Manage your API keys for accessing the webhook service</p>
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>

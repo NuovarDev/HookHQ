@@ -130,7 +130,10 @@ export default function MessagesTab() {
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-gray-600">View and monitor your webhook delivery status</p>
+                    <h2 className="text-2xl font-bold">Message Log</h2>
+                    <p className="text-muted-foreground">
+                    View and monitor your webhook delivery status
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -179,7 +182,7 @@ export default function MessagesTab() {
                     <CardContent className="flex flex-col items-center justify-center py-8">
                         <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No Messages</h3>
-                        <p className="text-gray-600 text-center">
+                        <p className="text-muted-foreground text-center">
                             {statusFilter === "all" 
                                 ? "No webhook messages have been sent yet."
                                 : `No messages with status "${statusFilter}" found.`

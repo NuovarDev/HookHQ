@@ -243,7 +243,7 @@ export default function EditableTemplate({
             {showCopyButton && (
                 <button
                     onClick={handleCopy}
-                    className="absolute top-0 right-0 p-2 bg-slate-600 hover:bg-slate-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="absolute top-0 right-0 p-2 bg-neutral-500 dark:bg-neutral-600 hover:bg-neutral-400 dark:hover:bg-neutral-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-sky-400"
                     title="Copy to clipboard"
                 >
                     {copied ? (

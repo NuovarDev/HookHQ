@@ -147,7 +147,7 @@ export default function AdminConfigTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center space-x-2">
-            <Settings className="h-5 w-5 text-gray-600" />
+            <Settings className="h-5 w-5 text-muted-foreground" />
             <CardTitle>Default Settings</CardTitle>
           </div>
           <CardDescription>

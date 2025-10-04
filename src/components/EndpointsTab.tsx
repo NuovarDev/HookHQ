@@ -264,7 +264,7 @@ export default function EndpointsTab() {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold">Endpoints</h2>
-                    <p className="text-gray-600">Manage your webhook endpoints</p>
+                    <p className="text-muted-foreground">Manage your webhook endpoints</p>
                 </div>
                 <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                     <DialogTrigger asChild>
@@ -411,7 +411,7 @@ export default function EndpointsTab() {
             {loading && (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
-                        <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+                        <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
                         <h3 className="text-lg font-semibold mb-2">Loading...</h3>
                     </CardContent>
                 </Card>
@@ -432,12 +432,12 @@ export default function EndpointsTab() {
             {!loading && !error && (endpoints.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
-                        <Globe className="h-12 w-12 text-gray-400 mb-4" />
+                        <Globe className="h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No Endpoints</h3>
-                        <p className="text-gray-600 text-center">
+                        <p className="text-muted-foreground text-center">
                             Create your first webhook endpoint to start receiving notifications.
                         </p>
-                        <code className="text-sm m-4 p-4 bg-slate-700 rounded-md text-white min-w-[500px]">
+                        <code className="text-sm m-4 p-4 bg-neutral-600 dark:bg-neutral-800 rounded-md text-white min-w-[500px]">
                             <EditableTemplate
                                 template={`curl {{baseUrl}}/api/endpoints \\
 -H 'Content-Type: application/json' \\

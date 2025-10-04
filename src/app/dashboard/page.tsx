@@ -1,7 +1,7 @@
 import { initAuth } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import DashboardMetrics from "@/components/DashboardMetrics";
+import { DashboardOverview } from "@/components/DashboardOverview";
 
 export default async function DashboardPage() {
   const authInstance = await initAuth();
@@ -14,7 +14,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <DashboardMetrics />
+      <DashboardOverview />
     </div>
   );
 }

@@ -17,7 +17,7 @@ export default async function AccountPage() {
     <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-muted-foreground mt-1">
           Manage your account information and security settings.
         </p>
       </div>

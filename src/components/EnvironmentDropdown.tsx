@@ -63,7 +63,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
         <div className="flex items-center gap-2">
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
-                    <Button variant="outline" className="min-w-[100px] max-w-[300px] justify-between">
+                    <Button variant="ghost" className="min-w-[100px] max-w-[300px] justify-between">
                         <div className="flex items-center">
                             <Globe className="h-4 w-4 mr-2" />
                             {selectedEnvironment ? selectedEnvironment.name : "Select Environment"}
@@ -72,7 +72,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         <div className="space-y-2">
                             <h4 className="font-medium text-sm">Select Environment</h4>
                             <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -80,12 +80,12 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
                                     <button
                                         key={env.id}
                                         onClick={() => handleEnvironmentSelect(env)}
-                                        className="w-full flex items-center justify-between p-2 text-left hover:bg-gray-50 rounded-md transition-colors"
+                                        className="w-full flex items-center justify-between p-2 text-left hover:bg-muted rounded-md transition-colors"
                                     >
                                         <div>
                                             <div className="font-medium text-sm">{env.name}</div>
                                             {env.description && (
-                                                <div className="text-xs text-gray-600">{env.description}</div>
+                                                <div className="text-xs text-muted-foreground">{env.description}</div>
                                             )}
                                         </div>
                                         {selectedEnvironment?.id === env.id && (

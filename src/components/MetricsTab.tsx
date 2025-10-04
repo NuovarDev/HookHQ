@@ -174,7 +174,10 @@ export default function MetricsTab() {
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-gray-600">Monitor your webhook performance and delivery statistics</p>
+                    <h2 className="text-2xl font-bold">Metrics</h2>
+                    <p className="text-muted-foreground">
+                    Monitor your webhook performance and delivery statistics
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={timeRange} onValueChange={setTimeRange}>
@@ -312,7 +315,7 @@ export default function MetricsTab() {
                                 </div>
                             ))}
                             {metrics.topEventTypes.length === 0 && (
-                                <p className="text-sm text-gray-500">No events found</p>
+                                <p className="text-sm text-muted-foreground">No events found</p>
                             )}
                         </div>
                     </CardContent>
@@ -339,7 +342,7 @@ export default function MetricsTab() {
                                                     : 'No event type'
                                                 }
                                             </div>
-                                            <div className="text-xs text-gray-500">
+                                            <div className="text-xs text-muted-foreground">
                                                 ID: {message.id}
                                                 {message.eventId && ` • Event ID: ${message.eventId}`}
                                             </div>
@@ -351,7 +354,7 @@ export default function MetricsTab() {
                                             {message.attempts} {message.attempts === 1 ? 'attempt' : 'attempts'}
                                         </Badge>
                                         {message.responseTimeMs && (
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-xs text-muted-foreground">
                                                 {formatDuration(message.responseTimeMs)}
                                             </span>
                                         )}
@@ -361,7 +364,7 @@ export default function MetricsTab() {
                                 {/* Destinations */}
                                 {message.destinations.length > 0 && (
                                     <div className="flex items-center gap-1 flex-wrap">
-                                        <span className="text-xs text-gray-500 mr-1">Destinations:</span>
+                                        <span className="text-xs text-muted-foreground mr-1">Destinations:</span>
                                         {message.destinations.slice(0, 3).map((destination, index) => (
                                             <Badge key={index} variant="secondary" className="text-xs">
                                                 {destination}
@@ -376,13 +379,13 @@ export default function MetricsTab() {
                                 )}
                                 
                                 {/* Timestamp */}
-                                <div className="text-xs text-gray-500">
+                                <div className="text-xs text-muted-foreground">
                                     {formatTimestamp(message.createdAt)}
                                 </div>
                             </div>
                         ))}
                         {metrics.recentMessages.length === 0 && (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-8 text-muted-foreground">
                                 No recent activity
                             </div>
                         )}

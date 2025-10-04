@@ -120,7 +120,7 @@ export default function PortalPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <LoaderCircle className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     }>

@@ -1,7 +1,6 @@
 "use client";
 
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
-import { MenuIcon, XIcon } from 'lucide-react'
 import authClient from "@/auth/authClient"; // Assuming default export from your authClient setup
 import { useRouter } from "next/navigation";
 import { startTransition } from 'react';
@@ -11,6 +10,28 @@ import { usePathname } from 'next/navigation';
 import EnvironmentDropdown from '@/components/EnvironmentDropdown';
 import { EnvironmentProvider } from '@/components/EnvironmentProvider';
 import EnvironmentGate from '@/components/EnvironmentGate';
+import type React from "react"
+
+import { useState } from "react"
+import {
+  X,
+  LayoutDashboard,
+  Webhook,
+  BarChart3,
+  Settings,
+  ChevronDown,
+  Moon,
+  Sun,
+  PanelLeftClose,
+  PanelLeft,
+  MenuIcon,
+  XIcon,
+  Server,
+  History,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 const handleSignOut = async (router: AppRouterInstance) => {
   await authClient.signOut({
@@ -34,13 +55,14 @@ const user = {
   imageUrl:
     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
 }
+
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', current: false },
-  { name: 'Webhooks', href: '/dashboard/webhooks', current: false },
-  { name: 'Proxy', href: '/dashboard/proxy', current: false },
-  { name: 'Log', href: '/dashboard/log', current: false },
-  { name: 'Metrics', href: '/dashboard/metrics', current: false },
-  { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true },
+  { name: 'Dashboard', href: '/dashboard', current: false, icon: LayoutDashboard },
+  { name: 'Webhooks', href: '/dashboard/webhooks', current: false, icon: Webhook },
+  { name: 'Proxy', href: '/dashboard/proxy', current: false, icon: Server },
+  { name: 'Log', href: '/dashboard/log', current: false, icon: History },
+  { name: 'Metrics', href: '/dashboard/metrics', current: false, icon: BarChart3 },
+  { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true, icon: Settings },
 ]
 const userNavigation = (router: AppRouterInstance) => [
   { name: 'Account', href: '/dashboard/account', current: false },
@@ -63,155 +85,155 @@ export default function AppLayout({
 
   const currentPathName = [...navigation, ...userNavigation(router)].map((item) => ({ ...item, current: item.href === pathname })).find(item => item.current)?.name;
 
+  const [theme, setTheme] = useState<"light" | "dark">("dark")
+  const [collapsed, setCollapsed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    document.documentElement.classList.toggle("dark")
+  }
+
+  const currentPage = navigation.find((item) => item.href === pathname)
+
   return (
     <EnvironmentProvider>
       <EnvironmentGate>
-        <div className="min-h-full">
-        <div className="relative bg-gray-800 pb-32">
-          <Disclosure as="nav" className="bg-gray-800">
-            <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-              <div className="border-b border-white/10">
-                <div className="flex h-16 items-center justify-between px-4 sm:px-0">
-                  <div className="flex items-center">
-                    <EnvironmentDropdown />
-                    <div className="hidden md:block">
-                      <div className="ml-10 flex items-baseline space-x-4">
-                        {nav.map((item) => (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            aria-current={item.current ? 'page' : undefined}
-                            className={classNames(
-                              item.current
-                                ? 'bg-gray-900 text-white'
-                                : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                              'rounded-md px-3 py-2 text-sm font-medium',
-                            )}
-                          >
-                            {item.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
+        <div className="min-h-screen bg-background">
+          {/* Sidebar */}
+          <aside
+            className={cn(
+              "fixed inset-y-0 left-0 z-50 border-r border-border bg-card transition-all duration-200 lg:translate-x-0",
+              collapsed ? "w-16" : "w-64",
+              sidebarOpen ? "translate-x-0" : "-translate-x-full",
+            )}
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex h-16 items-center border-b border-border px-4">
+                {!collapsed && (
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 border border-border bg-primary" />
+                    <span className="font-mono text-lg font-semibold">HookHQ</span>
                   </div>
-                  <div className="hidden md:block">
-                    <div className="ml-4 flex items-center md:ml-6">
-                      {/* Profile dropdown */}
-                      <Menu as="div" className="relative ml-3">
-                        <MenuButton className="relative flex max-w-xs items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-                          <span className="absolute -inset-1.5" />
-                          <span className="sr-only">Open user menu</span>
-                          <img
-                            alt=""
-                            src={user.imageUrl}
-                            className="size-8 rounded-full outline -outline-offset-1 outline-white/10"
-                          />
-                        </MenuButton>
+                )}
+              </div>
 
-                        <MenuItems
-                          transition
-                          className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg outline-1 outline-black/5 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
-                        >
-                          {userNavigation(router).map((item) => (
-                            <MenuItem key={item.name}>
-                              { item.onClick ? (
-                                <button onClick={item.onClick} className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden">
-                                  {item.name}
-                                </button>
-                              ) : (
-                                <Link href={item.href} className="block px-4 py-2 text-sm text-gray-700 data-focus:bg-gray-100 data-focus:outline-hidden">
-                                  {item.name}
-                                </Link>
-                              )}
-                            </MenuItem>
-                          ))}
-                        </MenuItems>
-                      </Menu>
-                    </div>
-                  </div>
-                  <div className="-mr-2 flex md:hidden">
-                    {/* Mobile menu button */}
-                    <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500">
-                      <span className="absolute -inset-0.5" />
-                      <span className="sr-only">Open main menu</span>
-                      <MenuIcon aria-hidden="true" className="block size-6 group-data-open:hidden" />
-                      <XIcon aria-hidden="true" className="hidden size-6 group-data-open:block" />
-                    </DisclosureButton>
-                  </div>
-                </div>
+              {/* Navigation */}
+              <nav className="flex-1 space-y-1 p-4">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 border border-transparent px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "border-border bg-muted text-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        collapsed && "justify-center",
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                      title={collapsed ? item.name : undefined}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && item.name}
+                    </Link>
+                  )
+                })}
+              </nav>
+
+              {/* Theme Toggle */}
+              <div className="border-t border-border p-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTheme}
+                  className={cn("w-full gap-2 bg-transparent", collapsed ? "justify-center px-0" : "justify-start")}
+                  title={collapsed ? (theme === "light" ? "Dark Mode" : "Light Mode") : undefined}
+                >
+                  {theme === "light" ? (
+                    <>
+                      <Moon className="h-4 w-4" />
+                      {!collapsed && "Dark Mode"}
+                    </>
+                  ) : (
+                    <>
+                      <Sun className="h-4 w-4" />
+                      {!collapsed && "Light Mode"}
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
+          </aside>
 
-            <DisclosurePanel className="border-b border-white/10 md:hidden">
-              <div className="space-y-1 px-2 py-3 sm:px-3">
-                {nav.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    aria-current={item.current ? 'page' : undefined}
-                    className={classNames(
-                      item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-white/5 hover:text-white',
-                      'block rounded-md px-3 py-2 text-base font-medium',
-                    )}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+          {/* Mobile sidebar backdrop */}
+          {sidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+
+          {/* Main content */}
+          <div className={cn(collapsed ? "lg:pl-16" : "lg:pl-64", "transition-all duration-200")}>
+            {/* Top bar */}
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-6">
+              <div className="hidden lg:flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-9 w-9">
+                  {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+                </Button>
+                <div className="h-6 w-px bg-border" />
               </div>
-              <div className="border-t border-white/10 pt-4 pb-3">
-                <div className="flex items-center px-5">
-                  <div className="shrink-0">
-                    <img
-                      alt=""
-                      src={user.imageUrl}
-                      className="size-10 rounded-full outline -outline-offset-1 outline-white/10"
-                    />
-                  </div>
-                  <div className="ml-3">
-                    <div className="text-base/5 font-medium text-white">{user.name}</div>
-                    <div className="text-sm font-medium text-gray-400">{user.email}</div>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1 px-2">
-                  {userNavigation(router).map((item) => (
-                    item.onClick ? (
-                      <button
-                        key={item.name}
-                        onClick={item.onClick}
-                        className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-                      >
+
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                {sidebarOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+              </Button>
+
+              {/* Breadcrumb with Environment Selector */}
+              <div className="flex items-center gap-2 text-sm">
+                <EnvironmentDropdown />
+                {currentPage && (
+                  <>
+                    <span className="text-muted-foreground mr-3 font-medium">/</span>
+                    <span className="font-medium">{currentPage.name}</span>
+                  </>
+                )}
+              </div>
+
+              <div className="ml-auto flex items-center gap-2">
+                <Button variant="ghost" size="icon">
+                  <Settings className="h-5 w-5" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="h-8 w-8 border border-border bg-muted" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {userNavigation(router).map((item) => item.onClick ? (
+                      <DropdownMenuItem key={item.name} onClick={item.onClick}>
                         {item.name}
-                      </button>
+                      </DropdownMenuItem>
                     ) : (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className="block rounded-md px-3 py-2 text-base font-medium text-gray-400 hover:bg-white/5 hover:text-white"
-                      >
-                        {item.name}
-                      </Link>
-                    )
-                  ))}
-                </div>
+                      <DropdownMenuItem key={item.name}>
+                        <Link href={item.href}>
+                          {item.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
               </div>
-            </DisclosurePanel>
-          </Disclosure>
-          <header className="py-10">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <h1 className="text-3xl font-bold tracking-tight text-white">{currentPathName}</h1>
-            </div>
-          </header>
-        </div>
+            </header>
 
-        <main className="relative -mt-32">
-          <div className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-            <div className="rounded-lg bg-gray-100 px-5 py-6 shadow-sm border border-gray-200 sm:px-6">
-              {children}
-            </div>
+            {/* Page content */}
+            <main className="texture-overlay min-h-[calc(100vh-4rem)] p-6">{children}</main>
           </div>
-        </main>
         </div>
-      </EnvironmentGate>
+        </EnvironmentGate>
     </EnvironmentProvider>
   )
 }
