@@ -10,12 +10,7 @@ interface EnvironmentGateProps {
 }
 
 export default function EnvironmentGate({ children }: EnvironmentGateProps) {
-    const { loading, hasEnvironments, environmentError, environments, setSelectedEnvironment, refreshEnvironments } = useEnvironment();
-
-    const handleOnboardingComplete = () => {
-        // Refresh environments to pick up the newly created one
-        refreshEnvironments();
-    };
+    const { loading, hasEnvironments, environmentError, environments, setSelectedEnvironment } = useEnvironment();
 
     if (loading) {
         return (
@@ -26,7 +21,7 @@ export default function EnvironmentGate({ children }: EnvironmentGateProps) {
     }
 
     if (!hasEnvironments) {
-        return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+        return <OnboardingFlow />;
     }
 
     // Show environment error if current environment doesn't exist

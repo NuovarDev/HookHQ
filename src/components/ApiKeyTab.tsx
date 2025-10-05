@@ -90,7 +90,7 @@ export default function ApiKeyTab() {
     if (loading) {
         return (
             <div className="flex justify-center items-center py-8">
-                <div className="text-gray-600">Loading API keys...</div>
+                <div className="text-muted-foreground">Loading API keys...</div>
             </div>
         );
     }

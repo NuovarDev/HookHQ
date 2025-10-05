@@ -1,3 +1,4 @@
+import { KVNamespace } from "@cloudflare/workers-types";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
@@ -15,11 +16,12 @@ async function authBuilder() {
                 geolocationTracking: true,
                 cf: getCloudflareContext().cf,
                 d1: {
-                    db: dbInstance,
+                    db: dbInstance as any,
                     options: {
                         usePlural: true,
                     },
                 },
+                kv: process.env.KV as any,
             },
             {
                 rateLimit: {

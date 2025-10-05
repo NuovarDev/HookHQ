@@ -35,6 +35,8 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
     const [currentEnvironment, setCurrentEnvironment] = useState<string | null>(null);
     const [currentEnvironmentName, setCurrentEnvironmentName] = useState<string | null>(null);
     const [environmentValidationError, setEnvironmentValidationError] = useState<string | null>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [keyToDelete, setKeyToDelete] = useState<string | null>(null);
     
     const { environments, environmentError, validateCurrentEnvironment } = useEnvironment();
 
@@ -93,6 +95,19 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
             refreshEnvironment();
         }
     }, [isCreateDialogOpen, environments, environmentError, validateCurrentEnvironment]);
+
+    const handleDeleteKey = (keyId: string) => {
+        setKeyToDelete(keyId);
+        setDeleteConfirmOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (keyToDelete) {
+            onDeleteKey(keyToDelete);
+            setDeleteConfirmOpen(false);
+            setKeyToDelete(null);
+        }
+    };
 
     const handleCreateKey = async () => {
         if (!newKeyName.trim() || !currentEnvironment) return;
@@ -153,6 +168,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
         <div className="space-y-6 w-full">
             <div className="flex justify-between items-center">
                 <div>
+                    <h2 className="text-2xl font-bold">API Keys</h2>
                     <p className="text-muted-foreground">Manage your API keys for accessing the webhook service</p>
                 </div>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -317,9 +333,9 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
             {apiKeys.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
-                        <Key className="h-12 w-12 text-gray-400 mb-4" />
+                        <Key className="h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No API Keys</h3>
-                        <p className="text-gray-600 text-center mb-4">
+                        <p className="text-muted-foreground text-center mb-4">
                             Create your first API key to start using the webhook service.
                         </p>
                         <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -339,8 +355,8 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                             {apiKey.name}
                                             <span className={`text-xs px-2 py-1 rounded ${
                                                 apiKey.enabled 
-                                                    ? "bg-green-100 text-green-800" 
-                                                    : "bg-red-100 text-red-800"
+                                                    ? "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-200" 
+                                                    : "bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200"
                                             }`}>
                                                 {apiKey.enabled ? "Active" : "Disabled"}
                                             </span>
@@ -376,7 +392,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                         <Button
                                             variant="destructive"
                                             size="sm"
-                                            onClick={() => onDeleteKey(apiKey.id)}
+                                            onClick={() => handleDeleteKey(apiKey.id)}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -420,7 +436,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                         <Label className="text-sm font-medium">API Key</Label>
                                         <div className="flex items-center gap-2 mt-1">
                                             <CopyableCode 
-                                                className="bg-gray-100 px-2 py-1 rounded text-sm font-mono flex-1"
+                                                className="bg-muted px-2 py-1 rounded text-sm font-mono flex-1"
                                                 copyText={apiKey.key || ''}
                                             >
                                                 {formatKey(apiKey.key, apiKey.start)}
@@ -431,11 +447,11 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                         <Label className="text-sm font-medium">Permissions</Label>
                                         <div className="flex flex-wrap gap-1 mt-1">
                                             {!apiKey.permissions ? (
-                                                <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">
+                                                <span className="bg-gray-100 dark:bg-gray-950 text-gray-600 dark:text-gray-400 text-xs px-2 py-1 rounded">
                                                     No permissions
                                                 </span>
                                             ) : JSON.stringify(apiKey.permissions) === JSON.stringify(fullPermission) ? (
-                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                <span className="bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded">
                                                     Full Access
                                                 </span>
                                             ) : (
@@ -445,10 +461,26 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                     if (!Array.isArray(operations)) {
                                                         return null;
                                                     }
+                                                    
+                                                    // Check if all CRUD operations are present
+                                                    const crudOps = ['create', 'read', 'update', 'delete'];
+                                                    const hasAllCrud = crudOps.every(op => operations.includes(op));
+                                                    
+                                                    if (hasAllCrud) {
+                                                        return (
+                                                            <span
+                                                                key={`${permission}:all`}
+                                                                className="bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded"
+                                                            >
+                                                                {permission.charAt(0).toUpperCase() + permission.slice(1)} - All
+                                                            </span>
+                                                        );
+                                                    }
+                                                    
                                                     return operations.map((operation) => (
                                                         <span
                                                             key={`${permission}:${operation}`}
-                                                            className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                                                            className="bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded"
                                                         >
                                                             {permission.charAt(0).toUpperCase() + permission.slice(1)} - {operation.charAt(0).toUpperCase() + operation.slice(1)}
                                                         </span>
@@ -463,6 +495,26 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                     ))}
                 </div>
             )}
+            
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete API Key</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this API key? This action cannot be undone and will immediately revoke access for any applications using this key.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={confirmDelete}>
+                            Delete API Key
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

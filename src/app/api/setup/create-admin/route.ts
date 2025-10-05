@@ -1,8 +1,6 @@
 import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { users } from "@/db/auth.schema";
-import { environments } from "@/db/environments.schema";
-import { generateEnvironmentId } from "@/lib/initEnvironments";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 

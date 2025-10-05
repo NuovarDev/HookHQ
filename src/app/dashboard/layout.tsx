@@ -77,7 +77,6 @@ export default function AppLayout({
 }>) {
   const router = useRouter();
   const pathname = usePathname();
-  const nav = navigation.map((item) => ({ ...item, current: item.href === pathname }));
 
   const currentPathName = [...navigation, ...userNavigation(router)].map((item) => ({ ...item, current: item.href === pathname })).find(item => item.current)?.name;
 
@@ -90,8 +89,6 @@ export default function AppLayout({
     setTheme(newTheme)
     document.documentElement.classList.toggle("dark")
   }
-
-  const currentPage = navigation.find((item) => item.href === pathname)
 
   return (
     <EnvironmentProvider>
@@ -201,10 +198,10 @@ export default function AppLayout({
               {/* Breadcrumb with Environment Selector */}
               <div className="flex items-center gap-2 text-sm">
                 <EnvironmentDropdown />
-                {currentPage && (
+                {currentPathName && (
                   <>
                     <span className="text-muted-foreground mr-3 font-medium">/</span>
-                    <span className="font-medium">{currentPage.name}</span>
+                    <span className="font-medium">{currentPathName}</span>
                   </>
                 )}
               </div>

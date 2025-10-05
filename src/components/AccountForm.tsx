@@ -147,14 +147,14 @@ export default function AccountForm({ user }: AccountFormProps) {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-500">Name</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Name</Label>
                   <div className="flex items-center space-x-2">
                     <User className="h-4 w-4 text-gray-400" />
                     <span className="text-sm">{formData.name || "Not set"}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-500">Email</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Email</Label>
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-gray-400" />
                     <span className="text-sm">{formData.email}</span>
@@ -175,7 +175,7 @@ export default function AccountForm({ user }: AccountFormProps) {
               
               {user.createdAt && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-500">Member Since</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Member Since</Label>
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <span className="text-sm">
@@ -254,12 +254,6 @@ export default function AccountForm({ user }: AccountFormProps) {
         <CardContent>
           {!isChangingPassword ? (
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Shield className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-600">
-                  Your password is securely stored and encrypted.
-                </span>
-              </div>
               <Button onClick={() => setIsChangingPassword(true)}>
                 Change Password
               </Button>
