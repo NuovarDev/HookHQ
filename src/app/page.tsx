@@ -4,13 +4,14 @@ import authClient from "@/auth/authClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Webhook, Moon, Sun } from "lucide-react";
+import { AlertCircle, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link"
 import Image from "next/image";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { useTheme } from "next-themes";
 
-export default function Home() {
+function LoginContent() {
     const { data: session, error: sessionError } = authClient.useSession();
     const [isAuthActionInProgress, setIsAuthActionInProgress] = useState(false);
     const [email, setEmail] = useState("");
@@ -18,12 +19,10 @@ export default function Home() {
     const [error, setError] = useState<string | null>(null);
     const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
     const router = useRouter();
-
-    const [isDark, setIsDark] = useState(false)
+    const { theme, setTheme } = useTheme();
 
     const toggleTheme = () => {
-        setIsDark(!isDark)
-        document.documentElement.classList.toggle("dark")
+        setTheme(theme === "light" ? "dark" : "light");
     }
 
     // Check if setup is needed
@@ -97,15 +96,14 @@ export default function Home() {
     }
 
     return (
-        <div className={isDark ? "dark" : ""}>
-            <div className="min-h-screen bg-background flex items-center justify-center p-4 texture-overlay">
-                <Button variant="ghost" size="icon" onClick={toggleTheme} className="!absolute top-4 right-4 border-0">
-                {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </Button>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 texture-overlay">
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="!absolute top-4 right-4 border-0">
+                {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </Button>
 
-                <div className="w-full max-w-md">
-                    <div className="bg-card border border-border p-8">
-                        <div className="flex items-center gap-3 mb-8">
+            <div className="w-full max-w-md">
+                <div className="bg-card border border-border p-8">
+                    <div className="flex items-center gap-3 mb-8">
                         <div className="h-10 w-10 bg-black flex items-center justify-center dark:border-border dark:border">
                             <Image src="/logo.svg" alt="HookHQ" width={36} height={36} className="text-primary-foreground" />
                         </div>
@@ -113,9 +111,9 @@ export default function Home() {
                             <h1 className="text-xl font-semibold text-foreground">HookHQ</h1>
                             <p className="text-sm text-muted-foreground">Developer Dashboard</p>
                         </div>
-                        </div>
+                    </div>
 
-                        <div className="space-y-6">
+                    <div className="space-y-6">
                         <div>
                             <h2 className="text-2xl font-bold text-foreground mb-2">Sign in</h2>
                             <p className="text-sm text-muted-foreground">Enter your credentials to access your dashboard</p>
@@ -130,16 +128,16 @@ export default function Home() {
 
                         <form className="space-y-4">
                             <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="Enter your email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="border-border"
-                                required
-                            />
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="Enter your email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="border-border"
+                                    required
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -174,6 +172,19 @@ export default function Home() {
                 </p> 
             </div>
         </div>
-    </div>
     );
+}
+
+export default function Home() {
+return (
+    <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem={false}
+        disableTransitionOnChange={false}
+        storageKey="hookhq-theme"
+    >
+        <LoginContent />
+    </ThemeProvider>
+);
 }

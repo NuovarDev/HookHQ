@@ -9,6 +9,8 @@ import { usePathname } from 'next/navigation';
 import EnvironmentDropdown from '@/components/EnvironmentDropdown';
 import { EnvironmentProvider } from '@/components/EnvironmentProvider';
 import EnvironmentGate from '@/components/EnvironmentGate';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { useTheme } from 'next-themes';
 import type React from "react"
 
 import { useState } from "react"
@@ -70,24 +72,22 @@ const userNavigation = (router: AppRouterInstance) => [
   { name: 'Sign out', href: '#', onClick: () => handleSignOut(router) },
 ]
 
-export default function AppLayout({
+function DashboardContent({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
 
   const currentPathName = [...navigation, ...userNavigation(router)].map((item) => ({ ...item, current: item.href === pathname })).find(item => item.current)?.name;
 
-  const [theme, setTheme] = useState<"light" | "dark">("dark")
   const [collapsed, setCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    document.documentElement.classList.toggle("dark")
+    setTheme(theme === "light" ? "dark" : "light")
   }
 
   return (
@@ -237,5 +237,23 @@ export default function AppLayout({
         </div>
         </EnvironmentGate>
     </EnvironmentProvider>
+  )
+}
+
+export default function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      enableSystem={false}
+      disableTransitionOnChange={false}
+      storageKey="hookhq-theme"
+    >
+      <DashboardContent>{children}</DashboardContent>
+    </ThemeProvider>
   )
 }

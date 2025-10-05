@@ -217,13 +217,13 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                                            <span className="text-sm text-blue-800 font-medium">
+                                        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-2">
+                                            <span className="text-sm text-blue-800 dark:text-blue-200 font-medium">
                                                 {currentEnvironmentName || currentEnvironment}
                                             </span>
                                         </div>
                                     )}
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-muted-foreground">
                                         This API key will be scoped to the current environment
                                     </p>
                                 </div>
@@ -402,7 +402,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                             <CardContent>
                                 <div className="space-y-3">
                                     {apiKey.key && (
-                                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                                        <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
                                             <div className="flex items-start">
                                                 <div className="flex-shrink-0">
                                                     <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -410,10 +410,10 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                     </svg>
                                                 </div>
                                                 <div className="ml-3 flex-1">
-                                                    <h3 className="text-sm font-medium text-yellow-800">
+                                                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                                                         Important: Save this key now
                                                     </h3>
-                                                    <div className="mt-1 text-sm text-yellow-700">
+                                                    <div className="mt-1 text-sm text-yellow-700 dark:text-yellow-200">
                                                         <p>This is the only time you'll be able to see the full API key. Make sure to copy and save it securely.</p>
                                                     </div>
                                                 </div>
@@ -421,7 +421,7 @@ export default function ApiKeyManager({ apiKeys, onCreateKey, onDeleteKey, onTog
                                                     <div className="ml-3 flex-shrink-0">
                                                         <button
                                                             onClick={() => onDismissRawKey(apiKey.id)}
-                                                            className="text-yellow-400 hover:text-yellow-600"
+                                                            className="text-yellow-400 hover:text-yellow-600 dark:text-yellow-400 dark:hover:text-yellow-600"
                                                         >
                                                             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                                 <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
