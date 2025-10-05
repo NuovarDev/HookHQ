@@ -199,7 +199,7 @@ export default function AdminConfigTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center space-x-2">
-            <Database className="h-5 w-5 text-purple-600" />
+            <Database className="h-5 w-5 text-muted-foreground" />
             <CardTitle>Data Retention</CardTitle>
           </div>
           <CardDescription>

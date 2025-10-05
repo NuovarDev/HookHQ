@@ -13,8 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Workers Webhooks",
-    description: "Cloudflare Workers Webhooks-as-a-service",
+    title: "HookHQ",
 };
 
 export default function RootLayout({
@@ -24,6 +23,9 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
+            <head>
+            <meta name="apple-mobile-web-app-title" content="HookHQ" />
+            </head>
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
         </html>
     );

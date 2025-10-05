@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, RefreshCw, Users, Settings, Server, Globe, LoaderCircle } from "lucide-react";
+import { Plus, RefreshCw, Users, Settings, Server, Globe, LoaderCircle, Computer, Boxes } from "lucide-react";
 
 interface ProxyServer {
   id: string;
@@ -119,10 +119,10 @@ export default function ProxyGroupsTab() {
 
   const getProviderIcon = (provider?: string) => {
     switch (provider?.toLowerCase()) {
-      case "aws": return "☁️";
-      case "gcp": return "🌐";
-      case "azure": return "🔷";
-      default: return "🖥️";
+      // case "aws": return "☁️";
+      // case "gcp": return "🌐";
+      // case "azure": return "🔷";
+      default: return <Computer className="h-4 w-4" />;
     }
   };
 
@@ -266,7 +266,7 @@ export default function ProxyGroupsTab() {
       {!loading && proxyGroups.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
+            <Boxes className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No proxy groups</h3>
             <p className="text-muted-foreground text-center mb-4">
               Create proxy groups to organize and load balance your proxy servers.
@@ -284,7 +284,7 @@ export default function ProxyGroupsTab() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Users className="h-6 w-6 text-muted-foreground" />
+                    <Boxes className="h-6 w-6 text-muted-foreground" />
                     <div>
                       <CardTitle className="text-lg">{group.name}</CardTitle>
                       <CardDescription>{group.description}</CardDescription>

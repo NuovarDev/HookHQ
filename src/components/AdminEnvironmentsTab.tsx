@@ -82,7 +82,7 @@ export default function AdminEnvironmentsTab() {
         <CardContent>
           <div className="space-y-4">
             {environments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 No environments found.
               </div>
             ) : (
@@ -90,7 +90,7 @@ export default function AdminEnvironmentsTab() {
                 {environments.map((environment) => (
                   <div
                     key={environment.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
                   >
                     <div className="flex items-center space-x-4">
                       <div className="flex-shrink-0">
@@ -100,7 +100,7 @@ export default function AdminEnvironmentsTab() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
+                          <h3 className="text-sm font-medium text-foreground truncate">
                             {environment.name}
                           </h3>
                           {environment.isDefault && (
@@ -110,11 +110,11 @@ export default function AdminEnvironmentsTab() {
                           )}
                         </div>
                         {environment.description && (
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-muted-foreground mt-1">
                             {environment.description}
                           </p>
                         )}
-                        <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                        <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center space-x-1">
                             <Calendar className="h-3 w-3" />
                             <span>Created {new Date(environment.createdAt).toLocaleDateString()}</span>
@@ -153,19 +153,18 @@ export default function AdminEnvironmentsTab() {
                               </DialogDescription>
                             </DialogHeader>
                             <div className="py-4">
-                              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-4">
                                 <div className="flex">
                                   <AlertTriangle className="h-5 w-5 text-red-400" />
                                   <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-red-800">
+                                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
                                       Warning: This action is irreversible
                                     </h3>
-                                    <div className="mt-2 text-sm text-red-700">
+                                    <div className="mt-2 text-sm text-red-700 dark:text-red-200">
                                       <ul className="list-disc list-inside space-y-1">
                                         <li>All webhook endpoints in this environment will be deleted</li>
                                         <li>All API keys in this environment will be deleted</li>
                                         <li>All webhook messages and logs will be deleted</li>
-                                        <li>Users currently using this environment will need to select a new one</li>
                                       </ul>
                                     </div>
                                   </div>
@@ -192,35 +191,6 @@ export default function AdminEnvironmentsTab() {
                 ))}
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
-            Important Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex items-start space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-              <span>Default environments cannot be deleted to prevent system instability</span>
-            </div>
-            <div className="flex items-start space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-              <span>Deleting an environment will remove all associated webhook endpoints, API keys, and message history</span>
-            </div>
-            <div className="flex items-start space-x-2">
-              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-              <span>Users currently using the deleted environment will be automatically switched to the default environment</span>
-            </div>
-            <div className="flex items-start space-x-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-              <span>Consider backing up important data before deleting environments</span>
-            </div>
           </div>
         </CardContent>
       </Card>

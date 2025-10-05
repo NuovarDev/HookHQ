@@ -8,6 +8,7 @@ import { AlertCircle, Webhook, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link"
+import Image from "next/image";
 
 export default function Home() {
     const { data: session, error: sessionError } = authClient.useSession();
@@ -105,8 +106,8 @@ export default function Home() {
                 <div className="w-full max-w-md">
                     <div className="bg-card border border-border p-8">
                         <div className="flex items-center gap-3 mb-8">
-                        <div className="h-10 w-10 bg-primary flex items-center justify-center">
-                            <Webhook className="h-6 w-6 text-primary-foreground" />
+                        <div className="h-10 w-10 bg-black flex items-center justify-center dark:border-border dark:border">
+                            <Image src="/logo.svg" alt="HookHQ" width={36} height={36} className="text-primary-foreground" />
                         </div>
                         <div>
                             <h1 className="text-xl font-semibold text-foreground">HookHQ</h1>

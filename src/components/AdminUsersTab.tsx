@@ -295,10 +295,10 @@ export default function AdminUsersTab() {
     <div className="space-y-6">
       {/* Status Messages */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900 dark:border-red-800">
           <CardContent className="flex items-center space-x-2 px-4">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800">{error}</span>
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-300" />
+            <span className="text-red-800 dark:text-red-300">{error}</span>
           </CardContent>
         </Card>
       )}

@@ -63,7 +63,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
         <div className="flex items-center gap-2">
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
-                    <Button variant="ghost" className="min-w-[100px] max-w-[300px] justify-between">
+                    <Button variant="ghost" className="min-w-[100px] max-w-[300px] justify-between rounded-sm">
                         <div className="flex items-center">
                             <Globe className="h-4 w-4 mr-2" />
                             {selectedEnvironment ? selectedEnvironment.name : "Select Environment"}
@@ -71,7 +71,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
                         <ChevronDown className="h-4 w-4" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80">
+                <PopoverContent className="w-80 rounded-none">
                     <div className="space-y-2">
                         <div className="space-y-2">
                             <h4 className="font-medium text-sm">Select Environment</h4>
@@ -80,7 +80,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
                                     <button
                                         key={env.id}
                                         onClick={() => handleEnvironmentSelect(env)}
-                                        className="w-full flex items-center justify-between p-2 text-left hover:bg-muted rounded-md transition-colors"
+                                        className="w-full flex items-center justify-between p-3 text-left hover:bg-muted rounded-none transition-colors"
                                     >
                                         <div>
                                             <div className="font-medium text-sm">{env.name}</div>
@@ -99,7 +99,7 @@ export default function EnvironmentDropdown({ onEnvironmentChange }: Environment
                         <div className="border-t pt-3">
                             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="w-full">
+                                    <Button variant="outline" size="sm" className="w-full rounded-none">
                                         <Plus className="h-4 w-4 mr-2" />
                                         Create New Environment
                                     </Button>

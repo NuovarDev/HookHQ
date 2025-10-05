@@ -25,10 +25,13 @@ import {
   MenuIcon,
   Server,
   History,
+  User,
+  LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import Image from "next/image";
 
 const handleSignOut = async (router: AppRouterInstance) => {
   await authClient.signOut({
@@ -104,12 +107,12 @@ export default function AppLayout({
           >
             <div className="flex h-full flex-col">
               <div className="flex h-16 items-center border-b border-border px-4">
-                {!collapsed && (
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 border border-border bg-primary" />
-                    <span className="font-mono text-lg font-semibold">HookHQ</span>
+                    <div className="h-8 w-8 bg-black flex items-center justify-center dark:border-border dark:border">
+                      <Image src="/logo.svg" alt="HookHQ" width={32} height={32} className="text-primary-foreground" />
+                    </div>
+                    {!collapsed && (<span className="ml-1 font-mono text-2xl font-semibold">HookHQ</span>)}
                   </div>
-                )}
               </div>
 
               {/* Navigation */}
@@ -138,12 +141,12 @@ export default function AppLayout({
               </nav>
 
               {/* Theme Toggle */}
-              <div className="border-t border-border p-4">
+              <div className="border-t border-border p-4 flex flex-col gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={toggleTheme}
-                  className={cn("w-full gap-2 bg-transparent", collapsed ? "justify-center px-0" : "justify-start")}
+                  className={cn("w-full gap-2 bg-transparent justify-center rounded-none", collapsed ? "px-0" : "")}
                   title={collapsed ? (theme === "light" ? "Dark Mode" : "Light Mode") : undefined}
                 >
                   {theme === "light" ? (
@@ -157,6 +160,16 @@ export default function AppLayout({
                       {!collapsed && "Light Mode"}
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSignOut(router)}
+                  className={cn("w-full gap-2 bg-transparent justify-center rounded-none", collapsed ? "px-0" : "")}
+                  title={collapsed ? "Sign Out" : undefined}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {!collapsed && "Sign Out"}
                 </Button>
               </div>
             </div>
@@ -175,7 +188,7 @@ export default function AppLayout({
             {/* Top bar */}
             <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-6">
               <div className="hidden lg:flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-9 w-9">
+                <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-9 w-9 rounded-none">
                   {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
                 </Button>
                 <div className="h-6 w-px bg-border" />
@@ -197,20 +210,19 @@ export default function AppLayout({
               </div>
 
               <div className="ml-auto flex items-center gap-2">
-                <Button variant="ghost" size="icon">
-                  <Settings className="h-5 w-5" />
-                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <div className="h-8 w-8 border border-border bg-muted" />
+                    <div className="h-8 w-8 border border-border dark:border-neutral-700 bg-muted flex items-center justify-center cursor-pointer">
+                      <User className="h-5 w-5" />
+                    </div>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className="mx-3 rounded-none">
                     {userNavigation(router).map((item) => item.onClick ? (
-                      <DropdownMenuItem key={item.name} onClick={item.onClick}>
+                      <DropdownMenuItem key={item.name} onClick={item.onClick} className="cursor-pointer rounded-none">
                         {item.name}
                       </DropdownMenuItem>
                     ) : (
-                      <DropdownMenuItem key={item.name}>
+                      <DropdownMenuItem key={item.name} className="cursor-pointer rounded-none">
                         <Link href={item.href}>
                           {item.name}
                         </Link>

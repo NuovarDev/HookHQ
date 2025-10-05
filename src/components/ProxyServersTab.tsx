@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users, LoaderCircle } from "lucide-react";
+import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users, LoaderCircle, Computer } from "lucide-react";
 import CopyableCode from "./CopyableCode";
 
 interface ProxyServer {
@@ -137,10 +137,10 @@ export default function ProxyServersTab() {
 
   const getProviderIcon = (provider?: string) => {
     switch (provider?.toLowerCase()) {
-      case "aws": return "☁️";
-      case "gcp": return "🌐";
-      case "azure": return "🔷";
-      default: return "🖥️";
+      // case "aws": return "☁️";
+      // case "gcp": return "🌐";
+      // case "azure": return "🔷";
+      default: return <Computer className="h-4 w-4" />;
     }
   };
 

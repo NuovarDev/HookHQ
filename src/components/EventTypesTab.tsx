@@ -248,7 +248,7 @@ export default function EventTypesTab() {
                                 <Label htmlFor="schema">JSON Schema (Optional)</Label>
                                 <textarea
                                     id="schema"
-                                    className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm"
+                                    className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm dark:bg-muted dark:text-white"
                                     value={formData.schema}
                                     onChange={(e) => setFormData(prev => ({ ...prev, schema: e.target.value }))}
                                     placeholder={`{

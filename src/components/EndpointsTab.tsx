@@ -488,7 +488,7 @@ export default function EndpointsTab() {
                                 <div className="space-y-3">
                                     <div>
                                         <h4 className="text-sm font-medium mb-1">URL</h4>
-                                        <div className="text-sm text-gray-600 break-all">
+                                        <div className="text-sm text-muted-foreground break-all">
                                             {endpoint.url}
                                         </div>
                                     </div>
@@ -496,8 +496,8 @@ export default function EndpointsTab() {
                                     <div className="grid grid-cols-1 gap-2 text-sm">
                                         <div className="flex items-center gap-2">
                                             <Hash className="h-3 w-3 text-gray-400" />
-                                            <span className="text-gray-500">Endpoint ID:</span>
-                                            <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1">
+                                            <span className="text-muted-foreground">Endpoint ID:</span>
+                                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
                                                 {endpoint.id}
                                                 <Button
                                                     variant="ghost"
@@ -516,8 +516,8 @@ export default function EndpointsTab() {
                                         {endpoint.proxyGroupId && (
                                             <div className="flex items-center gap-2">
                                                 <Users className="h-3 w-3 text-gray-400" />
-                                                <span className="text-gray-500">Proxy Group ID:</span>
-                                                <span className="font-mono text-xs bg-blue-100 px-2 py-1 rounded flex items-center gap-1">
+                                                <span className="text-muted-foreground">Proxy Group ID:</span>
+                                                <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded flex items-center gap-1">
                                                     {endpoint.proxyGroupId}
                                                     <Button
                                                         variant="ghost"
@@ -556,11 +556,11 @@ export default function EndpointsTab() {
 
                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                         <div>
-                                            <span className="text-gray-500">Max Attempts:</span>
+                                            <span className="text-muted-foreground">Max Attempts:</span>
                                             <span className="ml-1">{endpoint.maxAttempts}</span>
                                         </div>
                                         <div>
-                                            <span className="text-gray-500">Timeout:</span>
+                                            <span className="text-muted-foreground">Timeout:</span>
                                             <span className="ml-1">{endpoint.timeoutMs}ms</span>
                                         </div>
                                     </div>

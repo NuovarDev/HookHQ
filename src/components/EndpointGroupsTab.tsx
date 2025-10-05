@@ -387,7 +387,7 @@ export default function EndpointGroupsTab() {
                                     <div className="flex items-center gap-2 text-sm">
                                         <Hash className="h-3 w-3 text-gray-400" />
                                         <span className="text-gray-500">Group ID:</span>
-                                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded flex items-center gap-1">
+                                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
                                             {group.id}
                                             <Button
                                                 variant="ghost"

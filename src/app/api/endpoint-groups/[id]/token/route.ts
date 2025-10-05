@@ -25,7 +25,7 @@ interface PortalTokenPayload {
  *     description: |
  *       Generate a portal URL/token for end user endpoint management. This generates a temporary link with full access to a specific endpoint group.
  * 
- *       The portal can be themed by passing the `theme` query parameter to the portal URL returned in the response. Passing `theme=dark` or `theme=light` will set the theme and hide the theme toggle button. Passing `theme=default` will allow the user to toggle the theme.
+ *       The portal can be themed by passing the `theme` query parameter to the portal URL returned in the response. Passing `theme=dark` or `theme=light` will set the theme and hide the theme toggle button. Passing `theme=default` will allow the user to toggle the theme (and will resest any previous restrictions).
  * 
  *       When embedding the portal in an iframe, the `embed` query parameter can be passed to the portal URL returned in the response. Passing `embed=true` will render a limited version of the portal optimized for embedding.
  * 
