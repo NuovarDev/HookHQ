@@ -17,7 +17,8 @@
       "binding": "DATABASE",
       "database_name": "webhooks-db",
       "database_id": "cbac2463-e4c9-4455-8a46-99b0a284ab41",
-      "migrations_dir": "drizzle"
+      "migrations_dir": "drizzle",
+      "remote": true
     }
   ],
   "queues": {

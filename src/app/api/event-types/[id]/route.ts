@@ -107,14 +107,14 @@ import { authenticateApiRequest } from "@/lib/apiHelpers";
  *     x-speakeasy-group: "eventTypes"
  *     x-speakeasy-name-override: "list"
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const authResult = await authenticateApiRequest(request, { eventTypes: ["read"] });
     
     if (!authResult.success) {
         return authResult.response;
     }
 
-    const eventTypeId = params.id;
+    const { id: eventTypeId } = await params;
 
     if (!eventTypeId) {
         return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { eventTypes: ["delete"] });
@@ -252,7 +252,7 @@ export async function DELETE(
             return authResult.response;
         }
 
-        const eventTypeId = params.id;
+        const { id: eventTypeId } = await params;
 
         if (!eventTypeId) {
             return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
@@ -431,7 +431,7 @@ export async function DELETE(
  */
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { eventTypes: ["update"] });
@@ -439,14 +439,9 @@ export async function PATCH(
         if (!authResult.success) {
             return authResult.response;
         }
+        const { body } = authResult;
 
-        const eventTypeId = params.id;
-        const body = await request.json() as {
-            name?: string;
-            description?: string;
-            schema?: any;
-            enabled?: boolean;
-        };
+        const { id: eventTypeId } = await params;
 
         if (!eventTypeId) {
             return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });

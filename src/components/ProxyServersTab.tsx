@@ -289,7 +289,7 @@ export default function ProxyServersTab() {
       {loading && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">Loading...</h3>
             </CardContent>
         </Card>

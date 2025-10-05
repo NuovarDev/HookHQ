@@ -5,7 +5,7 @@
   "scripts": {
     "clean": "rm -rf .open-next && rm -rf .wrangler && rm -rf node_modules && rm -rf .next",
     "clean-deploy": "pnpm clean && pnpm i && pnpm run deploy",
-    "dev": "next dev",
+    "dev": "wrangler d1 migrations apply DATABASE --local && next dev",
     "build": "next build",
     "start": "next start",
     "format": "prettier --write .",
@@ -53,6 +53,7 @@
     "next-swagger-doc": "0.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "recharts": "^3.2.1",
     "tailwind-merge": "^3.2.0"
   },
   "devDependencies": {
@@ -82,7 +83,7 @@
       "AUTH_SECRET": {
         "description": "Generate a random string using `openssl rand -base64 32`."
       },
-      "API_DOCS_ENABLED": {
+      "NEXT_PUBLIC_API_DOCS_ENABLED": {
         "description": "Whether to enable public API docs at /api and /api/auth/reference"
       }
     }

@@ -44,8 +44,8 @@ export default function PortalLayout({
   };
 
   const themeClasses = currentTheme === "dark" 
-    ? "bg-gray-900 text-white border-gray-700" 
-    : "bg-white text-gray-900 border-gray-200";
+    ? "text-white border-gray-700" 
+    : "text-gray-900 border-gray-200";
 
   const headerClasses = currentTheme === "dark"
     ? "border-b border-gray-700 bg-gray-900"

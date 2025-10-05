@@ -1,6 +1,5 @@
 "use client";
 
-import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import authClient from "@/auth/authClient"; // Assuming default export from your authClient setup
 import { useRouter } from "next/navigation";
 import { startTransition } from 'react';
@@ -19,13 +18,11 @@ import {
   Webhook,
   BarChart3,
   Settings,
-  ChevronDown,
   Moon,
   Sun,
   PanelLeftClose,
   PanelLeft,
   MenuIcon,
-  XIcon,
   Server,
   History,
 } from "lucide-react"
@@ -69,10 +66,6 @@ const userNavigation = (router: AppRouterInstance) => [
   { name: 'API Keys', href: '/dashboard/api-keys', current: false },
   { name: 'Sign out', href: '#', onClick: () => handleSignOut(router) },
 ]
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ')
-}
 
 export default function AppLayout({
   children,

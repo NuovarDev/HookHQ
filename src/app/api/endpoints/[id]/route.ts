@@ -134,14 +134,14 @@ import { NextRequest, NextResponse } from "next/server";
  *                 error: "Internal server error"
  *     x-speakeasy-name-override: "list"
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const authResult = await authenticateApiRequest(request, { endpoints: ["read"] });
     
     if (!authResult.success) {
         return authResult.response;
     }
 
-    const endpointId = params.id;
+    const { id: endpointId } = await params;
 
     if (!endpointId) {
         return NextResponse.json({ error: "Endpoint ID is required" }, { status: 400 });
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { endpoints: ["delete"] });
@@ -284,7 +284,7 @@ export async function DELETE(
             return authResult.response;
         }
 
-        const endpointId = params.id;
+        const { id: endpointId } = await params;
 
         if (!endpointId) {
             return NextResponse.json({ error: "Endpoint ID is required" }, { status: 400 });
@@ -450,7 +450,7 @@ export async function DELETE(
  */
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { endpoints: ["update"] });
@@ -459,18 +459,8 @@ export async function PATCH(
             return authResult.response;
         }
 
-        const endpointId = params.id;
-        const body = await request.json() as {
-            name?: string;
-            description?: string;
-            url?: string;
-            isActive?: boolean;
-            retryPolicy?: string;
-            maxRetries?: number;
-            timeoutMs?: number;
-            headers?: Record<string, string>;
-            proxyGroupId?: string;
-        };
+        const { id: endpointId } = await params;
+        const { body } = authResult;
 
         if (!endpointId) {
             return NextResponse.json({ error: "Endpoint ID is required" }, { status: 400 });

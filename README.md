@@ -56,6 +56,6 @@ To deploy `workers-webhooks` manually, follow the steps below.
 
 The API documentation is available at `/api` and has tabs for both the webhooks and auth APIs.
 
-To disable the API documentation, set the `API_DOCS_ENABLED` environment variable to `false`.
+To disable the API documentation, set the `NEXT_PUBLIC_API_DOCS_ENABLED` environment variable to `false`.
 
 The webhooks docs are generated based on the JSDoc comments in the `src/app/api` folder. To update the docs, run `npm run docs:generate`.

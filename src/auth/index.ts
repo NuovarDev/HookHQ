@@ -26,7 +26,7 @@ async function authBuilder() {
                     enabled: true,
                 },
                 plugins: [
-                    ...process.env.API_DOCS_ENABLED === 'true' ? [openAPI()] : [],
+                    ...process.env.NEXT_PUBLIC_API_DOCS_ENABLED === 'true' ? [openAPI()] : [],
                     apiKey({
                         enableMetadata: true,
                         defaultPrefix: 'wh_',

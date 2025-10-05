@@ -113,14 +113,14 @@ import { NextRequest, NextResponse } from "next/server";
  *     x-speakeasy-group: "endpointGroups"
  *     x-speakeasy-name-override: "list"
  */
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const authResult = await authenticateApiRequest(request, { endpointGroups: ["read"] });
     
     if (!authResult.success) {
         return authResult.response;
     }
 
-    const groupId = params.id;
+    const { id: groupId } = await params;
 
     if (!groupId) {
         return NextResponse.json({ error: "Group ID is required" }, { status: 400 });
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { endpointGroups: ["delete"] });
@@ -258,7 +258,7 @@ export async function DELETE(
             return authResult.response;
         }
 
-        const groupId = params.id;
+        const { id: groupId } = await params;
 
         if (!groupId) {
             return NextResponse.json({ error: "Group ID is required" }, { status: 400 });
@@ -410,7 +410,7 @@ export async function DELETE(
  */
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authResult = await authenticateApiRequest(request, { endpointGroups: ["update"] });
@@ -419,13 +419,8 @@ export async function PATCH(
             return authResult.response;
         }
 
-        const groupId = params.id;
-        const body = await request.json() as {
-            name?: string;
-            description?: string;
-            endpointIds?: string[];
-            isActive?: boolean;
-        };
+        const { id: groupId } = await params;
+        const { body } = authResult;
 
         if (!groupId) {
             return NextResponse.json({ error: "Group ID is required" }, { status: 400 });

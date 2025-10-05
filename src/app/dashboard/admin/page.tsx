@@ -9,10 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export default function AdminPage() {
   return (
     <Tabs defaultValue="config">
-      <TabsList className="mb-2 rounded-none">
-        <TabsTrigger value="config"><Settings className="h-4 w-4" /> Server Config</TabsTrigger>
-        <TabsTrigger value="users"><Users className="h-4 w-4" /> User Management</TabsTrigger>
-        <TabsTrigger value="environments"><Globe className="h-4 w-4" /> Environments</TabsTrigger>
+      <TabsList className="mb-2 rounded-none w-full">
+        <TabsTrigger value="config" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Settings className="h-4 w-4" /> Server Config</TabsTrigger>
+        <TabsTrigger value="users" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Users className="h-4 w-4" /> User Management</TabsTrigger>
+        <TabsTrigger value="environments" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Globe className="h-4 w-4" /> Environments</TabsTrigger>
       </TabsList>
       <TabsContent value="config">
         <AdminConfigTab />

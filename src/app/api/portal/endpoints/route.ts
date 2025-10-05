@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { endpoints, eventTypes, endpointGroups } from "@/db/webhooks.schema";
-import { eq, and } from "drizzle-orm";
+import { endpoints, eventTypes, endpointGroups, webhookMessages, webhookAttempts } from "@/db/webhooks.schema";
+import { eq, and, inArray, gte, sql } from "drizzle-orm";
 import { authenticatePortalRequest, isEventTypeAllowed } from "@/lib/portalAuth";
 
 export async function GET(request: NextRequest) {
@@ -42,6 +42,44 @@ export async function GET(request: NextRequest) {
       groupEndpointIds.includes(endpoint.id)
     );
 
+    // Get latest attempt per messageId using SQL window function
+    const rankedAttemptsSubquery = db
+      .select({
+        messageId: webhookAttempts.messageId,
+        endpointId: webhookAttempts.endpointId,
+        status: webhookAttempts.status,
+        attemptNumber: webhookAttempts.attemptNumber,
+        attemptedAt: webhookAttempts.attemptedAt,
+        rowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${webhookAttempts.messageId} ORDER BY ${webhookAttempts.attemptNumber} DESC, ${webhookAttempts.attemptedAt} DESC)`.as('row_number'),
+      })
+      .from(webhookAttempts)
+      .where(
+        and(
+          inArray(webhookAttempts.endpointId, groupEndpointIds),
+          gte(webhookAttempts.attemptedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+        )
+      )
+      .as('ranked_attempts');
+
+    const latestAttempts = await db
+      .select({
+        messageId: rankedAttemptsSubquery.messageId,
+        endpointId: rankedAttemptsSubquery.endpointId,
+        status: rankedAttemptsSubquery.status,
+        attemptNumber: rankedAttemptsSubquery.attemptNumber,
+        attemptedAt: rankedAttemptsSubquery.attemptedAt,
+      })
+      .from(rankedAttemptsSubquery)
+      .where(sql`${rankedAttemptsSubquery.rowNumber} = 1`) as Array<{
+        messageId: string;
+        endpointId: string;
+        status: string;
+        attemptNumber: number;
+        attemptedAt: Date;
+      }>;
+
+    console.log(latestAttempts);
+
     return NextResponse.json({
       endpoints: groupEndpoints.map(endpoint => ({
         id: endpoint.id,
@@ -50,7 +88,16 @@ export async function GET(request: NextRequest) {
         description: endpoint.description,
         isActive: endpoint.isActive,
         createdAt: endpoint.createdAt.toISOString(),
-        updatedAt: endpoint.updatedAt.toISOString()
+        updatedAt: endpoint.updatedAt.toISOString(),
+        topics: endpoint.topics ? JSON.parse(endpoint.topics) : [],
+        metrics24h: latestAttempts.filter(metric => 
+          metric.endpointId === endpoint.id &&
+          metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        ),
+        metrics7d: latestAttempts.filter(metric => 
+          metric.endpointId === endpoint.id &&
+          metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        )
       }))
     });
 

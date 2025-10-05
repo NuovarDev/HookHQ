@@ -104,37 +104,37 @@ export async function GET(request: NextRequest) {
     
     const { environmentId } = authResult;
 
-        // Parse query parameters
-        const { searchParams } = new URL(request.url);
-        const enabled = searchParams.get("enabled");
+    // Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const enabled = searchParams.get("enabled");
 
-        // Build query conditions
-        const conditions = [eq(endpointGroups.environmentId, environmentId)];
-        
-        // Add enabled filter if provided
-        if (enabled !== null) {
-            conditions.push(eq(endpointGroups.isActive, enabled === "true"));
-        }
+    // Build query conditions
+    const conditions = [eq(endpointGroups.environmentId, environmentId)];
+    
+    // Add enabled filter if provided
+    if (enabled !== null) {
+        conditions.push(eq(endpointGroups.isActive, enabled === "true"));
+    }
 
-        // Execute query
-        const db = await getDb();
-        const groupList = await db
-            .select()
-            .from(endpointGroups)
-            .where(and(...conditions))
-            .orderBy(endpointGroups.createdAt);
+    // Execute query
+    const db = await getDb();
+    const groupList = await db
+        .select()
+        .from(endpointGroups)
+        .where(and(...conditions))
+        .orderBy(endpointGroups.createdAt);
 
-        // Format the response
-        const formattedGroups = groupList.map(group => ({
-            id: group.id,
-            environmentId: group.environmentId,
-            name: group.name,
-            description: group.description,
-            endpointIds: JSON.parse(group.endpointIds),
-            enabled: group.isActive,
-            createdAt: group.createdAt.toISOString(),
-            updatedAt: group.updatedAt.toISOString()
-        }));
+    // Format the response
+    const formattedGroups = groupList.map(group => ({
+        id: group.id,
+        environmentId: group.environmentId,
+        name: group.name,
+        description: group.description,
+        endpointIds: JSON.parse(group.endpointIds),
+        enabled: group.isActive,
+        createdAt: group.createdAt.toISOString(),
+        updatedAt: group.updatedAt.toISOString()
+    }));
 
     return NextResponse.json({ endpointGroups: formattedGroups });
 }
@@ -267,46 +267,46 @@ export async function POST(request: NextRequest) {
     
     const { environmentId, body } = authResult;
 
-        const { 
-            name, 
-            description, 
-            endpointIds = [], 
-            enabled = true 
-        } = body as {
-            name: string;
-            description?: string;
-            endpointIds?: string[];
-            enabled?: boolean;
-        };
+    const { 
+        name, 
+        description, 
+        endpointIds = [], 
+        enabled = true 
+    } = body as {
+        name: string;
+        description?: string;
+        endpointIds?: string[];
+        enabled?: boolean;
+    };
 
-        if (!name) {
-            return NextResponse.json({ error: "Name is required" }, { status: 400 });
-        }
+    if (!name) {
+        return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
 
-        // Generate endpoint group ID with prefix (grp_{environmentId}_{random})
-        const groupId = `grp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
-        const now = new Date();
+    // Generate endpoint group ID with prefix (grp_{environmentId}_{random})
+    const groupId = `grp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+    const now = new Date();
 
-        const db = await getDb();
-        await db.insert(endpointGroups).values({
-            id: groupId,
-            environmentId,
-            name,
-            description,
-            endpointIds: JSON.stringify(endpointIds),
-            isActive: enabled,
-            createdAt: now,
-            updatedAt: now,
-        });
+    const db = await getDb();
+    await db.insert(endpointGroups).values({
+        id: groupId,
+        environmentId,
+        name,
+        description,
+        endpointIds: JSON.stringify(endpointIds),
+        isActive: enabled,
+        createdAt: now,
+        updatedAt: now,
+    });
 
-        return NextResponse.json({
-            id: groupId,
-            environmentId,
-            name,
-            description,
-            endpointIds,
-            enabled,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-        });
+    return NextResponse.json({
+        id: groupId,
+        environmentId,
+        name,
+        description,
+        endpointIds,
+        enabled,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+    });
 }

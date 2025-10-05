@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
         // Validate permissions are valid ApiKeyPermission types
         const validPermissions = Object.keys(permissions).every(p => 
-            p.startsWith("endpoints") || p.startsWith("messages")
+            p.startsWith("endpoints") || p.startsWith("messages") || p.startsWith("endpointGroups") || p.startsWith("eventTypes")
         ) && Object.values(permissions).every(p => p.every((op: string) => ["create", "read", "update", "delete"].includes(op)));
 
         if (Object.keys(permissions).length === 0 || !validPermissions) {

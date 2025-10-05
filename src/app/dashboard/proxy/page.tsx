@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export default function ProxyPage() {
   return (
     <Tabs defaultValue="proxy-servers">
-      <TabsList className="mb-2 rounded-none">
-        <TabsTrigger value="proxy-servers"><Server className="h-4 w-4" /> Proxy Servers</TabsTrigger>
-        <TabsTrigger value="proxy-groups"><Users className="h-4 w-4" /> Proxy Groups</TabsTrigger>
+      <TabsList className="mb-2 rounded-none w-full">
+        <TabsTrigger value="proxy-servers" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Server className="h-4 w-4" /> Proxy Servers</TabsTrigger>
+        <TabsTrigger value="proxy-groups" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Users className="h-4 w-4" /> Proxy Groups</TabsTrigger>
       </TabsList>
       <TabsContent value="proxy-servers">
         <ProxyServersTab />

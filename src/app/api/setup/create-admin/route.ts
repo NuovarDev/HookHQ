@@ -71,61 +71,12 @@ export async function POST(request: NextRequest) {
         const newUser = result.user;
         console.log(`✅ First admin user created: ${email}`);
 
-        // Check if environments exist, if not create default environment
-        const existingEnvironments = await db
-            .select({ id: environments.id })
-            .from(environments)
-            .limit(1);
-
-        let environmentId: string;
-
-        const now = new Date();
-
-        if (existingEnvironments.length === 0) {
-            // Create default environment
-            environmentId = generateEnvironmentId();
-
-            await db.insert(environments).values({
-                id: environmentId,
-                name: "Production",
-                description: "Default production environment",
-                isDefault: true,
-                createdAt: now,
-                updatedAt: now,
-            });
-
-            console.log(`✅ Default environment created: ${environmentId}`);
-        } else {
-            // Use existing environment
-            environmentId = existingEnvironments[0].id;
-            console.log(`✅ Using existing environment: ${environmentId}`);
-        }
-
-        // Set user's last environment
-        await db
-            .update(users)
-            .set({ lastEnvironment: environmentId })
-            .where(eq(users.id, newUser.id));
-
-        console.log(`✅ Admin user setup completed successfully`);
-
-        // Get environment name for response
-        const environment = await db
-            .select({ name: environments.name })
-            .from(environments)
-            .where(eq(environments.id, environmentId))
-            .limit(1);
-
         return NextResponse.json({
             success: true,
             user: {
                 id: newUser.id,
                 email: newUser.email,
                 name: newUser.name,
-            },
-            environment: {
-                id: environmentId,
-                name: environment[0]?.name || "Unknown",
             }
         });
 

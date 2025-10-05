@@ -17,18 +17,19 @@ interface PortalTokenPayload {
 
 /**
  * @swagger
- * /endpoint-groups/{id}/portal:
+ * /endpoint-groups/{id}/token:
  *   post:
  *     summary: Generate Portal Token
  *     x-speakeasy-group: "endpointGroups"
  *     x-speakeasy-name-override: "portal"
  *     description: |
- *       Generate a portal URL/token for end user endpoint management. This generates a 24-hour link with full access to a specific endpoint group.
+ *       Generate a portal URL/token for end user endpoint management. This generates a temporary link with full access to a specific endpoint group.
  * 
- *       The portal can be themed by passing the `?theme=dark` query parameter to the portal URL returned in the response. It can also be embedded in an iframe.
+ *       The portal can be themed by passing the `theme` query parameter to the portal URL returned in the response. Passing `theme=dark` or `theme=light` will set the theme and hide the theme toggle button. Passing `theme=default` will allow the user to toggle the theme.
  * 
- *       API key requires the `portal:create` permission to access this endpoint.
+ *       When embedding the portal in an iframe, the `embed` query parameter can be passed to the portal URL returned in the response. Passing `embed=true` will render a limited version of the portal optimized for embedding.
  * 
+ *       API key requires the `endpoints:create`, `endpoints:read`, `endpoints:update`, and `endpoints:delete` permissions to access this endpoint.
  *     tags:
  *       - Endpoint Groups
  *     parameters:
@@ -146,9 +147,8 @@ interface PortalTokenPayload {
  *               $ref: "#/components/responses/ErrorResponse"
  *             example:
  *               error: "Internal server error"
- *         description: Internal server error
  */
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authResult = await authenticateApiRequest(request, { endpoints: ["create", "read", "update", "delete"] });
     
   if (!authResult.success) {
@@ -156,7 +156,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   }
     
   try {
-    const body = await request.json();
+    const { body } = authResult;
+    const { id: endpointGroupId } = await params;
     const {
       allowedEventTypes, 
       applicationName, 
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const endpointGroup = await db
       .select()
       .from(endpointGroups)
-      .where(eq(endpointGroups.id, params.id))
+      .where(eq(endpointGroups.id, endpointGroupId))
       .limit(1);
 
     if (endpointGroup.length === 0) {
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Create JWT payload
     const payload: PortalTokenPayload = {
-      endpointGroupId: params.id,
+      endpointGroupId: endpointGroupId,
       environmentId: endpointGroup[0].environmentId,
       allowedEventTypes,
       applicationName,
@@ -198,7 +199,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     });
 
     // Create portal URL with token
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || new URL(request.url).origin;
     const portalUrl = `${baseUrl}/portal?token=${token}`;
 
     return NextResponse.json({

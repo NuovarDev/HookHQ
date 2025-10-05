@@ -18,6 +18,7 @@ export const endpoints = sqliteTable("endpoints", {
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),
+    topics: text("topics").default("[]"), // JSON array of topics
 });
 
 // Webhook endpoint groups table

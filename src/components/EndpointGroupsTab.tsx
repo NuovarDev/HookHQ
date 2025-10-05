@@ -328,7 +328,7 @@ export default function EndpointGroupsTab() {
                 </Card>
             )}
 
-            {!loading && !error && (endpointGroups.length === 0 ? (
+            {!loading && !error && (endpointGroups?.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-8">
                         <Users className="h-12 w-12 text-muted-foreground mb-4" />
@@ -410,7 +410,7 @@ export default function EndpointGroupsTab() {
                                                 {group.enabled ? "Enabled" : "Disabled"}
                                             </Badge>
                                             <Badge variant="outline">
-                                                {group.endpointIds.length} endpoint{group.endpointIds.length !== 1 ? 's' : ''}
+                                                {group.endpointIds?.length ?? 0} endpoint{group.endpointIds?.length !== 1 ? 's' : ''}
                                             </Badge>
                                         </div>
                                         <Button
@@ -422,7 +422,7 @@ export default function EndpointGroupsTab() {
                                         </Button>
                                     </div>
 
-                                    {group.endpointIds.length > 0 && (
+                                    {group.endpointIds?.length > 0 && (
                                         <div>
                                             <h4 className="text-sm font-medium mb-2">Endpoints</h4>
                                             <div className="space-y-1">
@@ -432,9 +432,9 @@ export default function EndpointGroupsTab() {
                                                         <span className="truncate">{getEndpointName(endpointId)}</span>
                                                     </div>
                                                 ))}
-                                                {group.endpointIds.length > 3 && (
+                                                {group.endpointIds?.length > 3 && (
                                                     <div className="text-xs text-gray-500">
-                                                        +{group.endpointIds.length - 3} more
+                                                        +{group.endpointIds?.length - 3} more
                                                     </div>
                                                 )}
                                             </div>

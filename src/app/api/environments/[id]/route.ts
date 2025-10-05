@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 // DELETE /api/environments/[id] - Delete an environment
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const authInstance = await initAuth();
@@ -28,7 +28,7 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const environmentId = params.id;
+        const { id: environmentId } = await params;
 
         if (!environmentId) {
             return NextResponse.json({ error: "Environment ID is required" }, { status: 400 });

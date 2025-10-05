@@ -9,10 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export default function WebhooksPage() {
   return (
     <Tabs defaultValue="endpoints">
-      <TabsList className="mb-2 rounded-none">
-        <TabsTrigger value="endpoints"><Globe className="h-4 w-4" /> Endpoints</TabsTrigger>
-        <TabsTrigger value="endpoint-groups"><Users className="h-4 w-4" /> Endpoint Groups</TabsTrigger>
-        <TabsTrigger value="event-types"><Zap className="h-4 w-4" /> Event Types</TabsTrigger>
+      <TabsList className="mb-2 rounded-none w-full">
+        <TabsTrigger value="endpoints" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Globe className="h-4 w-4" /> Endpoints</TabsTrigger>
+        <TabsTrigger value="endpoint-groups" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Users className="h-4 w-4" /> Endpoint Groups</TabsTrigger>
+        <TabsTrigger value="event-types" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Zap className="h-4 w-4" /> Event Types</TabsTrigger>
       </TabsList>
       <TabsContent value="endpoints">
         <EndpointsTab />
