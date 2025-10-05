@@ -3,6 +3,7 @@ import { endpointGroups } from "@/db/webhooks.schema";
 import { authenticateApiRequest } from "@/lib/apiHelpers";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateEndpointGroupCache } from "@/lib/cacheUtils";
 
 /**
  * @swagger
@@ -285,6 +286,9 @@ export async function DELETE(
             .delete(endpointGroups)
             .where(eq(endpointGroups.id, groupId));
 
+        // Invalidate cache for this endpoint group
+        await invalidateEndpointGroupCache(groupId);
+
         return NextResponse.json({ 
             message: "Endpoint group deleted successfully",
             deletedGroup: {
@@ -454,6 +458,9 @@ export async function PATCH(
             .update(endpointGroups)
             .set(updateData)
             .where(eq(endpointGroups.id, groupId));
+
+        // Invalidate cache for this endpoint group
+        await invalidateEndpointGroupCache(groupId);
 
         // Return updated endpoint group
         const updatedGroup = await db

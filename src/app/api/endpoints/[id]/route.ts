@@ -2,9 +2,11 @@ import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { endpoints } from "@/db/webhooks.schema";
 import { authenticateApiRequest } from "@/lib/apiHelpers";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateEndpointCache } from "@/lib/cacheUtils";
 
 /**
  * @swagger
@@ -311,6 +313,9 @@ export async function DELETE(
             .delete(endpoints)
             .where(eq(endpoints.id, endpointId));
 
+        // Invalidate cache for this endpoint
+        await invalidateEndpointCache(endpointId);
+
         return NextResponse.json({ 
             message: "Endpoint deleted successfully",
             deletedEndpoint: {
@@ -499,6 +504,9 @@ export async function PATCH(
             .update(endpoints)
             .set(updateData)
             .where(eq(endpoints.id, endpointId));
+
+        // Invalidate cache for this endpoint
+        await invalidateEndpointCache(endpointId);
 
         // Return updated endpoint
         const updatedEndpoint = await db

@@ -13,12 +13,15 @@ import {
   AlertTriangle,
   CheckCircle,
   Settings,
+  Cloud,
+  HelpCircle,
 } from "lucide-react";
 
 interface ServerConfig {
   id: string;
   cloudflareApiKey?: string;
   cloudflareAccountId?: string;
+  cloudflareQueueId?: string;
   logRetentionDays: number;
   payloadRetentionDays: number;
   defaultMaxRetries: number;
@@ -29,17 +32,25 @@ interface ServerConfig {
   updatedAt: string;
 }
 
-export default function AdminConfigTab() {
+interface AdminConfigTabProps {
+  onConfigUpdate?: () => void;
+}
+
+export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) {
   const [config, setConfig] = useState<ServerConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showApiTokenHelp, setShowApiTokenHelp] = useState(false);
+  const [showAccountIdHelp, setShowAccountIdHelp] = useState(false);
+  const [showQueueIdHelp, setShowQueueIdHelp] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     cloudflareApiKey: "",
     cloudflareAccountId: "",
+    cloudflareQueueId: "",
     logRetentionDays: 30,
     payloadRetentionDays: 7,
     defaultMaxRetries: 3,
@@ -69,6 +80,7 @@ export default function AdminConfigTab() {
         setFormData({
           cloudflareApiKey: data.config.cloudflareApiKey || "",
           cloudflareAccountId: data.config.cloudflareAccountId || "",
+          cloudflareQueueId: data.config.cloudflareQueueId || "",
           logRetentionDays: data.config.logRetentionDays || 30,
           payloadRetentionDays: data.config.payloadRetentionDays || 7,
           defaultMaxRetries: data.config.defaultMaxRetries || 3,
@@ -103,6 +115,11 @@ export default function AdminConfigTab() {
       const updatedConfig = await response.json() as { config: ServerConfig };
       setConfig(updatedConfig.config);
       setSuccess("Server configuration saved successfully!");
+      
+      // Notify parent component of config update
+      if (onConfigUpdate) {
+        onConfigUpdate();
+      }
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
@@ -142,6 +159,141 @@ export default function AdminConfigTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Cloudflare Configuration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Cloud className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Cloudflare Configuration</CardTitle>
+          </div>
+          <CardDescription>
+            Configure Cloudflare credentials for queue metrics and monitoring
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Label htmlFor="cloudflareApiKey">Cloudflare API Token</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowApiTokenHelp(!showApiTokenHelp)}
+              className="h-6 w-6 p-0"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </div>
+          <Input
+            id="cloudflareApiKey"
+            type="password"
+            placeholder="Enter your Cloudflare API token"
+            value={formData.cloudflareApiKey}
+            onChange={(e) => setFormData({ ...formData, cloudflareApiKey: e.target.value })}
+          />
+          <p className="text-sm text-muted-foreground mt-1">
+            Required for accessing Cloudflare Queue metrics API
+          </p>
+          {showApiTokenHelp && (
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-2">
+              <p className="font-medium">How to create an API token:</p>
+              <ol className="list-decimal list-inside ml-2 space-y-1">
+                <li>Go to your Cloudflare dashboard → My Profile → API Tokens</li>
+                <li>Click "Create Token" → "Get started" under Custom token</li>
+                <li>Set permissions: <span className="font-mono bg-background px-1 rounded">Account → Account Analytics → Read</span></li>
+                <li>Set Account Resources to "Include - All accounts" or your specific account</li>
+                <li>Create token and copy it securely</li>
+              </ol>
+              <p className="text-xs">
+                <a href="https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  Detailed API token instructions →
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Label htmlFor="cloudflareAccountId">Cloudflare Account ID</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAccountIdHelp(!showAccountIdHelp)}
+              className="h-6 w-6 p-0"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </div>
+          <Input
+            id="cloudflareAccountId"
+            type="text"
+            placeholder="Enter your Cloudflare Account ID"
+            value={formData.cloudflareAccountId}
+            onChange={(e) => setFormData({ ...formData, cloudflareAccountId: e.target.value })}
+          />
+          <p className="text-sm text-muted-foreground mt-1">
+            Your Cloudflare account identifier
+          </p>
+          {showAccountIdHelp && (
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-2">
+              <p className="font-medium">How to find your Account ID:</p>
+              <ol className="list-decimal list-inside ml-2 space-y-1">
+                <li>Go to your Cloudflare dashboard → Account Home</li>
+                <li>Click the menu button next to your account name</li>
+                <li>Select "Copy account ID"</li>
+              </ol>
+              <p className="text-xs">
+                <a href="https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  Detailed instructions →
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Label htmlFor="cloudflareQueueId">Cloudflare Queue ID</Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowQueueIdHelp(!showQueueIdHelp)}
+              className="h-6 w-6 p-0"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </div>
+          <Input
+            id="cloudflareQueueId"
+            type="text"
+            placeholder="Enter your Cloudflare Queue ID"
+            value={formData.cloudflareQueueId}
+            onChange={(e) => setFormData({ ...formData, cloudflareQueueId: e.target.value })}
+          />
+          <p className="text-sm text-muted-foreground mt-1">
+            The specific queue to monitor for metrics
+          </p>
+          {showQueueIdHelp && (
+            <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-2">
+              <p className="font-medium">How to find your Queue ID:</p>
+              <ol className="list-decimal list-inside ml-2 space-y-1">
+                <li>Go to your Cloudflare dashboard → 
+                  <a href="https://dash.cloudflare.com/?to=/:account/workers/queues" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline ml-1">
+                    Queues
+                  </a>
+                </li>
+                <li>Find the queue that matches the one in your <span className="font-mono bg-background px-1 rounded">wrangler.jsonc</span> file</li>
+                <li>Copy the Queue ID from the queue details</li>
+              </ol>
+            </div>
+          )}
+        </div>
+        </CardContent>
+      </Card>
 
       {/* Default Settings */}
       <Card>

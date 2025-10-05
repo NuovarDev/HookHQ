@@ -11,3 +11,22 @@ export const environments = sqliteTable("environments", {
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
 });
+
+export const serverConfig = sqliteTable("server_config", {
+    id: text("id").primaryKey().default("default"),
+    cloudflareApiKey: text("cloudflare_api_key"),
+    cloudflareAccountId: text("cloudflare_account_id"),
+    cloudflareQueueId: text("cloudflare_queue_id"),
+    logRetentionDays: integer("log_retention_days").default(30).notNull(),
+    payloadRetentionDays: integer("payload_retention_days").default(7).notNull(),
+    defaultMaxRetries: integer("default_max_retries").default(3).notNull(),
+    defaultTimeoutMs: integer("default_timeout_ms").default(30000).notNull(),
+    defaultRetryPolicy: text("default_retry_policy").default("retry").notNull(),
+    defaultBackoffStrategy: text("default_backoff_strategy").default("exponential").notNull(),
+    queueManagementEnabled: integer("queue_management_enabled", { mode: "boolean" }).default(false).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+        .defaultNow()
+        .$onUpdate(() => /* @__PURE__ */ new Date())
+        .notNull(),
+});

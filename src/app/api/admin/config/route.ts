@@ -2,6 +2,9 @@ import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { invalidateGlobalRetryConfigCache } from "@/lib/retryUtils";
+import { serverConfig } from "@/db/environments.schema";
+import { eq } from "drizzle-orm";
 
 // GET /api/admin/config - Get server configuration
 export async function GET() {
@@ -13,29 +16,40 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // TODO: Check if user is admin
-        // For now, we'll allow any authenticated user to access admin config
-        // In production, you should implement proper admin role checking
+        if (session?.user?.role !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         const db = await getDb();
         
-        // Get server configuration (we'll create this table later)
-        // For now, return default configuration
-        const defaultConfig = {
-            id: "default",
-            cloudflareApiKey: null,
-            cloudflareAccountId: null,
-            logRetentionDays: 30,
-            payloadRetentionDays: 7,
-            defaultMaxRetries: 3,
-            defaultTimeoutMs: 30000,
-            defaultBackoffStrategy: "exponential",
-            queueManagementEnabled: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
+        // Get server configuration from database
+        const config = await db
+            .select()
+            .from(serverConfig)
+            .where(eq(serverConfig.id, "default"))
+            .limit(1);
 
-        return NextResponse.json({ config: defaultConfig });
+        if (config.length === 0) {
+            // Return default configuration if none exists
+            const defaultConfig = {
+                id: "default",
+                cloudflareApiKey: null,
+                cloudflareAccountId: null,
+                cloudflareQueueId: null,
+                logRetentionDays: 30,
+                payloadRetentionDays: 7,
+                defaultMaxRetries: 3,
+                defaultTimeoutMs: 30000,
+                defaultRetryPolicy: "retry",
+                defaultBackoffStrategy: "exponential",
+                queueManagementEnabled: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+            return NextResponse.json({ config: defaultConfig });
+        }
+
+        return NextResponse.json({ config: config[0] });
     } catch (error) {
         console.error("Error fetching server config:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -52,12 +66,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // TODO: Check if user is admin
-        // For now, we'll allow any authenticated user to update admin config
+        if (session?.user?.role !== "admin") {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         const body = await request.json() as {
             cloudflareApiKey: string;
             cloudflareAccountId: string;
+            cloudflareQueueId: string;
             logRetentionDays: string;
             payloadRetentionDays: string;
             defaultMaxRetries: string;
@@ -68,6 +84,7 @@ export async function POST(request: NextRequest) {
         const {
             cloudflareApiKey,
             cloudflareAccountId,
+            cloudflareQueueId,
             logRetentionDays,
             payloadRetentionDays,
             defaultMaxRetries,
@@ -76,23 +93,47 @@ export async function POST(request: NextRequest) {
             queueManagementEnabled,
         } = body;
 
-        // TODO: Save to database
-        // For now, return the updated configuration
-        const updatedConfig = {
+        const db = await getDb();
+        
+        // Check if config exists
+        const existingConfig = await db
+            .select()
+            .from(serverConfig)
+            .where(eq(serverConfig.id, "default"))
+            .limit(1);
+
+        const configData = {
             id: "default",
             cloudflareApiKey,
             cloudflareAccountId,
+            cloudflareQueueId,
             logRetentionDays: parseInt(logRetentionDays),
             payloadRetentionDays: parseInt(payloadRetentionDays),
             defaultMaxRetries: parseInt(defaultMaxRetries),
             defaultTimeoutMs: parseInt(defaultTimeoutMs),
             defaultBackoffStrategy,
             queueManagementEnabled: Boolean(queueManagementEnabled),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatedAt: new Date(),
         };
 
-        return NextResponse.json({ config: updatedConfig });
+        if (existingConfig.length === 0) {
+            // Insert new config
+            await db.insert(serverConfig).values({
+                ...configData,
+                createdAt: new Date(),
+            });
+        } else {
+            // Update existing config
+            await db
+                .update(serverConfig)
+                .set(configData)
+                .where(eq(serverConfig.id, "default"));
+        }
+
+        // Invalidate retry config cache if retry settings changed
+        await invalidateGlobalRetryConfigCache();
+
+        return NextResponse.json({ config: configData });
     } catch (error) {
         console.error("Error updating server config:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });

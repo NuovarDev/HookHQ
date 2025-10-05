@@ -8,7 +8,9 @@ export const endpoints = sqliteTable("endpoints", {
     url: text("url").notNull(),
     description: text("description"),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
-    retryPolicy: text("retry_policy").default("exponential"), // exponential, linear, fixed
+    retryPolicy: text("retry_policy").default("retry"), // none, retry
+    backoffStrategy: text("backoff_strategy").default("exponential"), // linear, exponential, fixed
+    baseDelaySeconds: integer("base_delay_seconds").default(5), // in seconds
     maxRetries: integer("max_retries").default(3).notNull(),
     timeoutMs: integer("timeout_ms").default(30000).notNull(),
     headers: text("headers"), // JSON string of custom headers
