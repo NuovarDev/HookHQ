@@ -21,9 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import EndpointsList from '@/components/portal/EndpointsList';
 import { createContext, useContext } from 'react';
-
 
 const navigation = [
   { name: 'Dashboard', href: '/portal', current: false, icon: LayoutDashboard },
@@ -38,6 +36,8 @@ interface PortalContextType {
   hasThemeParam: boolean;
   themeWasLocked: boolean;
   isEmbedded: boolean;
+  breadcrumbTitle?: string;
+  setBreadcrumbTitle?: (title: string | undefined) => void;
 }
 
 const PortalContext = createContext<PortalContextType | null>(null);
@@ -73,6 +73,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sessionTheme, setSessionTheme] = useState<"light" | "dark">("light");
   const [themeWasLocked, setThemeWasLocked] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
+  const [breadcrumbTitle, setBreadcrumbTitle] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     // Check for token in query params first, then session storage
@@ -381,7 +382,11 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
 
           {/* Breadcrumb with Environment Selector */}
           <div className="flex items-center gap-2 text-sm">
-            {currentPage && <span className="font-medium">{currentPage.name}</span> }
+            {breadcrumbTitle ? (
+              <span className="font-medium">{breadcrumbTitle}</span>
+            ) : currentPage ? (
+              <span className="font-medium">{currentPage.name}</span>
+            ) : null}
           </div>
         </header>
 
@@ -393,7 +398,9 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
                 theme: theme,
                 hasThemeParam: hasThemeParam,
                 themeWasLocked: themeWasLocked,
-                isEmbedded: isEmbedded
+                isEmbedded: isEmbedded,
+                breadcrumbTitle: breadcrumbTitle,
+                setBreadcrumbTitle: setBreadcrumbTitle
               }}>
             {children}
           </PortalContext.Provider>

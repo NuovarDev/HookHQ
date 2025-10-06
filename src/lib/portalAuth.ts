@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
+import type { StringValue } from "ms";
 
 export interface PortalTokenPayload {
   endpointGroupId: string;
@@ -12,23 +13,80 @@ export interface PortalTokenPayload {
 }
 
 export type PortalAuthResult = 
-  | { success: true; payload: PortalTokenPayload }
+  | { 
+    success: true;
+    payload: PortalTokenPayload;
+    portalUrl: string;
+    token: string;
+    expiresIn?: StringValue | number;
+  }
   | { success: false; error: string };
+
+const ISSUER = `${process.env.JWT_PREFIX || "hookhq"}-api`;
+const AUDIENCE = `${process.env.JWT_PREFIX || "hookhq"}-portal`;
+const EXPIRES_IN = "24h";
+
+/**
+ * Generates a JWT token for the portal
+ */
+export function generatePortalToken(payload: PortalTokenPayload, request: NextRequest, expiresIn?: StringValue | number): PortalAuthResult {
+  try {
+    if (!process.env.AUTH_SECRET) {
+      return {
+        success: false,
+        error: "AUTH_SECRET is not set"
+      };
+    }
+
+    const token = jwt.sign(payload, process.env.AUTH_SECRET, { 
+      expiresIn: expiresIn || EXPIRES_IN,
+      issuer: ISSUER,
+      audience: AUDIENCE
+    });
+
+    const portalUrl = generatePortalUrl(request, token);
+
+    return {
+      success: true,
+      payload,
+      portalUrl,
+      token: token,
+      expiresIn: expiresIn || EXPIRES_IN
+    };
+  } catch (error) {
+    console.error("Error generating portal token:", error);
+    return {
+      success: false,
+      error: "Error generating portal token"
+    };
+  }
+}
 
 /**
  * Verifies a JWT token from the portal
  */
-export function verifyPortalToken(token: string): PortalAuthResult {
-  console.log("Verifying portal token:", token);
+export function verifyPortalToken(token: string, request: NextRequest): PortalAuthResult {
   try {
-    const secret = process.env.AUTH_SECRET || "fallback-secret";
+    if (!process.env.AUTH_SECRET) {
+      return {
+        success: false,
+        error: "AUTH_SECRET is not set"
+      };
+    }
+
+    const secret = process.env.AUTH_SECRET;
     const payload = jwt.verify(token, secret, { 
-      issuer: "webhooks-portal" 
+      issuer: ISSUER,
+      audience: AUDIENCE
     }) as PortalTokenPayload;
+
+    const portalUrl = generatePortalUrl(request, token);
 
     return {
       success: true,
-      payload
+      payload,
+      portalUrl,
+      token
     };
   } catch (error) {
     console.error("Error verifying portal token:", error);
@@ -66,7 +124,7 @@ export function authenticatePortalRequest(request: NextRequest): PortalAuthResul
     };
   }
 
-  return verifyPortalToken(token);
+  return verifyPortalToken(token, request);
 }
 
 /**
@@ -87,10 +145,11 @@ export function isEventTypeAllowed(
  * Generates a portal URL with token
  */
 export function generatePortalUrl(
-  baseUrl: string,
+  request: NextRequest,
   token: string,
   path?: string
 ): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || new URL(request.url).origin;
   const portalPath = path ? `/portal${path}` : "/portal";
   return `${baseUrl}${portalPath}?token=${token}`;
 }

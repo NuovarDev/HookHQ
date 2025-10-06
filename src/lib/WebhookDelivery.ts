@@ -116,7 +116,6 @@ export class WebhookDelivery {
         await this.env.KV.put(this.webhookData.payloadKey, payloadData, {
           expirationTtl: 60 * 60 * 24 * 7 // 7 days
         });
-        console.log(`Extended TTL for payload: ${this.webhookData.payloadKey}`);
       }
     } catch (error) {
       console.error('Error extending payload TTL:', error);
@@ -167,7 +166,6 @@ export class WebhookDelivery {
     const selectedProxy = await this.selectProxy(endpointData.proxyGroupId!);
     
     if (!selectedProxy) {
-      console.log(`No active proxy found for endpoint ${endpointData.id}, falling back to direct delivery`);
       return await this.sendDirect(endpointData);
     }
 

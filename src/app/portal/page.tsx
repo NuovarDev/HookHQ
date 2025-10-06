@@ -259,7 +259,7 @@ export default function PortalDashboard() {
                             <Webhook className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{endpoint.name}&nbsp;&nbsp;<Badge variant="outline">{endpoint.id}</Badge></p>
+                            <span className="flex items-center gap-2"><p className="font-medium truncate">{endpoint.name}</p><Badge variant="outline">{endpoint.id}</Badge></span>
                             <p className="text-sm text-muted-foreground truncate mb-2">{endpoint.description}</p>
                             <p className="text-sm text-muted-foreground font-mono truncate">{endpoint.url}</p>
                           </div>

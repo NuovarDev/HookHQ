@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
 import { eq } from "drizzle-orm";
 import { authenticateApiRequest } from "@/lib/apiHelpers";
+import { generatePortalToken } from "@/lib/portalAuth";
 
 interface PortalTokenPayload {
   endpointGroupId: string;
@@ -191,21 +191,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       returnUrl,
     };
 
-    // Generate JWT token (expires in 1 hour)
-    const secret = process.env.AUTH_SECRET || "fallback-secret";
-    const token = jwt.sign(payload, secret, { 
-      expiresIn: "24h",
-      issuer: "webhooks-portal"
-    });
+    const portalAuthResult = generatePortalToken(payload, request, "24h");
 
-    // Create portal URL with token
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || new URL(request.url).origin;
-    const portalUrl = `${baseUrl}/portal?token=${token}`;
+    if (!portalAuthResult.success) {
+      return NextResponse.json({ 
+        error: portalAuthResult.error 
+      }, { status: 500 });
+    }
 
     return NextResponse.json({
-      token,
-      portalUrl,
-      expiresIn: 86400, // 24 hours in seconds
+      token: portalAuthResult.token,
+      portalUrl: portalAuthResult.portalUrl,
+      expiresIn: portalAuthResult.expiresIn,
       endpointGroup: {
         id: endpointGroup[0].id,
         name: endpointGroup[0].name,

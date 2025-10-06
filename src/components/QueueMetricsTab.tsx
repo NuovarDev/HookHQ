@@ -27,10 +27,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
 } from "recharts";
 
 interface QueueMetrics {
@@ -588,7 +584,6 @@ export default function QueueMetricsTab() {
                 <Bar dataKey="readOperations" stackId="operations" fill="#82ca9d" name="Read Operations" />
                 <Bar dataKey="deleteOperations" stackId="operations" fill="#ff7300" name="Delete Operations" />
                 <Bar dataKey="retries" fill="#6366f1" name="Retries" />
-                <Legend />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -715,7 +710,6 @@ export default function QueueMetricsTab() {
                 <Bar dataKey="success" fill="#22c55e" name="Success" />
                 <Bar dataKey="dlq" fill="#f59e0b" name="Dead Letter Queue" />
                 <Bar dataKey="fail" fill="#ef4444" name="Failed" />
-                <Legend />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

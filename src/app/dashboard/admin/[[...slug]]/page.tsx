@@ -2,6 +2,7 @@
 
 import { Settings, Users, Globe, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AdminConfigTab from "@/components/AdminConfigTab";
 import AdminUsersTab from "@/components/AdminUsersTab";
 import AdminEnvironmentsTab from "@/components/AdminEnvironmentsTab";
@@ -14,9 +15,19 @@ interface ServerConfig {
   cloudflareQueueId: string | null;
 }
 
-export default function AdminPage() {
+interface AdminPageProps {
+  params: Promise<{ slug?: string[] }>;
+}
+
+export default function AdminPage({ params }: AdminPageProps) {
+  const router = useRouter();
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedParams, setResolvedParams] = useState<{ slug?: string[] }>({});
+
+  useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
 
   useEffect(() => {
     fetchConfig();
@@ -42,12 +53,33 @@ export default function AdminPage() {
     serverConfig.cloudflareAccountId && 
     serverConfig.cloudflareQueueId;
 
+  // Determine active tab from URL slug
+  const activeTab = resolvedParams.slug?.[0] || "config";
+  
+  // Local state for tab management
+  const [currentTab, setCurrentTab] = useState(activeTab);
+
+  // Sync local state with URL when params resolve
+  useEffect(() => {
+    if (resolvedParams.slug) {
+      setCurrentTab(resolvedParams.slug[0] || "config");
+    }
+  }, [resolvedParams.slug]);
+
+  const handleTabChange = (value: string) => {
+    // Update local state immediately for instant UI response
+    setCurrentTab(value);
+    // Update URL without causing a full page reload
+    const newUrl = `/dashboard/admin/${value}`;
+    window.history.pushState(null, '', newUrl);
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
 
   return (
-    <Tabs defaultValue="config">
+    <Tabs value={currentTab} onValueChange={handleTabChange}>
       <TabsList className="mb-2 rounded-none w-full">
         <TabsTrigger value="config" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Settings className="h-4 w-4" /> Server Config</TabsTrigger>
         {hasCloudflareConfig && (

@@ -102,8 +102,6 @@ export async function GET(request: NextRequest) {
       fetchQueueMessageOperationsMetrics(cloudflareConfig.cloudflareApiKey, cloudflareConfig.cloudflareAccountId, cloudflareConfig.cloudflareQueueId, startTime, now)
     ]);
 
-    console.log(messageOpsMetrics);
-
     // Process and aggregate the metrics
     const processedMetrics = {
       backlog: {

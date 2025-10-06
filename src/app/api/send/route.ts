@@ -283,8 +283,6 @@ export async function POST(request: NextRequest) {
     let optimalBatchSize = Math.floor(maxBatchBytes / baseMessageSize);
     optimalBatchSize = Math.min(optimalBatchSize, maxBatchSize);
     
-    console.log(`Message size: ${baseMessageSize}B, Optimal batch size: ${optimalBatchSize}, Using KV: ${shouldUseKV}`);
-    
     // Add messages for all resolved endpoints and calculate max retry period
     for (const endpointId of allEndpointIds) {
       const endpoint = endpointMap.get(endpointId);
@@ -346,12 +344,10 @@ export async function POST(request: NextRequest) {
       await env.KV.put(payloadKey, JSON.stringify(payload), {
         expirationTtl: 60 * 60 * 24 * maxRetryPeriodDays
       });
-      console.log(`Stored large payload (${payloadSizeKB.toFixed(1)}KB) in KV: ${payloadKey} (TTL: ${maxRetryPeriodDays} days)`);
     }
     
     // Send messages in optimal batches
     const batches = Math.ceil(endpointMessages.length / optimalBatchSize);
-    console.log(`Sending ${endpointMessages.length} messages in ${batches} batches of up to ${optimalBatchSize} messages each`);
     
     for (let i = 0; i < batches; i++) {
       const batch = endpointMessages.slice(i * optimalBatchSize, (i + 1) * optimalBatchSize);

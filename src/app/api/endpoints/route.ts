@@ -130,8 +130,6 @@ export async function GET(request: NextRequest) {
     
     const { environmentId } = authResult;
 
-    console.log("Environment ID:", environmentId);
-
     // Parse query parameters
     const { searchParams } = new URL(request.url);
     const enabled = searchParams.get("enabled");

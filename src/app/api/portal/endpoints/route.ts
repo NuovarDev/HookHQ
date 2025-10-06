@@ -78,8 +78,6 @@ export async function GET(request: NextRequest) {
         attemptedAt: Date;
       }>;
 
-    console.log(latestAttempts);
-
     return NextResponse.json({
       endpoints: groupEndpoints.map(endpoint => ({
         id: endpoint.id,

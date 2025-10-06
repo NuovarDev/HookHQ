@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Copy, Eye, EyeOff, Search, RefreshCw, ChevronDown, ChevronRight, Info, LoaderCircle } from "lucide-react"
+import { ArrowLeft, Copy, Search, RefreshCw, ChevronDown, Info, LoaderCircle } from "lucide-react"
 import Link from "next/link"
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { usePortalContext } from "../../layout"
-import { useParams } from "next/navigation"
+import { usePortalContext } from "../../../layout"
+import { useParams, useRouter } from "next/navigation"
 
 interface Endpoint {
   id: string;
@@ -76,12 +76,41 @@ interface EventType {
   description?: string;
 }
 
-export default function EndpointDetailPage() {
-  const { token } = usePortalContext();
-  const params = useParams();
-  const endpointId = params.id as string;
+interface EndpointDetailPageProps {
+  params: Promise<{ id: string; slug?: string[] }>;
+}
+
+export default function EndpointDetailPage({ params }: EndpointDetailPageProps) {
+  const { token, setBreadcrumbTitle } = usePortalContext();
+  const router = useRouter();
+  const [resolvedParams, setResolvedParams] = useState<{ id: string; slug?: string[] }>({ id: "" });
   
-  const [activeTab, setActiveTab] = useState("overview")
+  useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
+
+  const endpointId = resolvedParams.id;
+  
+  // Determine active tab from URL slug
+  const activeTab = resolvedParams.slug?.[0] || "overview";
+  
+  // Local state for tab management
+  const [currentTab, setCurrentTab] = useState(activeTab);
+
+  // Sync local state with URL when params resolve
+  useEffect(() => {
+    if (resolvedParams.slug) {
+      setCurrentTab(resolvedParams.slug[0] || "overview");
+    }
+  }, [resolvedParams.slug]);
+
+  const handleTabChange = (value: string) => {
+    // Update local state immediately for instant UI response
+    setCurrentTab(value);
+    // Update URL without causing a full page reload
+    const newUrl = `/portal/endpoints/${endpointId}/${value}`;
+    window.history.pushState(null, '', newUrl);
+  };
   const [secretVisible, setSecretVisible] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
@@ -104,6 +133,20 @@ export default function EndpointDetailPage() {
       fetchEndpointData()
     }
   }, [endpointId, token])
+
+  // Set breadcrumb title when endpoint data is loaded
+  useEffect(() => {
+    if (endpoint && setBreadcrumbTitle) {
+      setBreadcrumbTitle(endpoint.name);
+    }
+    
+    // Cleanup: reset breadcrumb when component unmounts
+    return () => {
+      if (setBreadcrumbTitle) {
+        setBreadcrumbTitle(undefined);
+      }
+    };
+  }, [endpoint, setBreadcrumbTitle])
 
   const fetchEndpointData = async () => {
     try {
@@ -212,7 +255,7 @@ export default function EndpointDetailPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="mb-2 rounded-none w-full">
             <TabsTrigger
               value="overview"

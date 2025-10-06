@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
         });
 
         const newUser = result.user;
-        console.log(`✅ First admin user created: ${email}`);
 
         return NextResponse.json({
             success: true,

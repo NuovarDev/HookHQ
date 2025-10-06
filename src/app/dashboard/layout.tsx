@@ -60,12 +60,12 @@ const user = {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', current: false, icon: LayoutDashboard },
-  { name: 'Webhooks', href: '/dashboard/webhooks', current: false, icon: Webhook },
-  { name: 'Proxy', href: '/dashboard/proxy', current: false, icon: Server },
+  { name: 'Webhooks', href: '/dashboard/webhooks', current: false, icon: Webhook, prefix: true },
+  { name: 'Proxy', href: '/dashboard/proxy', current: false, icon: Server, prefix: true },
   { name: 'Log', href: '/dashboard/log', current: false, icon: History },
   { name: 'Metrics', href: '/dashboard/metrics', current: false, icon: BarChart3 },
-  { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true, icon: Settings },
-]
+  { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true, icon: Settings, prefix: true },
+] as const
 const userNavigation = (router: AppRouterInstance) => [
   { name: 'Account', href: '/dashboard/account', current: false },
   { name: 'API Keys', href: '/dashboard/api-keys', current: false },
@@ -81,7 +81,13 @@ function DashboardContent({
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
-  const currentPathName = [...navigation, ...userNavigation(router)].map((item) => ({ ...item, current: item.href === pathname })).find(item => item.current)?.name;
+  const currentPathName = [...navigation, ...userNavigation(router)].map((item) => {
+    const isCurrent = (item as any).prefix 
+      ? pathname.startsWith(item.href) 
+      : item.href === pathname;
+    
+    return { ...item, current: isCurrent };
+  }).find(item => item.current)?.name;
 
   const [collapsed, setCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -115,7 +121,9 @@ function DashboardContent({
               {/* Navigation */}
               <nav className="flex-1 space-y-1 p-4">
                 {navigation.map((item) => {
-                  const isActive = pathname === item.href
+                  const isActive = (item as any).prefix 
+                    ? pathname.startsWith(item.href) 
+                    : pathname === item.href
                   return (
                     <Link
                       key={item.name}

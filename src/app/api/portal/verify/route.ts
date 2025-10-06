@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }, { status: 400 });
   }
 
-  const authResult = verifyPortalToken(token);
+  const authResult = verifyPortalToken(token, request);
   
   if (!authResult.success) {
     return NextResponse.json({ 
