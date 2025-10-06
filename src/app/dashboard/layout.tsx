@@ -29,7 +29,6 @@ import {
   History,
   User,
   LogOut,
-  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -65,7 +64,6 @@ const navigation = [
   { name: 'Proxy', href: '/dashboard/proxy', current: false, icon: Server },
   { name: 'Log', href: '/dashboard/log', current: false, icon: History },
   { name: 'Metrics', href: '/dashboard/metrics', current: false, icon: BarChart3 },
-  { name: 'Performance Test', href: '/dashboard/performance-test', current: false, icon: Zap },
   { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true, icon: Settings },
 ]
 const userNavigation = (router: AppRouterInstance) => [

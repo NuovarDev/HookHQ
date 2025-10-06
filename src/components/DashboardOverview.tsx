@@ -189,7 +189,7 @@ export function DashboardOverview() {
           <div className="border-b border-border px-6 pb-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Recent Events</h2>
-              <Link href="/metrics">
+              <Link href="/dashboard/log">
                 <Button variant="ghost" size="sm" className="gap-2">
                   View all
                   <ArrowRight className="h-4 w-4" />
