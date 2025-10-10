@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, RefreshCw, Users, Settings, Server, Globe, LoaderCircle, Computer, Boxes } from "lucide-react";
+import { Plus, Settings, Server, LoaderCircle, Computer, Boxes } from "lucide-react";
 
 interface ProxyServer {
   id: string;
@@ -59,8 +66,8 @@ export default function ProxyGroupsTab() {
       setLoading(true);
       const response = await fetch("/api/proxy-groups");
       if (!response.ok) throw new Error("Failed to fetch proxy groups");
-      
-      const data = await response.json() as { proxyGroups: ProxyGroup[] };
+
+      const data = (await response.json()) as { proxyGroups: ProxyGroup[] };
       setProxyGroups(data.proxyGroups || []);
     } catch (error) {
       console.error("Error fetching proxy groups:", error);
@@ -73,8 +80,8 @@ export default function ProxyGroupsTab() {
     try {
       const response = await fetch("/api/proxy-servers?active=true");
       if (!response.ok) throw new Error("Failed to fetch proxy servers");
-      
-      const data = await response.json() as { proxyServers: ProxyServer[] };
+
+      const data = (await response.json()) as { proxyServers: ProxyServer[] };
       setAvailableProxies(data.proxyServers || []);
     } catch (error) {
       console.error("Error fetching proxy servers:", error);
@@ -91,7 +98,7 @@ export default function ProxyGroupsTab() {
       });
 
       if (!response.ok) throw new Error("Failed to create proxy group");
-      
+
       // Reset form and refresh list
       setFormData({
         name: "",
@@ -113,7 +120,7 @@ export default function ProxyGroupsTab() {
       ...prev,
       proxyIds: prev.proxyIds.includes(proxyId)
         ? prev.proxyIds.filter(id => id !== proxyId)
-        : [...prev.proxyIds, proxyId]
+        : [...prev.proxyIds, proxyId],
     }));
   };
 
@@ -122,24 +129,17 @@ export default function ProxyGroupsTab() {
       // case "aws": return "☁️";
       // case "gcp": return "🌐";
       // case "azure": return "🔷";
-      default: return <Computer className="h-4 w-4" />;
+      default:
+        return <Computer className="h-4 w-4" />;
     }
   };
 
   const getStatusBadge = (isActive: boolean) => {
-    return (
-      <Badge variant={isActive ? "default" : "secondary"}>
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
-    );
+    return <Badge variant={isActive ? "default" : "secondary"}>{isActive ? "Active" : "Inactive"}</Badge>;
   };
 
   const getStrategyBadge = (strategy: string) => {
-    return (
-      <Badge variant="outline">
-        {strategy === "round_robin" ? "Round Robin" : "Random"}
-      </Badge>
-    );
+    return <Badge variant="outline">{strategy === "round_robin" ? "Round Robin" : "Random"}</Badge>;
   };
 
   return (
@@ -147,9 +147,7 @@ export default function ProxyGroupsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Proxy Groups</h2>
-          <p className="text-muted-foreground">
-            Group proxy servers for load balancing and regional distribution
-          </p>
+          <p className="text-muted-foreground">Group proxy servers for load balancing and regional distribution</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -172,15 +170,15 @@ export default function ProxyGroupsTab() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
                     placeholder="US-East Group"
                   />
                 </div>
                 <div>
                   <Label htmlFor="strategy">Load Balancing Strategy</Label>
-                  <Select 
-                    value={formData.loadBalancingStrategy} 
-                    onValueChange={(value: "random" | "round_robin") => 
+                  <Select
+                    value={formData.loadBalancingStrategy}
+                    onValueChange={(value: "random" | "round_robin") =>
                       setFormData({ ...formData, loadBalancingStrategy: value })
                     }
                   >
@@ -194,13 +192,13 @@ export default function ProxyGroupsTab() {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Proxy group for US East region with multiple servers"
                 />
               </div>
@@ -213,7 +211,7 @@ export default function ProxyGroupsTab() {
                       No active proxy servers available. Create proxy servers first.
                     </div>
                   ) : (
-                    availableProxies.map((proxy) => (
+                    availableProxies.map(proxy => (
                       <div key={proxy.id} className="flex items-center space-x-3 p-3 border rounded-lg">
                         <Checkbox
                           id={proxy.id}
@@ -242,8 +240,8 @@ export default function ProxyGroupsTab() {
                 <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleCreateGroup} 
+                <Button
+                  onClick={handleCreateGroup}
                   disabled={creating || !formData.name || formData.proxyIds.length === 0}
                 >
                   {creating ? "Creating..." : "Create Proxy Group"}
@@ -255,11 +253,11 @@ export default function ProxyGroupsTab() {
       </div>
 
       {loading && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
-              <h3 className="text-lg font-semibold mb-2">Loading...</h3>
-            </CardContent>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-gray-400" />
+            <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+          </CardContent>
         </Card>
       )}
 
@@ -279,7 +277,7 @@ export default function ProxyGroupsTab() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {proxyGroups.map((group) => (
+          {proxyGroups.map(group => (
             <Card key={group.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -301,13 +299,13 @@ export default function ProxyGroupsTab() {
                   <div className="flex items-center space-x-2">
                     <Settings className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">
-                      {group.proxies.length} proxy server{group.proxies.length !== 1 ? 's' : ''}
+                      {group.proxies.length} proxy server{group.proxies.length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  
+
                   {group.proxies.length > 0 ? (
                     <div className="grid gap-2">
-                      {group.proxies.map((proxy) => (
+                      {group.proxies.map(proxy => (
                         <div key={proxy.id} className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
                           <span className="text-lg">{getProviderIcon(proxy.provider)}</span>
                           <div className="flex-1">
@@ -326,9 +324,7 @@ export default function ProxyGroupsTab() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground p-4 text-center">
-                      No proxy servers in this group
-                    </div>
+                    <div className="text-sm text-muted-foreground p-4 text-center">No proxy servers in this group</div>
                   )}
                 </div>
               </CardContent>

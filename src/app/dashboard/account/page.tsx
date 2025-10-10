@@ -10,16 +10,14 @@ export default async function AccountPage() {
   const session = await authInstance.api.getSession({ headers: await headers() });
 
   if (!session) {
-      redirect("/"); // Redirect to home if no session
+    redirect("/"); // Redirect to home if no session
   }
 
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold">Account Settings</h2>
-        <p className="text-muted-foreground mt-1">
-          Manage your account information and security settings.
-        </p>
+        <p className="text-muted-foreground mt-1">Manage your account information and security settings.</p>
       </div>
 
       <AccountForm user={session.user} />

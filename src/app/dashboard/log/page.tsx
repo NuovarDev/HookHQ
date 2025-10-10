@@ -1,7 +1,7 @@
 import { initAuth } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import MessagesTab from "@/components/MessagesTab";
+import MessagesTab from "@/components/tabs/MessagesTab";
 
 export default async function MessagesPage() {
   const authInstance = await initAuth();
@@ -9,7 +9,7 @@ export default async function MessagesPage() {
   const session = await authInstance.api.getSession({ headers: await headers() });
 
   if (!session) {
-      redirect("/"); // Redirect to home if no session
+    redirect("/"); // Redirect to home if no session
   }
 
   return (

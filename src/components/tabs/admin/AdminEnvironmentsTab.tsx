@@ -4,17 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Globe, 
-  Trash2, 
-  AlertTriangle,
-  CheckCircle,
-  Calendar,
-  Users,
-  Shield
-} from "lucide-react";
-import { useEnvironment, Environment } from "./EnvironmentProvider";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Globe, Trash2, AlertTriangle, Calendar, Shield } from "lucide-react";
+import { useEnvironment, Environment } from "@/components/providers/EnvironmentProvider";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AdminEnvironmentsTab() {
   const { environments, loading, refreshEnvironments } = useEnvironment();
@@ -82,12 +82,10 @@ export default function AdminEnvironmentsTab() {
         <CardContent>
           <div className="space-y-4">
             {environments.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No environments found.
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No environments found.</div>
             ) : (
               <div className="grid gap-4">
-                {environments.map((environment) => (
+                {environments.map(environment => (
                   <div
                     key={environment.id}
                     className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
@@ -100,9 +98,7 @@ export default function AdminEnvironmentsTab() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <h3 className="text-sm font-medium text-foreground truncate">
-                            {environment.name}
-                          </h3>
+                          <h3 className="text-sm font-medium text-foreground truncate">{environment.name}</h3>
                           {environment.isDefault && (
                             <Badge variant="secondary" className="text-xs">
                               Default
@@ -110,9 +106,7 @@ export default function AdminEnvironmentsTab() {
                           )}
                         </div>
                         {environment.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {environment.description}
-                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">{environment.description}</p>
                         )}
                         <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
                           <div className="flex items-center space-x-1">
@@ -129,7 +123,10 @@ export default function AdminEnvironmentsTab() {
                           <span>Protected</span>
                         </div>
                       ) : (
-                        <Dialog open={deleteDialogOpen && environmentToDelete?.id === environment.id} onOpenChange={setDeleteDialogOpen}>
+                        <Dialog
+                          open={deleteDialogOpen && environmentToDelete?.id === environment.id}
+                          onOpenChange={setDeleteDialogOpen}
+                        >
                           <DialogTrigger asChild>
                             <Button
                               variant="outline"
@@ -148,8 +145,8 @@ export default function AdminEnvironmentsTab() {
                                 Delete Environment
                               </DialogTitle>
                               <DialogDescription>
-                                Are you sure you want to delete the environment "{environment.name}"? 
-                                This action cannot be undone and will permanently remove all associated data.
+                                Are you sure you want to delete the environment "{environment.name}"? This action cannot
+                                be undone and will permanently remove all associated data.
                               </DialogDescription>
                             </DialogHeader>
                             <div className="py-4">
@@ -175,11 +172,7 @@ export default function AdminEnvironmentsTab() {
                               <Button variant="outline" onClick={handleDeleteCancel}>
                                 Cancel
                               </Button>
-                              <Button 
-                                variant="destructive" 
-                                onClick={handleDeleteConfirm}
-                                disabled={isDeleting}
-                              >
+                              <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
                                 {isDeleting ? "Deleting..." : "Delete Environment"}
                               </Button>
                             </DialogFooter>

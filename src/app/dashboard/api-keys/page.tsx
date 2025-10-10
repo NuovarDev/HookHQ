@@ -1,7 +1,7 @@
 import { initAuth } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import ApiKeyTab from "@/components/ApiKeyTab";
+import ApiKeyTab from "@/components/tabs/ApiKeyTab";
 
 export default async function DashboardPage() {
   const authInstance = await initAuth();
@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const session = await authInstance.api.getSession({ headers: await headers() });
 
   if (!session) {
-      redirect("/"); // Redirect to home if no session
+    redirect("/"); // Redirect to home if no session
   }
 
   return (

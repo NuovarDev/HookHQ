@@ -6,16 +6,16 @@ export async function GET(request: NextRequest) {
   const token = url.searchParams.get("token");
 
   if (!token) {
-    return NextResponse.json({ 
-      error: "No token provided" 
+    return NextResponse.json({
+      error: "No token provided"
     }, { status: 400 });
   }
 
   const authResult = verifyPortalToken(token, request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 

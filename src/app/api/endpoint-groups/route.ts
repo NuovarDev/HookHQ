@@ -96,47 +96,47 @@ import { authenticateApiRequest } from "@/lib/apiHelpers";
  *     x-speakeasy-name-override: "list"
  */
 export async function GET(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { endpointGroups: ["read"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
-    
-    const { environmentId } = authResult;
+  const authResult = await authenticateApiRequest(request, { endpointGroups: ["read"] });
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const enabled = searchParams.get("enabled");
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    // Build query conditions
-    const conditions = [eq(endpointGroups.environmentId, environmentId)];
-    
-    // Add enabled filter if provided
-    if (enabled !== null) {
-        conditions.push(eq(endpointGroups.isActive, enabled === "true"));
-    }
+  const { environmentId } = authResult;
 
-    // Execute query
-    const db = await getDb();
-    const groupList = await db
-        .select()
-        .from(endpointGroups)
-        .where(and(...conditions))
-        .orderBy(endpointGroups.createdAt);
+  // Parse query parameters
+  const { searchParams } = new URL(request.url);
+  const enabled = searchParams.get("enabled");
 
-    // Format the response
-    const formattedGroups = groupList.map(group => ({
-        id: group.id,
-        environmentId: group.environmentId,
-        name: group.name,
-        description: group.description,
-        endpointIds: JSON.parse(group.endpointIds),
-        enabled: group.isActive,
-        createdAt: group.createdAt.toISOString(),
-        updatedAt: group.updatedAt.toISOString()
-    }));
+  // Build query conditions
+  const conditions = [eq(endpointGroups.environmentId, environmentId)];
 
-    return NextResponse.json({ endpointGroups: formattedGroups });
+  // Add enabled filter if provided
+  if (enabled !== null) {
+    conditions.push(eq(endpointGroups.isActive, enabled === "true"));
+  }
+
+  // Execute query
+  const db = await getDb();
+  const groupList = await db
+    .select()
+    .from(endpointGroups)
+    .where(and(...conditions))
+    .orderBy(endpointGroups.createdAt);
+
+  // Format the response
+  const formattedGroups = groupList.map(group => ({
+    id: group.id,
+    environmentId: group.environmentId,
+    name: group.name,
+    description: group.description,
+    endpointIds: JSON.parse(group.endpointIds),
+    enabled: group.isActive,
+    createdAt: group.createdAt.toISOString(),
+    updatedAt: group.updatedAt.toISOString()
+  }));
+
+  return NextResponse.json({ endpointGroups: formattedGroups });
 }
 
 /**
@@ -259,54 +259,54 @@ export async function GET(request: NextRequest) {
  *     x-speakeasy-name-override: "create"
  */
 export async function POST(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { endpointGroups: ["create"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
-    
-    const { environmentId, body } = authResult;
+  const authResult = await authenticateApiRequest(request, { endpointGroups: ["create"] });
 
-    const { 
-        name, 
-        description, 
-        endpointIds = [], 
-        enabled = true 
-    } = body as {
-        name: string;
-        description?: string;
-        endpointIds?: string[];
-        enabled?: boolean;
-    };
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    if (!name) {
-        return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+  const { environmentId, body } = authResult;
 
-    // Generate endpoint group ID with prefix (grp_{environmentId}_{random})
-    const groupId = `grp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
-    const now = new Date();
+  const {
+    name,
+    description,
+    endpointIds = [],
+    enabled = true
+  } = body as {
+    name: string;
+    description?: string;
+    endpointIds?: string[];
+    enabled?: boolean;
+  };
 
-    const db = await getDb();
-    await db.insert(endpointGroups).values({
-        id: groupId,
-        environmentId,
-        name,
-        description,
-        endpointIds: JSON.stringify(endpointIds),
-        isActive: enabled,
-        createdAt: now,
-        updatedAt: now,
-    });
+  if (!name) {
+    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
 
-    return NextResponse.json({
-        id: groupId,
-        environmentId,
-        name,
-        description,
-        endpointIds,
-        enabled,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-    });
+  // Generate endpoint group ID with prefix (grp_{environmentId}_{random})
+  const groupId = `grp_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+  const now = new Date();
+
+  const db = await getDb();
+  await db.insert(endpointGroups).values({
+    id: groupId,
+    environmentId,
+    name,
+    description,
+    endpointIds: JSON.stringify(endpointIds),
+    isActive: enabled,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return NextResponse.json({
+    id: groupId,
+    environmentId,
+    name,
+    description,
+    endpointIds,
+    enabled,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  });
 }

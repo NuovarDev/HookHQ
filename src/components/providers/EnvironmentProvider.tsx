@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getCurrentEnvironment, updateUserLastEnvironment } from "@/lib/environmentState";
+import { getCurrentEnvironment, updateUserLastEnvironment } from "@/lib/environments";
 
 export interface Environment {
     id: string;

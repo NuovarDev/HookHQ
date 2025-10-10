@@ -6,10 +6,10 @@ import { authenticatePortalRequest, isEventTypeAllowed } from "@/lib/portalAuth"
 
 export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       .orderBy(eventTypes.createdAt);
 
     // Filter by allowed event types if specified
-    const filteredEventTypes = eventTypeList.filter(eventType => 
+    const filteredEventTypes = eventTypeList.filter(eventType =>
       isEventTypeAllowed(eventType.name, payload.allowedEventTypes)
     );
 
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error fetching portal event types:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

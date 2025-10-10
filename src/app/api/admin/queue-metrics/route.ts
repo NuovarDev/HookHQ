@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareConfig, validateAdminAccess } from "@/lib/cloudflareConfig";
-import { 
-  QueueBacklogMetrics, 
-  QueueConsumerMetrics, 
-  QueueMessageOperationsMetrics, 
+import {
+  QueueBacklogMetrics,
+  QueueConsumerMetrics,
+  QueueMessageOperationsMetrics,
   CloudflareGraphQLResponse,
-  TimeRange 
+  TimeRange
 } from "@/lib/queueMetricsTypes";
 
 // Cloudflare GraphQL Analytics API endpoint
@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
     // Get Cloudflare configuration
     const cloudflareConfig = await getCloudflareConfig();
     if (!cloudflareConfig) {
-      return NextResponse.json({ 
-        error: "Cloudflare credentials not configured. Please configure Cloudflare API token, Account ID, and Queue ID in the admin settings." 
+      return NextResponse.json({
+        error: "Cloudflare credentials not configured. Please configure Cloudflare API token, Account ID, and Queue ID in the admin settings."
       }, { status: 400 });
     }
 
@@ -194,7 +194,7 @@ async function fetchQueueBacklogMetrics(
   }
 
   const result: CloudflareGraphQLResponse<QueueBacklogMetrics> = await response.json();
-  
+
   if (result.errors) {
     throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(", ")}`);
   }
@@ -259,7 +259,7 @@ async function fetchQueueConsumerMetrics(
   }
 
   const result: CloudflareGraphQLResponse<QueueConsumerMetrics> = await response.json();
-  
+
   if (result.errors) {
     throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(", ")}`);
   }
@@ -335,7 +335,7 @@ async function fetchQueueMessageOperationsMetrics(
   }
 
   const result: CloudflareGraphQLResponse<QueueMessageOperationsMetrics> = await response.json();
-  
+
   if (result.errors) {
     throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(", ")}`);
   }

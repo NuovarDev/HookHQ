@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Plus, RefreshCw, Server, Globe, Shield, Clock, Users, LoaderCircle, Computer } from "lucide-react";
-import CopyableCode from "./CopyableCode";
+import { Copy, Plus, Server, Globe, Shield, Clock, Users, LoaderCircle, Computer } from "lucide-react";
+import CopyableCode from "@/components/CopyableCode";
 
 interface ProxyServer {
   id: string;
@@ -82,8 +89,8 @@ export default function ProxyServersTab() {
       setLoading(true);
       const response = await fetch("/api/proxy-servers");
       if (!response.ok) throw new Error("Failed to fetch proxy servers");
-      
-      const data = await response.json() as { proxyServers: ProxyServer[] };
+
+      const data = (await response.json()) as { proxyServers: ProxyServer[] };
       setProxyServers(data.proxyServers || []);
     } catch (error) {
       console.error("Error fetching proxy servers:", error);
@@ -102,14 +109,14 @@ export default function ProxyServersTab() {
       });
 
       if (!response.ok) throw new Error("Failed to create proxy server");
-      
+
       const newProxy: ProxyServerCreateResponse = await response.json();
-      
+
       // Show secret and config instructions
       setNewProxySecret(newProxy.secret);
       setNewProxyConfig(newProxy.configInstructions);
       setShowSecretDialog(true);
-      
+
       // Reset form and refresh list
       setFormData({
         name: "",
@@ -140,16 +147,13 @@ export default function ProxyServersTab() {
       // case "aws": return "☁️";
       // case "gcp": return "🌐";
       // case "azure": return "🔷";
-      default: return <Computer className="h-4 w-4" />;
+      default:
+        return <Computer className="h-4 w-4" />;
     }
   };
 
   const getStatusBadge = (isActive: boolean) => {
-    return (
-      <Badge variant={isActive ? "default" : "secondary"}>
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
-    );
+    return <Badge variant={isActive ? "default" : "secondary"}>{isActive ? "Active" : "Inactive"}</Badge>;
   };
 
   return (
@@ -157,9 +161,7 @@ export default function ProxyServersTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Proxy Servers</h2>
-          <p className="text-muted-foreground">
-            Manage proxy servers for webhook delivery with static IPs
-          </p>
+          <p className="text-muted-foreground">Manage proxy servers for webhook delivery with static IPs</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -171,9 +173,7 @@ export default function ProxyServersTab() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create Proxy Server</DialogTitle>
-              <DialogDescription>
-                Add a new proxy server for webhook delivery with static IP support.
-              </DialogDescription>
+              <DialogDescription>Add a new proxy server for webhook delivery with static IP support.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -182,7 +182,7 @@ export default function ProxyServersTab() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
                     placeholder="US-East Proxy"
                   />
                 </div>
@@ -191,18 +191,18 @@ export default function ProxyServersTab() {
                   <Input
                     id="url"
                     value={formData.url}
-                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                    onChange={e => setFormData({ ...formData, url: e.target.value })}
                     placeholder="https://proxy-us-east.example.com"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Proxy server for US East region webhook delivery"
                 />
               </div>
@@ -210,7 +210,10 @@ export default function ProxyServersTab() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="provider">Provider</Label>
-                  <Select value={formData.provider} onValueChange={(value) => setFormData({ ...formData, provider: value })}>
+                  <Select
+                    value={formData.provider}
+                    onValueChange={value => setFormData({ ...formData, provider: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select provider" />
                     </SelectTrigger>
@@ -227,7 +230,7 @@ export default function ProxyServersTab() {
                   <Input
                     id="region"
                     value={formData.region}
-                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    onChange={e => setFormData({ ...formData, region: e.target.value })}
                     placeholder="us-east-1"
                   />
                 </div>
@@ -236,7 +239,7 @@ export default function ProxyServersTab() {
                   <Input
                     id="staticIp"
                     value={formData.staticIp}
-                    onChange={(e) => setFormData({ ...formData, staticIp: e.target.value })}
+                    onChange={e => setFormData({ ...formData, staticIp: e.target.value })}
                     placeholder="203.0.113.1"
                   />
                 </div>
@@ -247,7 +250,7 @@ export default function ProxyServersTab() {
                 <Input
                   id="healthCheckUrl"
                   value={formData.healthCheckUrl}
-                  onChange={(e) => setFormData({ ...formData, healthCheckUrl: e.target.value })}
+                  onChange={e => setFormData({ ...formData, healthCheckUrl: e.target.value })}
                   placeholder="https://proxy-us-east.example.com/health"
                 />
               </div>
@@ -259,7 +262,7 @@ export default function ProxyServersTab() {
                     id="timeoutMs"
                     type="number"
                     value={formData.timeoutMs}
-                    onChange={(e) => setFormData({ ...formData, timeoutMs: parseInt(e.target.value) })}
+                    onChange={e => setFormData({ ...formData, timeoutMs: parseInt(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -268,7 +271,7 @@ export default function ProxyServersTab() {
                     id="maxConcurrentRequests"
                     type="number"
                     value={formData.maxConcurrentRequests}
-                    onChange={(e) => setFormData({ ...formData, maxConcurrentRequests: parseInt(e.target.value) })}
+                    onChange={e => setFormData({ ...formData, maxConcurrentRequests: parseInt(e.target.value) })}
                   />
                 </div>
               </div>
@@ -287,11 +290,11 @@ export default function ProxyServersTab() {
       </div>
 
       {loading && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Loading...</h3>
-            </CardContent>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Loading...</h3>
+          </CardContent>
         </Card>
       )}
 
@@ -311,7 +314,7 @@ export default function ProxyServersTab() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {proxyServers.map((proxy) => (
+          {proxyServers.map(proxy => (
             <Card key={proxy.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -363,11 +366,7 @@ export default function ProxyServersTab() {
                         <div className="font-medium text-sm">Static IP</div>
                         <div className="text-muted-foreground font-mono">{proxy.staticIp}</div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(proxy.staticIp!)}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(proxy.staticIp!)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
@@ -398,14 +397,8 @@ export default function ProxyServersTab() {
                 This secret will only be shown once. Copy it now and store it securely.
               </p>
               <div className="flex items-center space-x-2">
-                <code className="flex-1 p-2 bg-white border rounded font-mono text-sm">
-                  {newProxySecret}
-                </code>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(newProxySecret)}
-                >
+                <code className="flex-1 p-2 bg-white border rounded font-mono text-sm">{newProxySecret}</code>
+                <Button variant="outline" size="sm" onClick={() => copyToClipboard(newProxySecret)}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
@@ -414,14 +407,11 @@ export default function ProxyServersTab() {
             {newProxyConfig && (
               <div className="space-y-4">
                 <h4 className="font-semibold">Deployment Instructions</h4>
-                
+
                 <div>
                   <h5 className="font-medium mb-2">Docker</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <CopyableCode 
-                      className="text-sm"
-                      copyText={newProxyConfig.docker.command}
-                    >
+                    <CopyableCode className="text-sm" copyText={newProxyConfig.docker.command}>
                       {newProxyConfig.docker.command}
                     </CopyableCode>
                   </div>
@@ -430,10 +420,7 @@ export default function ProxyServersTab() {
                 <div>
                   <h5 className="font-medium mb-2">Google Cloud Run</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <CopyableCode 
-                      className="text-sm"
-                      copyText={newProxyConfig.gcp.command}
-                    >
+                    <CopyableCode className="text-sm" copyText={newProxyConfig.gcp.command}>
                       {newProxyConfig.gcp.command}
                     </CopyableCode>
                   </div>
@@ -442,10 +429,7 @@ export default function ProxyServersTab() {
                 <div>
                   <h5 className="font-medium mb-2">AWS ECS</h5>
                   <div className="p-3 bg-muted rounded-lg">
-                    <CopyableCode 
-                      className="text-sm"
-                      copyText={newProxyConfig.aws.command}
-                    >
+                    <CopyableCode className="text-sm" copyText={newProxyConfig.aws.command}>
                       {newProxyConfig.aws.command}
                     </CopyableCode>
                   </div>
@@ -454,9 +438,7 @@ export default function ProxyServersTab() {
             )}
 
             <div className="flex justify-end">
-              <Button onClick={() => setShowSecretDialog(false)}>
-                Got it!
-              </Button>
+              <Button onClick={() => setShowSecretDialog(false)}>Got it!</Button>
             </div>
           </div>
         </DialogContent>

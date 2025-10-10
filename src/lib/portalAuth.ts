@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
 import type { StringValue } from "ms";
+import { getDb } from "@/db";
+import { serverConfig } from "@/db/environments.schema";
+import { eq } from "drizzle-orm";
 
 export interface PortalTokenPayload {
   endpointGroupId: string;
@@ -24,12 +27,31 @@ export type PortalAuthResult =
 
 const ISSUER = `${process.env.JWT_PREFIX || "hookhq"}-api`;
 const AUDIENCE = `${process.env.JWT_PREFIX || "hookhq"}-portal`;
-const EXPIRES_IN = "24h";
+const DEFAULT_EXPIRES_IN = "1day";
+
+/**
+ * Gets the JWT expiration from server config
+ */
+async function getJwtExpiration(): Promise<StringValue | number> {
+  try {
+    const db = await getDb();
+    const config = await db
+      .select()
+      .from(serverConfig)
+      .where(eq(serverConfig.id, "default"))
+      .limit(1);
+    
+    return config.length > 0 ? config[0].jwtExpiration as StringValue | number : DEFAULT_EXPIRES_IN;
+  } catch (error) {
+    console.error("Error fetching JWT expiration from config:", error);
+    return DEFAULT_EXPIRES_IN; // Fallback to default
+  }
+}
 
 /**
  * Generates a JWT token for the portal
  */
-export function generatePortalToken(payload: PortalTokenPayload, request: NextRequest, expiresIn?: StringValue | number): PortalAuthResult {
+export async function generatePortalToken(payload: PortalTokenPayload, request: NextRequest, expiresIn?: StringValue | number): Promise<PortalAuthResult> {
   try {
     if (!process.env.AUTH_SECRET) {
       return {
@@ -38,8 +60,11 @@ export function generatePortalToken(payload: PortalTokenPayload, request: NextRe
       };
     }
 
+    // Get expiration from config if not provided
+    const tokenExpiration = expiresIn || await getJwtExpiration();
+
     const token = jwt.sign(payload, process.env.AUTH_SECRET, { 
-      expiresIn: expiresIn || EXPIRES_IN,
+      expiresIn: tokenExpiration,
       issuer: ISSUER,
       audience: AUDIENCE
     });
@@ -51,7 +76,7 @@ export function generatePortalToken(payload: PortalTokenPayload, request: NextRe
       payload,
       portalUrl,
       token: token,
-      expiresIn: expiresIn || EXPIRES_IN
+      expiresIn: tokenExpiration
     };
   } catch (error) {
     console.error("Error generating portal token:", error);

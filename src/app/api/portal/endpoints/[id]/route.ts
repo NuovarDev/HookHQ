@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { endpoints, endpointGroups, webhookAttempts, webhookMessages, eventTypes } from "@/db/webhooks.schema";
-import { eq, and, inArray, gte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
 
 export async function GET(
@@ -9,10 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = authenticatePortalRequest(request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 
@@ -20,8 +20,8 @@ export async function GET(
   const { id: endpointId } = await params;
 
   if (!endpointId) {
-    return NextResponse.json({ 
-      error: "Endpoint ID is required" 
+    return NextResponse.json({
+      error: "Endpoint ID is required"
     }, { status: 400 });
   }
 
@@ -36,14 +36,14 @@ export async function GET(
       .limit(1);
 
     if (endpoint.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint not found" 
+      return NextResponse.json({
+        error: "Endpoint not found"
       }, { status: 404 });
     }
 
     if (endpoint[0].environmentId !== payload.environmentId) {
-      return NextResponse.json({ 
-        error: "Endpoint not found" 
+      return NextResponse.json({
+        error: "Endpoint not found"
       }, { status: 404 });
     }
 
@@ -55,15 +55,15 @@ export async function GET(
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint group not found" 
+      return NextResponse.json({
+        error: "Endpoint group not found"
       }, { status: 404 });
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
     if (!groupEndpointIds.includes(endpointId)) {
-      return NextResponse.json({ 
-        error: "Endpoint not found in group" 
+      return NextResponse.json({
+        error: "Endpoint not found in group"
       }, { status: 404 });
     }
 
@@ -139,7 +139,7 @@ export async function GET(
       .orderBy(eventTypes.name);
 
     // Calculate metrics
-    const metrics24h = latestAttempts.filter(metric => 
+    const metrics24h = latestAttempts.filter(metric =>
       metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
     );
     const metrics7d = latestAttempts;
@@ -156,19 +156,19 @@ export async function GET(
     const generateHourlyChartData = () => {
       const chartData = [];
       const now = new Date();
-      
+
       for (let i = 23; i >= 0; i--) {
         const hourStart = new Date(now.getTime() - i * 60 * 60 * 1000);
         const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
-        
+
         const hourMetrics = metrics24h.filter(m => {
           const attemptedAt = new Date(m.attemptedAt);
           return attemptedAt >= hourStart && attemptedAt < hourEnd;
         });
-        
+
         const success = hourMetrics.filter(m => m.status === 'delivered').length;
         const failed = hourMetrics.filter(m => m.status !== 'delivered').length;
-        
+
         chartData.push({
           time: hourStart.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false }),
           count: success + failed,
@@ -177,7 +177,7 @@ export async function GET(
           errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0"
         });
       }
-      
+
       return chartData;
     };
 
@@ -185,19 +185,19 @@ export async function GET(
     const generateDailyChartData = () => {
       const chartData = [];
       const now = new Date();
-      
+
       for (let i = 6; i >= 0; i--) {
         const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
         const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-        
+
         const dayMetrics = metrics7d.filter(m => {
           const attemptedAt = new Date(m.attemptedAt);
           return attemptedAt >= dayStart && attemptedAt < dayEnd;
         });
-        
+
         const success = dayMetrics.filter(m => m.status === 'delivered').length;
         const failed = dayMetrics.filter(m => m.status !== 'delivered').length;
-        
+
         chartData.push({
           time: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           count: success + failed,
@@ -206,7 +206,7 @@ export async function GET(
           errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0"
         });
       }
-      
+
       return chartData;
     };
 
@@ -245,8 +245,8 @@ export async function GET(
 
   } catch (error) {
     console.error("Error fetching endpoint details:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }
@@ -256,10 +256,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const authResult = authenticatePortalRequest(request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 
@@ -267,8 +267,8 @@ export async function DELETE(
   const { id: endpointId } = await params;
 
   if (!endpointId) {
-    return NextResponse.json({ 
-      error: "Endpoint ID is required" 
+    return NextResponse.json({
+      error: "Endpoint ID is required"
     }, { status: 400 });
   }
 
@@ -283,14 +283,14 @@ export async function DELETE(
       .limit(1);
 
     if (endpoint.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint not found" 
+      return NextResponse.json({
+        error: "Endpoint not found"
       }, { status: 404 });
     }
 
     if (endpoint[0].environmentId !== payload.environmentId) {
-      return NextResponse.json({ 
-        error: "Endpoint not found" 
+      return NextResponse.json({
+        error: "Endpoint not found"
       }, { status: 404 });
     }
 
@@ -302,21 +302,21 @@ export async function DELETE(
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint group not found" 
+      return NextResponse.json({
+        error: "Endpoint group not found"
       }, { status: 404 });
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
     if (!groupEndpointIds.includes(endpointId)) {
-      return NextResponse.json({ 
-        error: "Endpoint not found in group" 
+      return NextResponse.json({
+        error: "Endpoint not found in group"
       }, { status: 404 });
     }
 
     // Remove endpoint from the group
     const updatedEndpointIds = groupEndpointIds.filter((id: string) => id !== endpointId);
-    
+
     await db
       .update(endpointGroups)
       .set({
@@ -330,7 +330,7 @@ export async function DELETE(
       .delete(endpoints)
       .where(eq(endpoints.id, endpointId));
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: "Endpoint deleted successfully",
       deletedEndpoint: {
         id: endpoint[0].id,
@@ -340,8 +340,8 @@ export async function DELETE(
 
   } catch (error) {
     console.error("Error deleting portal endpoint:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

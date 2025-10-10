@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Send, CheckCircle2, Clock, XCircle, TrendingUp, ArrowRight, LoaderCircle } from "lucide-react"
+import { Send, CheckCircle2, Clock, XCircle, TrendingUp, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 

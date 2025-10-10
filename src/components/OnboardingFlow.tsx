@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { CheckCircle2, ArrowRight, Server, User, Globe, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle2, ArrowRight, Server, Globe, AlertCircle, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useEnvironment, EnvironmentProvider } from "@/components/EnvironmentProvider"
+import { useEnvironment, EnvironmentProvider } from "@/components/providers/EnvironmentProvider"
 
 function OnboardingPageContent() {
   const router = useRouter()

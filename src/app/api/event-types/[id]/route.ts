@@ -1,8 +1,6 @@
-import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { eventTypes } from "@/db/webhooks.schema";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { validateSchema } from "@/lib/schemaValidation";
 import { authenticateApiRequest } from "@/lib/apiHelpers";
@@ -108,45 +106,45 @@ import { authenticateApiRequest } from "@/lib/apiHelpers";
  *     x-speakeasy-name-override: "list"
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-    const authResult = await authenticateApiRequest(request, { eventTypes: ["read"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
+  const authResult = await authenticateApiRequest(request, { eventTypes: ["read"] });
 
-    const { id: eventTypeId } = await params;
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    if (!eventTypeId) {
-        return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
-    }
-    
-    const db = await getDb();
+  const { id: eventTypeId } = await params;
 
-    // Check if event type exists
-    const existingEventType = await db
-        .select()
-        .from(eventTypes)
-        .where(eq(eventTypes.id, eventTypeId))
-        .limit(1);
+  if (!eventTypeId) {
+    return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
+  }
 
-    if (existingEventType.length === 0) {
-        return NextResponse.json({ error: "Event type not found" }, { status: 404 });
-    }
-    
+  const db = await getDb();
 
-    // Format the response
-    const formattedEventType = {
-        id: existingEventType[0].id,
-        environmentId: existingEventType[0].environmentId,
-        name: existingEventType[0].name,
-        description: existingEventType[0].description,
-        schema: existingEventType[0].schema ? JSON.parse(existingEventType[0].schema) : null,
-        enabled: existingEventType[0].enabled,
-        createdAt: existingEventType[0].createdAt.toISOString(),
-        updatedAt: existingEventType[0].updatedAt.toISOString()
-    };
+  // Check if event type exists
+  const existingEventType = await db
+    .select()
+    .from(eventTypes)
+    .where(eq(eventTypes.id, eventTypeId))
+    .limit(1);
 
-    return NextResponse.json({ formattedEventType });
+  if (existingEventType.length === 0) {
+    return NextResponse.json({ error: "Event type not found" }, { status: 404 });
+  }
+
+
+  // Format the response
+  const formattedEventType = {
+    id: existingEventType[0].id,
+    environmentId: existingEventType[0].environmentId,
+    name: existingEventType[0].name,
+    description: existingEventType[0].description,
+    schema: existingEventType[0].schema ? JSON.parse(existingEventType[0].schema) : null,
+    enabled: existingEventType[0].enabled,
+    createdAt: existingEventType[0].createdAt.toISOString(),
+    updatedAt: existingEventType[0].updatedAt.toISOString()
+  };
+
+  return NextResponse.json({ formattedEventType });
 }
 
 /**
@@ -242,54 +240,54 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  *     x-speakeasy-name-override: "delete"
  */
 export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        const authResult = await authenticateApiRequest(request, { eventTypes: ["delete"] });
-    
-        if (!authResult.success) {
-            return authResult.response;
-        }
+  try {
+    const authResult = await authenticateApiRequest(request, { eventTypes: ["delete"] });
 
-        const { id: eventTypeId } = await params;
-
-        if (!eventTypeId) {
-            return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
-        }
-
-        const db = await getDb();
-
-        // Check if event type exists
-        const eventType = await db
-            .select()
-            .from(eventTypes)
-            .where(eq(eventTypes.id, eventTypeId))
-            .limit(1);
-
-        if (eventType.length === 0) {
-            return NextResponse.json({ error: "Event type not found" }, { status: 404 });
-        }
-
-        // TODO: Add environment ownership check when we have user environment tracking
-        // For now, we'll allow deletion if the event type exists
-
-        // Delete the event type
-        await db
-            .delete(eventTypes)
-            .where(eq(eventTypes.id, eventTypeId));
-
-        return NextResponse.json({ 
-            message: "Event type deleted successfully",
-            deletedEventType: {
-                id: eventType[0].id,
-                name: eventType[0].name
-            }
-        });
-    } catch (error) {
-        console.error("Error deleting event type:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (!authResult.success) {
+      return authResult.response;
     }
+
+    const { id: eventTypeId } = await params;
+
+    if (!eventTypeId) {
+      return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
+    }
+
+    const db = await getDb();
+
+    // Check if event type exists
+    const eventType = await db
+      .select()
+      .from(eventTypes)
+      .where(eq(eventTypes.id, eventTypeId))
+      .limit(1);
+
+    if (eventType.length === 0) {
+      return NextResponse.json({ error: "Event type not found" }, { status: 404 });
+    }
+
+    // TODO: Add environment ownership check when we have user environment tracking
+    // For now, we'll allow deletion if the event type exists
+
+    // Delete the event type
+    await db
+      .delete(eventTypes)
+      .where(eq(eventTypes.id, eventTypeId));
+
+    return NextResponse.json({
+      message: "Event type deleted successfully",
+      deletedEventType: {
+        id: eventType[0].id,
+        name: eventType[0].name
+      }
+    });
+  } catch (error) {
+    console.error("Error deleting event type:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 /**
@@ -430,85 +428,85 @@ export async function DELETE(
  *     x-speakeasy-name-override: "update"
  */
 export async function PATCH(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        const authResult = await authenticateApiRequest(request, { eventTypes: ["update"] });
-    
-        if (!authResult.success) {
-            return authResult.response;
-        }
-        const { body } = authResult;
+  try {
+    const authResult = await authenticateApiRequest(request, { eventTypes: ["update"] });
 
-        const { id: eventTypeId } = await params;
-
-        if (!eventTypeId) {
-            return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
-        }
-
-        const db = await getDb();
-
-        // Check if event type exists
-        const existingEventType = await db
-            .select()
-            .from(eventTypes)
-            .where(eq(eventTypes.id, eventTypeId))
-            .limit(1);
-
-        if (existingEventType.length === 0) {
-            return NextResponse.json({ error: "Event type not found" }, { status: 404 });
-        }
-
-        // Validate schema if provided
-        if (body.schema !== undefined) {
-            const schemaValidation = validateSchema(body.schema);
-            if (!schemaValidation.valid) {
-                return NextResponse.json({ 
-                    error: "Invalid schema", 
-                    details: schemaValidation.errors 
-                }, { status: 400 });
-            }
-        }
-
-        // Update the event type
-        const updateData: any = {
-            updatedAt: new Date()
-        };
-
-        // Only update fields that are provided
-        if (body.name !== undefined) updateData.name = body.name;
-        if (body.description !== undefined) updateData.description = body.description;
-        if (body.schema !== undefined) updateData.schema = JSON.stringify(body.schema);
-        if (body.enabled !== undefined) updateData.enabled = body.enabled;
-
-        await db
-            .update(eventTypes)
-            .set(updateData)
-            .where(eq(eventTypes.id, eventTypeId));
-
-        // Return updated event type
-        const updatedEventType = await db
-            .select()
-            .from(eventTypes)
-            .where(eq(eventTypes.id, eventTypeId))
-            .limit(1);
-
-        return NextResponse.json({
-            message: "Event type updated successfully",
-            eventType: {
-                id: updatedEventType[0].id,
-                environmentId: updatedEventType[0].environmentId,
-                name: updatedEventType[0].name,
-                description: updatedEventType[0].description,
-                schema: updatedEventType[0].schema ? JSON.parse(updatedEventType[0].schema) : {},
-                enabled: updatedEventType[0].enabled,
-                createdAt: updatedEventType[0].createdAt.toISOString(),
-                updatedAt: updatedEventType[0].updatedAt.toISOString(),
-            }
-        });
-    } catch (error) {
-        console.error("Error updating event type:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (!authResult.success) {
+      return authResult.response;
     }
+    const { body } = authResult;
+
+    const { id: eventTypeId } = await params;
+
+    if (!eventTypeId) {
+      return NextResponse.json({ error: "Event type ID is required" }, { status: 400 });
+    }
+
+    const db = await getDb();
+
+    // Check if event type exists
+    const existingEventType = await db
+      .select()
+      .from(eventTypes)
+      .where(eq(eventTypes.id, eventTypeId))
+      .limit(1);
+
+    if (existingEventType.length === 0) {
+      return NextResponse.json({ error: "Event type not found" }, { status: 404 });
+    }
+
+    // Validate schema if provided
+    if (body.schema !== undefined) {
+      const schemaValidation = validateSchema(body.schema);
+      if (!schemaValidation.valid) {
+        return NextResponse.json({
+          error: "Invalid schema",
+          details: schemaValidation.errors
+        }, { status: 400 });
+      }
+    }
+
+    // Update the event type
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Only update fields that are provided
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.schema !== undefined) updateData.schema = JSON.stringify(body.schema);
+    if (body.enabled !== undefined) updateData.enabled = body.enabled;
+
+    await db
+      .update(eventTypes)
+      .set(updateData)
+      .where(eq(eventTypes.id, eventTypeId));
+
+    // Return updated event type
+    const updatedEventType = await db
+      .select()
+      .from(eventTypes)
+      .where(eq(eventTypes.id, eventTypeId))
+      .limit(1);
+
+    return NextResponse.json({
+      message: "Event type updated successfully",
+      eventType: {
+        id: updatedEventType[0].id,
+        environmentId: updatedEventType[0].environmentId,
+        name: updatedEventType[0].name,
+        description: updatedEventType[0].description,
+        schema: updatedEventType[0].schema ? JSON.parse(updatedEventType[0].schema) : {},
+        enabled: updatedEventType[0].enabled,
+        createdAt: updatedEventType[0].createdAt.toISOString(),
+        updatedAt: updatedEventType[0].updatedAt.toISOString(),
+      }
+    });
+  } catch (error) {
+    console.error("Error updating event type:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

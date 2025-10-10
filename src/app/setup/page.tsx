@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { CheckCircle2, ArrowRight, Server, User, Globe, AlertCircle, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEnvironment, EnvironmentProvider } from "@/components/EnvironmentProvider"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle2, ArrowRight, Server, User, Globe, AlertCircle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEnvironment, EnvironmentProvider } from "@/components/providers/EnvironmentProvider";
 
 function OnboardingPageContent() {
-  const router = useRouter()
-  const { createEnvironment } = useEnvironment()
-  const [currentStep, setCurrentStep] = useState(1)
+  const router = useRouter();
+  const { createEnvironment } = useEnvironment();
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -20,7 +20,7 @@ function OnboardingPageContent() {
     confirmPassword: "",
     environmentName: "",
     environmentDescription: "",
-  })
+  });
 
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,48 +30,48 @@ function OnboardingPageContent() {
     { number: 1, title: "Welcome", icon: Server },
     { number: 2, title: "Admin Account", icon: User },
     { number: 3, title: "Environment", icon: Globe },
-  ]
+  ];
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
-  }
+  };
 
   const handleNext = () => {
     if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
+      setCurrentStep(currentStep + 1);
     } else {
       // Complete onboarding and redirect to dashboard
-      router.push("/")
+      router.push("/");
     }
-  }
+  };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1)
+      setCurrentStep(currentStep - 1);
     }
-  }
+  };
 
   const validateUserAccountForm = () => {
     if (!formData.email || !formData.name || !formData.password) {
-        setError("All fields are required");
-        return false;
+      setError("All fields are required");
+      return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match");
-        return false;
+      setError("Passwords do not match");
+      return false;
     }
 
     if (formData.password.length < 8) {
-        setError("Password must be at least 8 characters long");
-        return false;
+      setError("Password must be at least 8 characters long");
+      return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-        setError("Please enter a valid email address");
-        return false;
+      setError("Please enter a valid email address");
+      return false;
     }
 
     return true;
@@ -84,45 +84,45 @@ function OnboardingPageContent() {
     setError(null);
 
     try {
-        const response = await fetch("/api/setup/create-admin", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email: formData.email,
-                name: formData.name,
-                password: formData.password,
-            }),
-        });
+      const response = await fetch("/api/setup/create-admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          password: formData.password,
+        }),
+      });
 
-        if (!response.ok) {
-            const data = await response.json() as { error: string };
-            throw new Error(data.error || "Failed to create admin user");
-        }
+      if (!response.ok) {
+        const data = (await response.json()) as { error: string };
+        throw new Error(data.error || "Failed to create admin user");
+      }
 
-        // After creating admin, log them in
-        const loginResponse = await fetch("/api/auth/sign-in/email", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email: formData.email,
-                password: formData.password,
-            }),
-        });
+      // After creating admin, log them in
+      const loginResponse = await fetch("/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-        if (!loginResponse.ok) {
-            throw new Error("Failed to log in after account creation");
-        }
+      if (!loginResponse.ok) {
+        throw new Error("Failed to log in after account creation");
+      }
 
-        setSuccess("Admin user created and logged in successfully!");
-        setCurrentStep(3);
+      setSuccess("Admin user created and logged in successfully!");
+      setCurrentStep(3);
     } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create admin user");
+      setError(err instanceof Error ? err.message : "Failed to create admin user");
     } finally {
-        setIsCreating(false);
+      setIsCreating(false);
     }
   };
 
@@ -157,9 +157,9 @@ function OnboardingPageContent() {
           {/* Progress Steps */}
           <div className="mb-12 flex items-center justify-center gap-4">
             {steps.map((step, index) => {
-              const Icon = step.icon
-              const isActive = currentStep === step.number
-              const isCompleted = currentStep > step.number
+              const Icon = step.icon;
+              const isActive = currentStep === step.number;
+              const isCompleted = currentStep > step.number;
 
               return (
                 <div key={step.number} className="flex items-center">
@@ -189,7 +189,7 @@ function OnboardingPageContent() {
                     />
                   )}
                 </div>
-              )
+              );
             })}
           </div>
 
@@ -209,7 +209,8 @@ function OnboardingPageContent() {
                     <div>
                       <h3 className="font-semibold">New Server Detected</h3>
                       <p className="text-sm text-muted-foreground">
-                        This appears to be a fresh installation. Before we can get started, we need to create an admin account and set up your first environment.
+                        This appears to be a fresh installation. Before we can get started, we need to create an admin
+                        account and set up your first environment.
                       </p>
                     </div>
                   </div>
@@ -251,10 +252,10 @@ function OnboardingPageContent() {
                 </div>
 
                 {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <p className="text-sm text-red-800">{error}</p>
-                    </div>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
                 )}
 
                 <div className="space-y-4">
@@ -265,7 +266,7 @@ function OnboardingPageContent() {
                       type="text"
                       placeholder="John Doe"
                       value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      onChange={e => handleInputChange("name", e.target.value)}
                       className="font-mono"
                     />
                   </div>
@@ -277,7 +278,7 @@ function OnboardingPageContent() {
                       type="email"
                       placeholder="admin@example.com"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      onChange={e => handleInputChange("email", e.target.value)}
                       className="font-mono"
                     />
                   </div>
@@ -289,7 +290,7 @@ function OnboardingPageContent() {
                       type="password"
                       placeholder="••••••••"
                       value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      onChange={e => handleInputChange("password", e.target.value)}
                       className="font-mono"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -304,7 +305,7 @@ function OnboardingPageContent() {
                       type="password"
                       placeholder="••••••••"
                       value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      onChange={e => handleInputChange("confirmPassword", e.target.value)}
                       className="font-mono"
                     />
                   </div>
@@ -326,12 +327,12 @@ function OnboardingPageContent() {
                     className="gap-2"
                   >
                     {isCreating ? (
-                        <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Creating...
-                        </>
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
                     ) : (
-                        "Create Account"
+                      "Create Account"
                     )}
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -350,10 +351,10 @@ function OnboardingPageContent() {
                 </div>
 
                 {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                        <p className="text-sm text-red-800">{error}</p>
-                    </div>
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
                 )}
 
                 <div className="space-y-4">
@@ -364,7 +365,7 @@ function OnboardingPageContent() {
                       type="text"
                       placeholder="Production"
                       value={formData.environmentName}
-                      onChange={(e) => handleInputChange("environmentName", e.target.value)}
+                      onChange={e => handleInputChange("environmentName", e.target.value)}
                       className="font-mono"
                     />
                     <p className="text-xs text-muted-foreground">Common names: Production, Staging, Development</p>
@@ -376,7 +377,7 @@ function OnboardingPageContent() {
                       id="environmentDescription"
                       placeholder="Primary production environment for live webhook events"
                       value={formData.environmentDescription}
-                      onChange={(e) => handleInputChange("environmentDescription", e.target.value)}
+                      onChange={e => handleInputChange("environmentDescription", e.target.value)}
                       className="min-h-[100px] resize-none font-mono"
                     />
                   </div>
@@ -399,7 +400,11 @@ function OnboardingPageContent() {
                       Creating Environment...
                     </Button>
                   ) : (
-                    <Button onClick={() => handleCreateEnvironment(formData.environmentName, formData.environmentDescription)} disabled={!formData.environmentName} className="gap-2">
+                    <Button
+                      onClick={() => handleCreateEnvironment(formData.environmentName, formData.environmentDescription)}
+                      disabled={!formData.environmentName}
+                      className="gap-2"
+                    >
                       Create Environment
                       <CheckCircle2 className="h-4 w-4" />
                     </Button>
@@ -418,7 +423,7 @@ function OnboardingPageContent() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default function OnboardingPage() {
@@ -426,5 +431,5 @@ export default function OnboardingPage() {
     <EnvironmentProvider>
       <OnboardingPageContent />
     </EnvironmentProvider>
-  )
+  );
 }

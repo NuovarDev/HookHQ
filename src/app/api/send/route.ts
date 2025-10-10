@@ -139,238 +139,238 @@ import { createRetryConfig } from "@/lib/retryUtils";
  *     x-speakeasy-name-override: "send"
  */
 export async function POST(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { messages: ["create"] });
-    
-    if (!authResult.success) {
-      return authResult.response;
-    }
-    
-    const { environmentId, body } = authResult;
-    const { destinations, eventType, eventId, payload, logPayload } = body as { 
-        destinations?: string[]; 
-        eventType: string; 
-        payload: any; 
-        eventId?: string;
-        logPayload?: boolean;
-    };
+  const authResult = await authenticateApiRequest(request, { messages: ["create"] });
 
-    // Request must have endpointId and/or endpointGroup
-    if (!destinations || !payload) {
-      return NextResponse.json({ 
-        error: `${!destinations ? "Destinations are" : "Payload is"} required`
-      }, { status: 400 });
-    }
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    // Check if any endpoints are endpointGroups
-    const endpointGroups = destinations.filter(destination => destination.startsWith("grp_"));
-    const endpointIds = destinations.filter(destination => !destination.startsWith("grp_"));
+  const { environmentId, body } = authResult;
+  const { destinations, eventType, eventId, payload, logPayload } = body as {
+    destinations?: string[];
+    eventType: string;
+    payload: any;
+    eventId?: string;
+    logPayload?: boolean;
+  };
 
-    // If endpointGroup is provided, eventType is required
-    if (endpointGroups.length > 0 && !eventType) {
-      return NextResponse.json({ error: "eventType must be specified when endpointGroups are provided" }, { status: 400 });
-    }
-
-    if ([endpointIds, endpointGroups].some(ids => ids?.some(id => !(id.startsWith(`ep_${environmentId}_`) || id.startsWith(`grp_${environmentId}_`))))) {
-      return NextResponse.json({ 
-        error: "Forbidden",
-        message: "API key does not have permissions on all endpoints"
-      }, { status: 403 });
-    }
-
-    const db = await getDb();
-
-    // Validate payload against event type schema if eventType is provided
-    if (eventType) {
-      const { validateEventPayload } = await import("@/lib/schemaValidation");
-      const eventTypeRecord = await db
-        .select({ schema: eventTypes.schema })
-        .from(eventTypes)
-        .where(and(
-          eq(eventTypes.name, eventType),
-          eq(eventTypes.environmentId, environmentId)
-        ))
-        .limit(1);
-
-      if (eventTypeRecord.length > 0 && eventTypeRecord[0].schema) {
-        const validation = validateEventPayload(eventTypeRecord[0].schema, payload);
-        if (!validation.valid) {
-          return NextResponse.json({ 
-            error: "Payload validation failed", 
-            details: validation.errors 
-          }, { status: 400 });
-        }
-      }
-    }
-
-    // TO-DO: Enforce unique eventId
-
-    // If eventId was provided, use it, otherwise generate a new one
-    const date = new Date();
-    const webhookId = crypto.randomUUID();
-    const idempotencyKey = request.headers.get("Idempotency-Key");
-
-    await db.insert(webhookMessages).values({
-      id: webhookId,
-      eventId,
-      eventType,
-      environmentId,
-      endpointIds: JSON.stringify(endpointIds || []),
-      endpointGroupIds: JSON.stringify(endpointGroups || []),
-      payload: logPayload ? JSON.stringify(payload) : null,
-      payloadSize: payload ? JSON.stringify(payload).length : 0,
-      status: "pending",
-      attempts: 0,
-      maxAttempts: 3,
-      createdAt: date,
-      queuedAt: date,
-      idempotencyKey,
-    });
-
-    // Add to queue - send individual messages for each endpoint
-    const { env } = await getCloudflareContext({ async: true });
-    
-    // Resolve endpoint groups to individual endpoints
-    const resolvedEndpoints = await resolveEndpointGroups(endpointGroups || [], eventType, environmentId, env);
-    const allEndpointIds = [...(endpointIds || []), ...resolvedEndpoints];
-
-    if (allEndpointIds.length === 0) {
-      return NextResponse.json({
-        error: "No endpoints found"
-      }, { status: 400 });
-    }
-    
-    // Cache endpoint data in KV for faster consumer processing and get the data
-    const endpointData = await cacheEndpointData(allEndpointIds, environmentId, env);
-    
-    // Prepare all endpoint messages with retry configuration
-    const endpointMessages = [] as MessageSendRequest[];
-    
-    // Create endpoint data map for quick lookup
-    const endpointMap = new Map(endpointData.map(ep => [ep.id, ep]));
-
-    // Calculate payload size to determine storage strategy
-    const payloadSize = JSON.stringify(payload).length;
-    const payloadSizeKB = payloadSize / 1024;
-    
-    // Determine if we should store payload in KV
-    // Use KV if payload is > 64KB or if we have many endpoints (risk of hitting 256KB batch limit)
-    const shouldUseKV = payloadSizeKB > 64 || allEndpointIds.length > 50;
-    
-    let payloadKey: string | null = null;
-    let maxRetryPeriodDays = 7; // Default to 7 days
-    
-    if (shouldUseKV) {
-      payloadKey = `webhook-payload:${webhookId}`;
-    }
-    
-    // Create base message body (without payload)
-    const baseMessageBody = {
-      id: webhookId,
-      eventType,
-      eventId,
-      timestamp: date.toISOString(),
-      idempotencyKey,
-      payloadKey, // Include KV key if using KV storage
-      payload: shouldUseKV ? null : payload, // Only include payload if not using KV
-    };
-    
-    // Calculate optimal batch size based on message size
-    const baseMessageSize = JSON.stringify(baseMessageBody).length;
-    const maxBatchSize = 100; // Cloudflare's limit
-    const maxBatchBytes = 256 * 1024; // 256KB limit
-    
-    // Calculate how many messages we can fit in a batch
-    let optimalBatchSize = Math.floor(maxBatchBytes / baseMessageSize);
-    optimalBatchSize = Math.min(optimalBatchSize, maxBatchSize);
-    
-    // Add messages for all resolved endpoints and calculate max retry period
-    for (const endpointId of allEndpointIds) {
-      const endpoint = endpointMap.get(endpointId);
-      
-      // Create retry configuration for this endpoint
-      const retryConfig = await createRetryConfig(
-        endpoint?.retryPolicy || "retry",
-        endpoint?.maxRetries || 3,
-        endpoint?.backoffStrategy || "exponential",
-        endpoint?.baseDelaySeconds || 500,
-      );
-      
-      // Calculate maximum retry period for this endpoint (if using KV)
-      if (shouldUseKV) {
-        const maxRetries = retryConfig.maxAttempts;
-        const baseDelaySeconds = retryConfig.baseDelaySeconds;
-        const backoffStrategy = retryConfig.backoffStrategy;
-        
-        let maxRetrySeconds = 0;
-        
-        // Calculate total retry time based on backoff strategy
-        for (let attempt = 1; attempt < maxRetries; attempt++) {
-          let delaySeconds = 0;
-          
-          switch (backoffStrategy) {
-            case "exponential":
-              delaySeconds = Math.min(baseDelaySeconds * Math.pow(2, attempt - 1), 300); // Cap at 5 minutes
-              break;
-            case "linear":
-              delaySeconds = Math.min(baseDelaySeconds * attempt, 300); // Cap at 5 minutes
-              break;
-            case "fixed":
-              delaySeconds = baseDelaySeconds;
-              break;
-          }
-          
-          maxRetrySeconds += delaySeconds;
-        }
-        
-        // Convert to days and find the maximum
-        const retryDays = Math.ceil(maxRetrySeconds / (24 * 60 * 60));
-        maxRetryPeriodDays = Math.max(maxRetryPeriodDays, retryDays);
-      }
-      
-      endpointMessages.push({
-        body: {
-          ...baseMessageBody,
-          endpointId,
-          retryConfig
-        }
-      });
-    }
-    
-    // Store payload in KV after calculating retry periods
-    if (shouldUseKV && payloadKey) {
-      // Ensure minimum of 3 days, maximum of 30 days
-      maxRetryPeriodDays = Math.max(3, Math.min(30, maxRetryPeriodDays));
-      
-      await env.KV.put(payloadKey, JSON.stringify(payload), {
-        expirationTtl: 60 * 60 * 24 * maxRetryPeriodDays
-      });
-    }
-    
-    // Send messages in optimal batches
-    const batches = Math.ceil(endpointMessages.length / optimalBatchSize);
-    
-    for (let i = 0; i < batches; i++) {
-      const batch = endpointMessages.slice(i * optimalBatchSize, (i + 1) * optimalBatchSize);
-      await env.WEBHOOKS.sendBatch(batch as Iterable<MessageSendRequest<Body>>);
-    }
-
+  // Request must have endpointId and/or endpointGroup
+  if (!destinations || !payload) {
     return NextResponse.json({
-      id: webhookId,
-      eventId,
-      eventType,
-      payload,
-      channels: [
-        ...(endpointIds || []),
-        ...(endpointGroups || []),
-      ],
-      timestamp: date.toISOString(),
+      error: `${!destinations ? "Destinations are" : "Payload is"} required`
+    }, { status: 400 });
+  }
+
+  // Check if any endpoints are endpointGroups
+  const endpointGroups = destinations.filter(destination => destination.startsWith("grp_"));
+  const endpointIds = destinations.filter(destination => !destination.startsWith("grp_"));
+
+  // If endpointGroup is provided, eventType is required
+  if (endpointGroups.length > 0 && !eventType) {
+    return NextResponse.json({ error: "eventType must be specified when endpointGroups are provided" }, { status: 400 });
+  }
+
+  if ([endpointIds, endpointGroups].some(ids => ids?.some(id => !(id.startsWith(`ep_${environmentId}_`) || id.startsWith(`grp_${environmentId}_`))))) {
+    return NextResponse.json({
+      error: "Forbidden",
+      message: "API key does not have permissions on all endpoints"
+    }, { status: 403 });
+  }
+
+  const db = await getDb();
+
+  // Validate payload against event type schema if eventType is provided
+  if (eventType) {
+    const { validateEventPayload } = await import("@/lib/schemaValidation");
+    const eventTypeRecord = await db
+      .select({ schema: eventTypes.schema })
+      .from(eventTypes)
+      .where(and(
+        eq(eventTypes.name, eventType),
+        eq(eventTypes.environmentId, environmentId)
+      ))
+      .limit(1);
+
+    if (eventTypeRecord.length > 0 && eventTypeRecord[0].schema) {
+      const validation = validateEventPayload(eventTypeRecord[0].schema, payload);
+      if (!validation.valid) {
+        return NextResponse.json({
+          error: "Payload validation failed",
+          details: validation.errors
+        }, { status: 400 });
+      }
+    }
+  }
+
+  // TO-DO: Enforce unique eventId
+
+  // If eventId was provided, use it, otherwise generate a new one
+  const date = new Date();
+  const webhookId = crypto.randomUUID();
+  const idempotencyKey = request.headers.get("Idempotency-Key");
+
+  await db.insert(webhookMessages).values({
+    id: webhookId,
+    eventId,
+    eventType,
+    environmentId,
+    endpointIds: JSON.stringify(endpointIds || []),
+    endpointGroupIds: JSON.stringify(endpointGroups || []),
+    payload: logPayload ? JSON.stringify(payload) : null,
+    payloadSize: payload ? JSON.stringify(payload).length : 0,
+    status: "pending",
+    attempts: 0,
+    maxAttempts: 3,
+    createdAt: date,
+    queuedAt: date,
+    idempotencyKey,
+  });
+
+  // Add to queue - send individual messages for each endpoint
+  const { env } = await getCloudflareContext({ async: true });
+
+  // Resolve endpoint groups to individual endpoints
+  const resolvedEndpoints = await resolveEndpointGroups(endpointGroups || [], eventType, environmentId, env);
+  const allEndpointIds = [...(endpointIds || []), ...resolvedEndpoints];
+
+  if (allEndpointIds.length === 0) {
+    return NextResponse.json({
+      error: "No endpoints found"
+    }, { status: 400 });
+  }
+
+  // Cache endpoint data in KV for faster consumer processing and get the data
+  const endpointData = await cacheEndpointData(allEndpointIds, environmentId, env);
+
+  // Prepare all endpoint messages with retry configuration
+  const endpointMessages = [] as MessageSendRequest[];
+
+  // Create endpoint data map for quick lookup
+  const endpointMap = new Map(endpointData.map(ep => [ep.id, ep]));
+
+  // Calculate payload size to determine storage strategy
+  const payloadSize = JSON.stringify(payload).length;
+  const payloadSizeKB = payloadSize / 1024;
+
+  // Determine if we should store payload in KV
+  // Use KV if payload is > 64KB or if we have many endpoints (risk of hitting 256KB batch limit)
+  const shouldUseKV = payloadSizeKB > 64 || allEndpointIds.length > 50;
+
+  let payloadKey: string | null = null;
+  let maxRetryPeriodDays = 7; // Default to 7 days
+
+  if (shouldUseKV) {
+    payloadKey = `webhook-payload:${webhookId}`;
+  }
+
+  // Create base message body (without payload)
+  const baseMessageBody = {
+    id: webhookId,
+    eventType,
+    eventId,
+    timestamp: date.toISOString(),
+    idempotencyKey,
+    payloadKey, // Include KV key if using KV storage
+    payload: shouldUseKV ? null : payload, // Only include payload if not using KV
+  };
+
+  // Calculate optimal batch size based on message size
+  const baseMessageSize = JSON.stringify(baseMessageBody).length;
+  const maxBatchSize = 100; // Cloudflare's limit
+  const maxBatchBytes = 256 * 1024; // 256KB limit
+
+  // Calculate how many messages we can fit in a batch
+  let optimalBatchSize = Math.floor(maxBatchBytes / baseMessageSize);
+  optimalBatchSize = Math.min(optimalBatchSize, maxBatchSize);
+
+  // Add messages for all resolved endpoints and calculate max retry period
+  for (const endpointId of allEndpointIds) {
+    const endpoint = endpointMap.get(endpointId);
+
+    // Create retry configuration for this endpoint
+    const retryConfig = await createRetryConfig(
+      endpoint?.retryPolicy || "retry",
+      endpoint?.maxRetries || 3,
+      endpoint?.backoffStrategy || "exponential",
+      endpoint?.baseDelaySeconds || 500,
+    );
+
+    // Calculate maximum retry period for this endpoint (if using KV)
+    if (shouldUseKV) {
+      const maxRetries = retryConfig.maxAttempts;
+      const baseDelaySeconds = retryConfig.baseDelaySeconds;
+      const backoffStrategy = retryConfig.backoffStrategy;
+
+      let maxRetrySeconds = 0;
+
+      // Calculate total retry time based on backoff strategy
+      for (let attempt = 1; attempt < maxRetries; attempt++) {
+        let delaySeconds = 0;
+
+        switch (backoffStrategy) {
+          case "exponential":
+            delaySeconds = Math.min(baseDelaySeconds * Math.pow(2, attempt - 1), 300); // Cap at 5 minutes
+            break;
+          case "linear":
+            delaySeconds = Math.min(baseDelaySeconds * attempt, 300); // Cap at 5 minutes
+            break;
+          case "fixed":
+            delaySeconds = baseDelaySeconds;
+            break;
+        }
+
+        maxRetrySeconds += delaySeconds;
+      }
+
+      // Convert to days and find the maximum
+      const retryDays = Math.ceil(maxRetrySeconds / (24 * 60 * 60));
+      maxRetryPeriodDays = Math.max(maxRetryPeriodDays, retryDays);
+    }
+
+    endpointMessages.push({
+      body: {
+        ...baseMessageBody,
+        endpointId,
+        retryConfig
+      }
     });
+  }
+
+  // Store payload in KV after calculating retry periods
+  if (shouldUseKV && payloadKey) {
+    // Ensure minimum of 3 days, maximum of 30 days
+    maxRetryPeriodDays = Math.max(3, Math.min(30, maxRetryPeriodDays));
+
+    await env.KV.put(payloadKey, JSON.stringify(payload), {
+      expirationTtl: 60 * 60 * 24 * maxRetryPeriodDays
+    });
+  }
+
+  // Send messages in optimal batches
+  const batches = Math.ceil(endpointMessages.length / optimalBatchSize);
+
+  for (let i = 0; i < batches; i++) {
+    const batch = endpointMessages.slice(i * optimalBatchSize, (i + 1) * optimalBatchSize);
+    await env.WEBHOOKS.sendBatch(batch as Iterable<MessageSendRequest<Body>>);
+  }
+
+  return NextResponse.json({
+    id: webhookId,
+    eventId,
+    eventType,
+    payload,
+    channels: [
+      ...(endpointIds || []),
+      ...(endpointGroups || []),
+    ],
+    timestamp: date.toISOString(),
+  });
 }
 
 // Helper function to resolve endpoint groups to individual endpoints
 async function resolveEndpointGroups(
-  endpointGroupIds: string[], 
-  eventType: string, 
+  endpointGroupIds: string[],
+  eventType: string,
   environmentId: string,
   env: CloudflareEnv
 ): Promise<string[]> {
@@ -384,7 +384,7 @@ async function resolveEndpointGroups(
     // Try to get from cache first
     const cacheKey = `group:${groupId}:${eventType}`;
     const cachedResult = await env.KV.get(cacheKey);
-    
+
     if (cachedResult) {
       const cachedEndpoints = JSON.parse(cachedResult);
       resolvedEndpoints.push(...cachedEndpoints);
@@ -410,7 +410,7 @@ async function resolveEndpointGroups(
     }
 
     const groupEndpointIds = JSON.parse(group[0].endpointIds);
-    
+
     if (groupEndpointIds.length === 0) {
       // No endpoints in group - cache empty result
       await env.KV.put(cacheKey, JSON.stringify([]), { expirationTtl: 60 * 60 * 24 * 30 }); // 30 days
@@ -438,7 +438,7 @@ async function resolveEndpointGroups(
 
     // Cache the result
     await env.KV.put(cacheKey, JSON.stringify(groupResolvedEndpoints), { expirationTtl: 60 * 60 * 24 * 30 }); // 30 days
-    
+
     resolvedEndpoints.push(...groupResolvedEndpoints);
   }
 

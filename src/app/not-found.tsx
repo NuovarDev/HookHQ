@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Home, ArrowLeft, Search } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ThemeProvider } from "@/components/ThemeProvider"
+import { Button } from "@/components/ui/button";
+import { Home, ArrowLeft, Search } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 function NotFoundContent() {
-  const router = useRouter()
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,9 +22,7 @@ function NotFoundContent() {
               <div className="space-y-2 text-center">
                 <div className="text-6xl font-bold text-muted-foreground">404</div>
                 <h1 className="text-3xl font-bold tracking-tight">Page Not Found</h1>
-                <p className="text-muted-foreground">
-                  The page you're looking for doesn't exist or has been moved.
-                </p>
+                <p className="text-muted-foreground">The page you're looking for doesn't exist or has been moved.</p>
               </div>
 
               <div className="space-y-4 border-l-2 border-primary pl-6">
@@ -58,11 +56,7 @@ function NotFoundContent() {
               </div>
 
               <div className="flex justify-center gap-4 pt-4">
-                <Button 
-                  onClick={() => router.back()} 
-                  variant="outline" 
-                  className="gap-2"
-                >
+                <Button onClick={() => router.back()} variant="outline" className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Go Back
                 </Button>
@@ -78,7 +72,7 @@ function NotFoundContent() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default function NotFound() {
@@ -92,5 +86,5 @@ export default function NotFound() {
     >
       <NotFoundContent />
     </ThemeProvider>
-  )
+  );
 }

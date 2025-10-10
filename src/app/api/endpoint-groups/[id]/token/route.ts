@@ -150,18 +150,18 @@ interface PortalTokenPayload {
  */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authResult = await authenticateApiRequest(request, { endpoints: ["create", "read", "update", "delete"] });
-    
+
   if (!authResult.success) {
     return authResult.response;
   }
-    
+
   try {
     const { body } = authResult;
     const { id: endpointGroupId } = await params;
     const {
-      allowedEventTypes, 
-      applicationName, 
-      returnUrl 
+      allowedEventTypes,
+      applicationName,
+      returnUrl
     } = body as {
       allowedEventTypes?: string[];
       applicationName?: string;
@@ -177,8 +177,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint group not found" 
+      return NextResponse.json({
+        error: "Endpoint group not found"
       }, { status: 404 });
     }
 
@@ -191,11 +191,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       returnUrl,
     };
 
-    const portalAuthResult = generatePortalToken(payload, request, "24h");
+    const portalAuthResult = await generatePortalToken(payload, request);
 
     if (!portalAuthResult.success) {
-      return NextResponse.json({ 
-        error: portalAuthResult.error 
+      return NextResponse.json({
+        error: portalAuthResult.error
       }, { status: 500 });
     }
 
@@ -212,8 +212,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   } catch (error) {
     console.error("Error generating portal token:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

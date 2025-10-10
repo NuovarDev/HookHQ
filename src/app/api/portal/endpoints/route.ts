@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { endpoints, eventTypes, endpointGroups, webhookMessages, webhookAttempts } from "@/db/webhooks.schema";
+import { endpoints, endpointGroups, webhookAttempts } from "@/db/webhooks.schema";
 import { eq, and, inArray, gte, sql } from "drizzle-orm";
-import { authenticatePortalRequest, isEventTypeAllowed } from "@/lib/portalAuth";
+import { authenticatePortalRequest } from "@/lib/portalAuth";
 
 export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 
@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({ 
-        error: "Endpoint group not found" 
+      return NextResponse.json({
+        error: "Endpoint group not found"
       }, { status: 404 });
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
-    const groupEndpoints = endpointList.filter(endpoint => 
+    const groupEndpoints = endpointList.filter(endpoint =>
       groupEndpointIds.includes(endpoint.id)
     );
 
@@ -88,11 +88,11 @@ export async function GET(request: NextRequest) {
         createdAt: endpoint.createdAt.toISOString(),
         updatedAt: endpoint.updatedAt.toISOString(),
         topics: endpoint.topics ? JSON.parse(endpoint.topics) : [],
-        metrics24h: latestAttempts.filter(metric => 
+        metrics24h: latestAttempts.filter(metric =>
           metric.endpointId === endpoint.id &&
           metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
         ),
-        metrics7d: latestAttempts.filter(metric => 
+        metrics7d: latestAttempts.filter(metric =>
           metric.endpointId === endpoint.id &&
           metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         )
@@ -101,18 +101,18 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error fetching portal endpoints:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
-  
+
   if (!authResult.success) {
-    return NextResponse.json({ 
-      error: authResult.error 
+    return NextResponse.json({
+      error: authResult.error
     }, { status: 401 });
   }
 
@@ -125,8 +125,8 @@ export async function POST(request: NextRequest) {
   };
 
   if (!name || !url) {
-    return NextResponse.json({ 
-      error: "Name and URL are required" 
+    return NextResponse.json({
+      error: "Name and URL are required"
     }, { status: 400 });
   }
 
@@ -186,8 +186,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Error creating portal endpoint:", error);
-    return NextResponse.json({ 
-      error: "Internal server error" 
+    return NextResponse.json({
+      error: "Internal server error"
     }, { status: 500 });
   }
 }

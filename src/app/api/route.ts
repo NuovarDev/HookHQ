@@ -20,6 +20,6 @@ const config = {
   ]
 }
 
-export const GET = process.env.NEXT_PUBLIC_API_DOCS_ENABLED === 'true' ? ApiReference(config) : () => { 
+export const GET = process.env.NEXT_PUBLIC_API_DOCS_ENABLED === 'true' ? ApiReference(config) : () => {
   return new NextResponse(null, { status: 404 });
 }

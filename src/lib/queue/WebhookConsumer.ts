@@ -1,7 +1,7 @@
 import { getDb } from "./db";
-import { webhookMessages } from "../src/db/webhooks.schema";
+import { webhookMessages } from "@/db/webhooks.schema";
 import { eq } from "drizzle-orm";
-import { WebhookDelivery } from "@/lib/WebhookDelivery";
+import { WebhookDelivery } from "@/lib/queue/WebhookDelivery";
 import { shouldRetry, calculateRetryDelay } from "@/lib/retryUtils";
 import { WebhookMessage } from "./types";
 
@@ -26,18 +26,20 @@ export class WebhookConsumer {
       attempts
     };
 
+    const now = new Date();
+
     switch (status) {
       case "delivered":
-        updateData.deliveredAt = new Date();
+        updateData.deliveredAt = now;
         break;
       case "retrying":
         updateData.lastError = error || 'Unknown error';
-        updateData.lastErrorAt = new Date();
+        updateData.lastErrorAt = now;
         break;
       case "failed":
-        updateData.failedAt = new Date();
+        updateData.failedAt = now;
         updateData.lastError = error || 'Unknown error';
-        updateData.lastErrorAt = new Date();
+        updateData.lastErrorAt = now;
         break;
     }
 
@@ -107,25 +109,25 @@ export class WebhookConsumer {
     try {
       const failedMessageKey = `failed:${webhookData.id}:${webhookData.endpointId}`;
       
-      // Get the actual payload (either inline or from KV)
       let actualPayload = webhookData.payload;
       if (webhookData.payloadKey && !actualPayload) {
         try {
           const payloadData = await this.env.KV.get(webhookData.payloadKey);
           if (payloadData) {
             actualPayload = JSON.parse(payloadData);
+
+            await this.env.KV.delete(webhookData.payloadKey);
           }
         } catch (payloadError) {
           console.error('Error fetching payload from KV for failed message:', payloadError);
-          // Continue with null payload rather than failing
         }
       }
       
       const failedMessageData = {
         webhookData: {
           ...webhookData,
-          payload: actualPayload, // Store the actual payload, not the key
-          payloadKey: null // Clear the payloadKey since we're storing the payload directly
+          payload: actualPayload,
+          payloadKey: null // Remove payloadKey since we're storing the payload directly
         },
         error,
         attempts,
@@ -140,7 +142,6 @@ export class WebhookConsumer {
       console.log(`Stored failed message ${webhookData.id} in KV for manual retry`);
     } catch (error) {
       console.error('Error storing failed message in KV:', error);
-      // Don't throw - this shouldn't break the main flow
     }
   }
 
@@ -155,10 +156,7 @@ export class WebhookConsumer {
     delivery.setAttempts(message.attempts);
 
     try {
-      // Process the single endpoint
       const result = await delivery.send(webhookData.endpointId);
-
-      // Determine if we should retry based on retry configuration
       const shouldRetryMessage = shouldRetry(result.success, message.attempts, webhookData.retryConfig);
 
       if (result.success) {
@@ -192,7 +190,6 @@ export class WebhookConsumer {
         await this.processMessage(message);
       } catch (error) {
         console.error('Error processing message in batch:', error);
-        // Continue processing other messages in the batch
       }
     }
   }

@@ -5,8 +5,8 @@ export interface WebhookMessage {
   endpointId: string;
   eventType: string;
   eventId?: string;
-  payload: any | null; // Can be null if stored in KV
-  payloadKey?: string | null; // KV key for large payloads
+  payload: any | null;
+  payloadKey?: string | null;
   timestamp: string;
   idempotencyKey?: string;
   retryConfig: RetryConfig;

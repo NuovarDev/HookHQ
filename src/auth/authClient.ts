@@ -3,7 +3,7 @@ import { createAuthClient } from "better-auth/react";
 import { apiKeyClient, adminClient } from "better-auth/client/plugins"
 
 const client = createAuthClient({
-    plugins: [cloudflareClient(), apiKeyClient(), adminClient()],
+  plugins: [cloudflareClient(), apiKeyClient(), adminClient()],
 });
 
 export default client;

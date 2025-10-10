@@ -2,18 +2,17 @@
 
 import authClient from "@/auth/authClient"; // Assuming default export from your authClient setup
 import { useRouter } from "next/navigation";
-import { startTransition } from 'react';
-import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import EnvironmentDropdown from '@/components/EnvironmentDropdown';
-import { EnvironmentProvider } from '@/components/EnvironmentProvider';
-import EnvironmentGate from '@/components/EnvironmentGate';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { useTheme } from 'next-themes';
-import type React from "react"
-
-import { useState } from "react"
+import { startTransition } from "react";
+import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import EnvironmentDropdown from "@/components/EnvironmentDropdown";
+import { EnvironmentProvider } from "@/components/providers/EnvironmentProvider";
+import EnvironmentGate from "@/components/EnvironmentGate";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { useTheme } from "next-themes";
+import type React from "react";
+import { useState } from "react";
 import {
   X,
   LayoutDashboard,
@@ -29,10 +28,15 @@ import {
   History,
   User,
   LogOut,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { cn } from "@/lib/utils"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 
 const handleSignOut = async (router: AppRouterInstance) => {
@@ -52,25 +56,25 @@ const handleSignOut = async (router: AppRouterInstance) => {
 };
 
 const user = {
-  name: 'Tom Cook',
-  email: 'tom@example.com',
+  name: "Tom Cook",
+  email: "tom@example.com",
   imageUrl:
-    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-}
+    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+};
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', current: false, icon: LayoutDashboard },
-  { name: 'Webhooks', href: '/dashboard/webhooks', current: false, icon: Webhook, prefix: true },
-  { name: 'Proxy', href: '/dashboard/proxy', current: false, icon: Server, prefix: true },
-  { name: 'Log', href: '/dashboard/log', current: false, icon: History },
-  { name: 'Metrics', href: '/dashboard/metrics', current: false, icon: BarChart3 },
-  { name: 'Admin', href: '/dashboard/admin', current: false, adminOnly: true, icon: Settings, prefix: true },
-] as const
+  { name: "Dashboard", href: "/dashboard", current: false, icon: LayoutDashboard },
+  { name: "Webhooks", href: "/dashboard/webhooks", current: false, icon: Webhook, prefix: true },
+  { name: "Proxy", href: "/dashboard/proxy", current: false, icon: Server, prefix: true },
+  { name: "Log", href: "/dashboard/log", current: false, icon: History },
+  { name: "Metrics", href: "/dashboard/metrics", current: false, icon: BarChart3 },
+  { name: "Admin", href: "/dashboard/admin", current: false, adminOnly: true, icon: Settings, prefix: true },
+] as const;
 const userNavigation = (router: AppRouterInstance) => [
-  { name: 'Account', href: '/dashboard/account', current: false },
-  { name: 'API Keys', href: '/dashboard/api-keys', current: false },
-  { name: 'Sign out', href: '#', onClick: () => handleSignOut(router) },
-]
+  { name: "Account", href: "/dashboard/account", current: false },
+  { name: "API Keys", href: "/dashboard/api-keys", current: false },
+  { name: "Sign out", href: "#", onClick: () => handleSignOut(router) },
+];
 
 function DashboardContent({
   children,
@@ -81,20 +85,20 @@ function DashboardContent({
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
-  const currentPathName = [...navigation, ...userNavigation(router)].map((item) => {
-    const isCurrent = (item as any).prefix 
-      ? pathname.startsWith(item.href) 
-      : item.href === pathname;
-    
-    return { ...item, current: isCurrent };
-  }).find(item => item.current)?.name;
+  const currentPathName = [...navigation, ...userNavigation(router)]
+    .map(item => {
+      const isCurrent = (item as any).prefix ? pathname.startsWith(item.href) : item.href === pathname;
 
-  const [collapsed, setCollapsed] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+      return { ...item, current: isCurrent };
+    })
+    .find(item => item.current)?.name;
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleTheme = () => {
-    setTheme(theme === "light" ? "dark" : "light")
-  }
+    setTheme(theme === "light" ? "dark" : "light");
+  };
 
   return (
     <EnvironmentProvider>
@@ -105,25 +109,23 @@ function DashboardContent({
             className={cn(
               "fixed inset-y-0 left-0 z-50 border-r border-border bg-card transition-all duration-200 lg:translate-x-0",
               collapsed ? "w-16" : "w-64",
-              sidebarOpen ? "translate-x-0" : "-translate-x-full",
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}
           >
             <div className="flex h-full flex-col">
               <div className="flex h-16 items-center border-b border-border px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 bg-black flex items-center justify-center dark:border-border dark:border">
-                      <Image src="/logo.svg" alt="HookHQ" width={32} height={32} className="text-primary-foreground" />
-                    </div>
-                    {!collapsed && (<span className="ml-1 font-mono text-2xl font-semibold">HookHQ</span>)}
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-black flex items-center justify-center dark:border-border dark:border">
+                    <Image src="/logo.svg" alt="HookHQ" width={32} height={32} className="text-primary-foreground" />
                   </div>
+                  {!collapsed && <span className="ml-1 font-mono text-2xl font-semibold">HookHQ</span>}
+                </div>
               </div>
 
               {/* Navigation */}
               <nav className="flex-1 space-y-1 p-4">
-                {navigation.map((item) => {
-                  const isActive = (item as any).prefix 
-                    ? pathname.startsWith(item.href) 
-                    : pathname === item.href
+                {navigation.map(item => {
+                  const isActive = (item as any).prefix ? pathname.startsWith(item.href) : pathname === item.href;
                   return (
                     <Link
                       key={item.name}
@@ -133,7 +135,7 @@ function DashboardContent({
                         isActive
                           ? "border-border bg-muted text-foreground"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        collapsed && "justify-center",
+                        collapsed && "justify-center"
                       )}
                       onClick={() => setSidebarOpen(false)}
                       title={collapsed ? item.name : undefined}
@@ -141,7 +143,7 @@ function DashboardContent({
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && item.name}
                     </Link>
-                  )
+                  );
                 })}
               </nav>
 
@@ -193,7 +195,12 @@ function DashboardContent({
             {/* Top bar */}
             <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-6">
               <div className="hidden lg:flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-9 w-9 rounded-none">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCollapsed(!collapsed)}
+                  className="h-9 w-9 rounded-none"
+                >
                   {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
                 </Button>
                 <div className="h-6 w-px bg-border" />
@@ -222,20 +229,23 @@ function DashboardContent({
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="mx-3 rounded-none">
-                    {userNavigation(router).map((item) => item.onClick ? (
-                      <DropdownMenuItem key={item.name} onClick={item.onClick} className="cursor-pointer rounded-none">
-                        {item.name}
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem key={item.name} className="cursor-pointer rounded-none">
-                        <Link href={item.href}>
+                    {userNavigation(router).map(item =>
+                      item.onClick ? (
+                        <DropdownMenuItem
+                          key={item.name}
+                          onClick={item.onClick}
+                          className="cursor-pointer rounded-none"
+                        >
                           {item.name}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem key={item.name} className="cursor-pointer rounded-none">
+                          <Link href={item.href}>{item.name}</Link>
+                        </DropdownMenuItem>
+                      )
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                
               </div>
             </header>
 
@@ -243,9 +253,9 @@ function DashboardContent({
             <main className="texture-overlay min-h-[calc(100vh-4rem)] p-6">{children}</main>
           </div>
         </div>
-        </EnvironmentGate>
+      </EnvironmentGate>
     </EnvironmentProvider>
-  )
+  );
 }
 
 export default function AppLayout({
@@ -263,5 +273,5 @@ export default function AppLayout({
     >
       <DashboardContent>{children}</DashboardContent>
     </ThemeProvider>
-  )
+  );
 }

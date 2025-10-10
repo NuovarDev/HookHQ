@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const session = await authInstance.api.getSession({ headers: await headers() });
 
   if (!session) {
-      redirect("/"); // Redirect to home if no session
+    redirect("/"); // Redirect to home if no session
   }
 
   return (

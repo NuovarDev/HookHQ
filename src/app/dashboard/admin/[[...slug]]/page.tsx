@@ -2,12 +2,12 @@
 
 import { Settings, Users, Globe, BarChart3 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import AdminConfigTab from "@/components/AdminConfigTab";
-import AdminUsersTab from "@/components/AdminUsersTab";
-import AdminEnvironmentsTab from "@/components/AdminEnvironmentsTab";
-import QueueMetricsTab from "@/components/QueueMetricsTab";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useRouter } from "next/navigation";
+import AdminConfigTab from "@/components/tabs/admin/AdminConfigTab";
+import AdminUsersTab from "@/components/tabs/admin/AdminUsersTab";
+import AdminEnvironmentsTab from "@/components/tabs/admin/AdminEnvironmentsTab";
+import QueueMetricsTab from "@/components/tabs/admin/QueueMetricsTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ServerConfig {
   cloudflareApiKey: string | null;
@@ -35,27 +35,25 @@ export default function AdminPage({ params }: AdminPageProps) {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('/api/admin/config');
+      const response = await fetch("/api/admin/config");
       if (response.ok) {
-        const data = await response.json() as { config: ServerConfig };
+        const data = (await response.json()) as { config: ServerConfig };
         setServerConfig(data.config);
       }
     } catch (error) {
-      console.error('Error fetching config:', error);
+      console.error("Error fetching config:", error);
     } finally {
       setLoading(false);
     }
   };
 
   // Check if Cloudflare config is complete
-  const hasCloudflareConfig = serverConfig && 
-    serverConfig.cloudflareApiKey && 
-    serverConfig.cloudflareAccountId && 
-    serverConfig.cloudflareQueueId;
+  const hasCloudflareConfig =
+    serverConfig && serverConfig.cloudflareApiKey && serverConfig.cloudflareAccountId && serverConfig.cloudflareQueueId;
 
   // Determine active tab from URL slug
   const activeTab = resolvedParams.slug?.[0] || "config";
-  
+
   // Local state for tab management
   const [currentTab, setCurrentTab] = useState(activeTab);
 
@@ -71,7 +69,7 @@ export default function AdminPage({ params }: AdminPageProps) {
     setCurrentTab(value);
     // Update URL without causing a full page reload
     const newUrl = `/dashboard/admin/${value}`;
-    window.history.pushState(null, '', newUrl);
+    window.history.pushState(null, "", newUrl);
   };
 
   if (loading) {
@@ -81,12 +79,20 @@ export default function AdminPage({ params }: AdminPageProps) {
   return (
     <Tabs value={currentTab} onValueChange={handleTabChange}>
       <TabsList className="mb-2 rounded-none w-full">
-        <TabsTrigger value="config" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Settings className="h-4 w-4" /> Server Config</TabsTrigger>
+        <TabsTrigger value="config" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
+          <Settings className="h-4 w-4" /> Server Config
+        </TabsTrigger>
         {hasCloudflareConfig && (
-          <TabsTrigger value="metrics" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><BarChart3 className="h-4 w-4" /> Queue Metrics</TabsTrigger>
+          <TabsTrigger value="metrics" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
+            <BarChart3 className="h-4 w-4" /> Queue Metrics
+          </TabsTrigger>
         )}
-        <TabsTrigger value="users" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Users className="h-4 w-4" /> User Management</TabsTrigger>
-        <TabsTrigger value="environments" className="rounded-none dark:data-[state=active]:bg-neutral-700/50"><Globe className="h-4 w-4" /> Environments</TabsTrigger>
+        <TabsTrigger value="users" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
+          <Users className="h-4 w-4" /> User Management
+        </TabsTrigger>
+        <TabsTrigger value="environments" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
+          <Globe className="h-4 w-4" /> Environments
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="config">
         <AdminConfigTab onConfigUpdate={fetchConfig} />
@@ -101,7 +107,7 @@ export default function AdminPage({ params }: AdminPageProps) {
       </TabsContent>
       <TabsContent value="environments">
         <AdminEnvironmentsTab />
-        </TabsContent>
+      </TabsContent>
     </Tabs>
   );
 }

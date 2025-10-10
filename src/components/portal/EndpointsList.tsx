@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, ExternalLink, LoaderCircle, Trash2 } from "lucide-react";
@@ -40,7 +48,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
   const [newEndpoint, setNewEndpoint] = useState({
     name: "",
     url: "",
-    description: ""
+    description: "",
   });
 
   useEffect(() => {
@@ -51,12 +59,12 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
     try {
       setLoading(true);
       const response = await fetch(`/api/portal/endpoints?token=${encodeURIComponent(token)}`);
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch endpoints");
       }
-      
-      const data = await response.json();
+
+      const data = (await response.json()) as { endpoints: Endpoint[] };
       setEndpoints(data.endpoints || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch endpoints");
@@ -88,7 +96,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
         throw new Error("Failed to create endpoint");
       }
 
-      const createdEndpoint = await response.json();
+      const createdEndpoint = (await response.json()) as Endpoint;
       setEndpoints(prev => [...prev, createdEndpoint]);
       setNewEndpoint({ name: "", url: "", description: "" });
       setIsCreateDialogOpen(false);
@@ -129,33 +137,23 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
   };
 
   // Theme-based styling
-  const cardClasses = theme === "dark" 
-    ? "bg-gray-800 border-gray-700 text-white" 
-    : "bg-white border-gray-200 text-gray-900";
+  const cardClasses =
+    theme === "dark" ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900";
 
-  const tableClasses = theme === "dark"
-    ? "border-gray-700 divide-gray-700"
-    : "border-gray-200 divide-gray-200";
+  const tableClasses = theme === "dark" ? "border-gray-700 divide-gray-700" : "border-gray-200 divide-gray-200";
 
-  const headerClasses = theme === "dark"
-    ? "border-gray-700 text-gray-100"
-    : "border-gray-200 text-gray-900";
+  const headerClasses = theme === "dark" ? "border-gray-700 text-gray-100" : "border-gray-200 text-gray-900";
 
-  const rowClasses = theme === "dark"
-    ? "hover:bg-gray-700"
-    : "hover:bg-gray-50";
+  const rowClasses = theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
-  const textClasses = theme === "dark"
-    ? "text-gray-300"
-    : "text-gray-600";
+  const textClasses = theme === "dark" ? "text-gray-300" : "text-gray-600";
 
-  const iconClasses = theme === "dark"
-    ? "text-gray-400"
-    : "text-gray-400";
+  const iconClasses = theme === "dark" ? "text-gray-400" : "text-gray-400";
 
-  const filteredEndpoints = endpoints.filter(endpoint =>
-    endpoint.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    endpoint.url.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEndpoints = endpoints.filter(
+    endpoint =>
+      endpoint.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      endpoint.url.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -185,12 +183,12 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
             <Input
               placeholder="Filter by name or URL"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="pl-10 w-80"
             />
           </div>
         </div>
-        
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -201,9 +199,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add Event Destination</DialogTitle>
-              <DialogDescription>
-                Create a new webhook endpoint to receive events.
-              </DialogDescription>
+              <DialogDescription>Create a new webhook endpoint to receive events.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
@@ -211,7 +207,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                 <Input
                   id="name"
                   value={newEndpoint.name}
-                  onChange={(e) => setNewEndpoint(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={e => setNewEndpoint(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="My Webhook Endpoint"
                 />
               </div>
@@ -220,7 +216,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                 <Input
                   id="url"
                   value={newEndpoint.url}
-                  onChange={(e) => setNewEndpoint(prev => ({ ...prev, url: e.target.value }))}
+                  onChange={e => setNewEndpoint(prev => ({ ...prev, url: e.target.value }))}
                   placeholder="https://myapp.com/webhook"
                 />
               </div>
@@ -229,7 +225,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                 <Textarea
                   id="description"
                   value={newEndpoint.description}
-                  onChange={(e) => setNewEndpoint(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={e => setNewEndpoint(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Description of this endpoint"
                   rows={3}
                 />
@@ -276,25 +272,41 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
               <table className="w-full">
                 <thead className={`border-b ${headerClasses}`}>
                   <tr className="text-left">
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Type</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Target</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Topics</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Success Rate</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Status</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>Events 24h · 14d</th>
-                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}></th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Type
+                    </th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Target
+                    </th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Topics
+                    </th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Success Rate
+                    </th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Status
+                    </th>
+                    <th className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}>
+                      Events 24h · 14d
+                    </th>
+                    <th
+                      className={`px-6 py-4 font-medium ${theme === "dark" ? "text-gray-100" : "text-gray-900"}`}
+                    ></th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${tableClasses}`}>
-                  {filteredEndpoints.map((endpoint) => (
-                    <tr 
-                      key={endpoint.id} 
+                  {filteredEndpoints.map(endpoint => (
+                    <tr
+                      key={endpoint.id}
                       className={`${rowClasses} cursor-pointer`}
                       onClick={() => handleEndpointClick(endpoint.id)}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded-full flex items-center justify-center`}>
+                          <div
+                            className={`w-8 h-8 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded-full flex items-center justify-center`}
+                          >
                             <ExternalLink className={`h-4 w-4 ${iconClasses}`} />
                           </div>
                           <span className="font-medium">Webhook</span>
@@ -305,7 +317,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                           <span className={`text-sm ${textClasses} font-mono`}>
                             {endpoint.url.length > 50 ? `${endpoint.url.substring(0, 50)}...` : endpoint.url}
                           </span>
-                          <CopyableCode 
+                          <CopyableCode
                             className="opacity-0 group-hover:opacity-100 transition-opacity"
                             copyText={endpoint.url}
                           >
@@ -313,12 +325,8 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                           </CopyableCode>
                         </div>
                       </td>
-                      <td className={`px-6 py-4 text-sm ${textClasses}`}>
-                        {Math.floor(Math.random() * 5) + 1}
-                      </td>
-                      <td className={`px-6 py-4 text-sm ${textClasses}`}>
-                        {(Math.random() * 5 + 95).toFixed(1)}%
-                      </td>
+                      <td className={`px-6 py-4 text-sm ${textClasses}`}>{Math.floor(Math.random() * 5) + 1}</td>
+                      <td className={`px-6 py-4 text-sm ${textClasses}`}>{(Math.random() * 5 + 95).toFixed(1)}%</td>
                       <td className="px-6 py-4">
                         <Badge variant={endpoint.isActive ? "default" : "secondary"}>
                           {endpoint.isActive ? "Active" : "Disabled"}
@@ -328,7 +336,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                         <div className="flex items-center space-x-2">
                           <div className="flex space-x-1">
                             {[...Array(5)].map((_, i) => (
-                              <div 
+                              <div
                                 key={i}
                                 className={`w-1 ${theme === "dark" ? "bg-gray-600" : "bg-gray-300"} rounded-full`}
                                 style={{ height: `${Math.random() * 12 + 4}px` }}
@@ -344,7 +352,7 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             handleDeleteEndpoint(endpoint.id);
                           }}
@@ -364,7 +372,9 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
 
       {/* Footer */}
       <div className={`flex items-center justify-between text-sm ${textClasses}`}>
-        <span>{filteredEndpoints.length} event destination{filteredEndpoints.length !== 1 ? 's' : ''}</span>
+        <span>
+          {filteredEndpoints.length} event destination{filteredEndpoints.length !== 1 ? "s" : ""}
+        </span>
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="sm" disabled>
             <span>&lt;</span>

@@ -1,4 +1,4 @@
-import { WebhookConsumer } from "./WebhookConsumer";
+import { WebhookConsumer } from "@/lib/queue/WebhookConsumer";
 
 export default {
   async queue(

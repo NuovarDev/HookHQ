@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  RefreshCw, 
+import {
+  RefreshCw,
   AlertTriangle,
   CheckCircle,
   BarChart3,
@@ -15,17 +15,17 @@ import {
   Database,
   Zap,
 } from "lucide-react";
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
 } from "recharts";
 
@@ -101,10 +101,10 @@ export default function QueueMetricsTab() {
       setError(null);
 
       const response = await fetch(`/api/admin/queue-metrics?timeRange=${timeRange}&includeRaw=true`);
-      
+
       if (!response.ok) {
         if (response.status === 400) {
-          const errorData = await response.json() as { error?: string };
+          const errorData = (await response.json()) as { error?: string };
           throw new Error(errorData.error || "Configuration error");
         } else if (response.status === 401) {
           throw new Error("Unauthorized - Admin access required");
@@ -113,7 +113,7 @@ export default function QueueMetricsTab() {
         }
       }
 
-      const data = await response.json() as QueueMetrics & { rawData?: RawMetricsData };
+      const data = (await response.json()) as QueueMetrics & { rawData?: RawMetricsData };
       setMetrics(data);
       if (data.rawData) {
         setRawData(data.rawData);
@@ -139,7 +139,7 @@ export default function QueueMetricsTab() {
   const generateTimeSeries = (): string[] => {
     const now = new Date();
     const timePoints: string[] = [];
-    
+
     switch (timeRange) {
       case "1h":
         // Generate 5-minute intervals for the last hour
@@ -170,7 +170,7 @@ export default function QueueMetricsTab() {
         }
         break;
     }
-    
+
     return timePoints;
   };
 
@@ -180,7 +180,7 @@ export default function QueueMetricsTab() {
 
     // Generate complete time series
     const timeSeries = generateTimeSeries();
-    
+
     // Create a map to combine data from different sources
     const timeMap = new Map<string, ChartDataPoint>();
 
@@ -223,26 +223,30 @@ export default function QueueMetricsTab() {
       const timeKey = formatTimeKey(item.dimensions.datetimeMinute, timeRange);
       if (timeMap.has(timeKey)) {
         const point = timeMap.get(timeKey)!;
-        
+
         // Separate operations by type
         switch (item.dimensions.actionType) {
-          case 'WriteMessage':
+          case "WriteMessage":
             point.writeOperations += item.count;
             break;
-          case 'ReadMessage':
+          case "ReadMessage":
             point.readOperations += item.count;
             break;
-          case 'DeleteMessage':
+          case "DeleteMessage":
             point.deleteOperations += item.count;
             break;
         }
-        
+
         // Accumulate lag time (weighted by count) and retries
-        const totalLagTime = point.lagTime * (point.writeOperations + point.readOperations + point.deleteOperations - item.count) + item.avg.lagTime * item.count;
+        const totalLagTime =
+          point.lagTime * (point.writeOperations + point.readOperations + point.deleteOperations - item.count) +
+          item.avg.lagTime * item.count;
         const totalOperations = point.writeOperations + point.readOperations + point.deleteOperations;
         point.lagTime = totalOperations > 0 ? totalLagTime / totalOperations : 0;
-        
-        const totalRetries = point.retries * (point.writeOperations + point.readOperations + point.deleteOperations - item.count) + item.avg.retryCount * item.count;
+
+        const totalRetries =
+          point.retries * (point.writeOperations + point.readOperations + point.deleteOperations - item.count) +
+          item.avg.retryCount * item.count;
         point.retries = totalOperations > 0 ? totalRetries / totalOperations : 0;
       }
     });
@@ -257,7 +261,7 @@ export default function QueueMetricsTab() {
 
     // Generate complete time series
     const timeSeries = generateTimeSeries();
-    
+
     const timeMap = new Map<string, DeleteOutcomeDataPoint>();
 
     // Initialize all time points with zeros
@@ -271,19 +275,19 @@ export default function QueueMetricsTab() {
     });
 
     rawData.operations.forEach(item => {
-      if (item.dimensions.actionType === 'DeleteMessage') {
+      if (item.dimensions.actionType === "DeleteMessage") {
         const timeKey = formatTimeKey(item.dimensions.datetimeMinute, timeRange);
         if (timeMap.has(timeKey)) {
           const point = timeMap.get(timeKey)!;
-          
+
           switch (item.dimensions.outcome) {
-            case 'success':
+            case "success":
               point.success += item.count;
               break;
-            case 'dlq':
+            case "dlq":
               point.dlq += item.count;
               break;
-            case 'fail':
+            case "fail":
               point.fail += item.count;
               break;
           }
@@ -296,7 +300,7 @@ export default function QueueMetricsTab() {
 
   const formatTimeKey = (datetime: string, range: string): string => {
     const date = new Date(datetime);
-    
+
     switch (range) {
       case "1h":
         return `${date.getMinutes()}m`;
@@ -360,7 +364,7 @@ export default function QueueMetricsTab() {
             </div>
           </CardContent>
         </Card>
-        
+
         <div className="flex justify-center">
           <Button onClick={handleRefresh} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -389,7 +393,7 @@ export default function QueueMetricsTab() {
             Cloudflare Queue performance and statistics. Metrics on this page represent all environments on the server.
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <Select value={timeRange} onValueChange={handleTimeRangeChange}>
             <SelectTrigger className="w-32">
@@ -402,13 +406,9 @@ export default function QueueMetricsTab() {
               <SelectItem value="30d">Last 30 days</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
-            {refreshing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
+            {refreshing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -422,9 +422,7 @@ export default function QueueMetricsTab() {
               <p className="text-sm font-medium text-muted-foreground">Backlog Messages</p>
             </div>
             <p className="text-2xl font-bold">{formatBacklogMessages(metrics.backlog.messages)}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatBytes(metrics.backlog.bytes)} in queue
-            </p>
+            <p className="text-xs text-muted-foreground">{formatBytes(metrics.backlog.bytes)} in queue</p>
           </CardContent>
         </Card>
 
@@ -475,9 +473,7 @@ export default function QueueMetricsTab() {
               <BarChart3 className="h-5 w-5" />
               <span>Backlog Trend</span>
             </CardTitle>
-            <CardDescription>
-              Queue backlog over time ({timeRange})
-            </CardDescription>
+            <CardDescription>Queue backlog over time ({timeRange})</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -485,24 +481,24 @@ export default function QueueMetricsTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--foreground))",
                   }}
                   formatter={(value, name) => [
-                    name === 'messages' ? formatBacklogMessages(Number(value)) : formatBytes(Number(value)),
-                    name === 'messages' ? 'Messages' : 'Bytes'
+                    name === "messages" ? formatBacklogMessages(Number(value)) : formatBytes(Number(value)),
+                    name === "messages" ? "Messages" : "Bytes",
                   ]}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="messages" 
-                  stackId="1" 
-                  stroke="#8884d8" 
-                  fill="#8884d8" 
+                <Area
+                  type="monotone"
+                  dataKey="messages"
+                  stackId="1"
+                  stroke="#8884d8"
+                  fill="#8884d8"
                   fillOpacity={0.6}
                 />
               </AreaChart>
@@ -517,9 +513,7 @@ export default function QueueMetricsTab() {
               <Activity className="h-5 w-5" />
               <span>Consumer Concurrency</span>
             </CardTitle>
-            <CardDescription>
-              Active consumers over time ({timeRange})
-            </CardDescription>
+            <CardDescription>Active consumers over time ({timeRange})</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -527,21 +521,21 @@ export default function QueueMetricsTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--foreground))",
                   }}
-                  formatter={(value) => [Number(value).toFixed(1), 'Concurrency']} 
+                  formatter={value => [Number(value).toFixed(1), "Concurrency"]}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="concurrency" 
-                  stroke="#82ca9d" 
+                <Line
+                  type="monotone"
+                  dataKey="concurrency"
+                  stroke="#82ca9d"
                   strokeWidth={2}
-                  dot={{ fill: '#82ca9d' }}
+                  dot={{ fill: "#82ca9d" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -555,9 +549,7 @@ export default function QueueMetricsTab() {
               <TrendingUp className="h-5 w-5" />
               <span>Message Operations</span>
             </CardTitle>
-            <CardDescription>
-              Operations by type over time ({timeRange})
-            </CardDescription>
+            <CardDescription>Operations by type over time ({timeRange})</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -565,19 +557,24 @@ export default function QueueMetricsTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--foreground))",
                   }}
                   formatter={(value, name) => [
                     formatNumber(Number(value)),
-                    name === 'writeOperations' ? 'Write Operations' : 
-                    name === 'readOperations' ? 'Read Operations' : 
-                    name === 'deleteOperations' ? 'Delete Operations' : 
-                    name === 'retries' ? 'Retries' : name
+                    name === "writeOperations"
+                      ? "Write Operations"
+                      : name === "readOperations"
+                        ? "Read Operations"
+                        : name === "deleteOperations"
+                          ? "Delete Operations"
+                          : name === "retries"
+                            ? "Retries"
+                            : name,
                   ]}
                 />
                 <Bar dataKey="writeOperations" stackId="operations" fill="#8884d8" name="Write Operations" />
@@ -596,9 +593,7 @@ export default function QueueMetricsTab() {
               <Clock className="h-5 w-5" />
               <span>Performance Metrics</span>
             </CardTitle>
-            <CardDescription>
-              Lag time and message size distribution
-            </CardDescription>
+            <CardDescription>Lag time and message size distribution</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -609,27 +604,27 @@ export default function QueueMetricsTab() {
                     <LineChart data={chartData}>
                       <XAxis dataKey="time" />
                       <YAxis />
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "6px",
+                          color: "hsl(var(--foreground))",
                         }}
-                        formatter={(value) => [formatLagTime(Number(value)), 'Lag Time']} 
+                        formatter={value => [formatLagTime(Number(value)), "Lag Time"]}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="lagTime" 
-                        stroke="#ff7300" 
+                      <Line
+                        type="monotone"
+                        dataKey="lagTime"
+                        stroke="#ff7300"
                         strokeWidth={2}
-                        dot={{ fill: '#ff7300' }}
+                        dot={{ fill: "#ff7300" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Max Message Size</p>
@@ -651,9 +646,7 @@ export default function QueueMetricsTab() {
               <Database className="h-5 w-5" />
               <span>Bandwidth Usage</span>
             </CardTitle>
-            <CardDescription>
-              Data throughput over time ({timeRange})
-            </CardDescription>
+            <CardDescription>Data throughput over time ({timeRange})</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -661,14 +654,14 @@ export default function QueueMetricsTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--foreground))",
                   }}
-                  formatter={(value) => [formatBytes(Number(value)), 'Bytes']}
+                  formatter={value => [formatBytes(Number(value)), "Bytes"]}
                 />
                 <Area type="monotone" dataKey="bytes" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
               </AreaChart>
@@ -683,9 +676,7 @@ export default function QueueMetricsTab() {
               <CheckCircle className="h-5 w-5" />
               <span>Delete Message Outcomes</span>
             </CardTitle>
-            <CardDescription>
-              Delete operation results over time ({timeRange})
-            </CardDescription>
+            <CardDescription>Delete operation results over time ({timeRange})</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -693,18 +684,22 @@ export default function QueueMetricsTab() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="time" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))'
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "6px",
+                    color: "hsl(var(--foreground))",
                   }}
                   formatter={(value, name) => [
                     formatNumber(Number(value)),
-                    name === 'success' ? 'Success' : 
-                    name === 'dlq' ? 'Dead Letter Queue' : 
-                    name === 'fail' ? 'Failed' : name
+                    name === "success"
+                      ? "Success"
+                      : name === "dlq"
+                        ? "Dead Letter Queue"
+                        : name === "fail"
+                          ? "Failed"
+                          : name,
                   ]}
                 />
                 <Bar dataKey="success" fill="#22c55e" name="Success" />

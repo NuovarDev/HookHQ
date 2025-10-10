@@ -96,47 +96,47 @@ import { validateSchema } from "@/lib/schemaValidation";
  *     x-speakeasy-name-override: "list"
  */
 export async function GET(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { eventTypes: ["read"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
-    
-    const { environmentId } = authResult;
+  const authResult = await authenticateApiRequest(request, { eventTypes: ["read"] });
 
-        // Parse query parameters
-        const { searchParams } = new URL(request.url);
-        const enabled = searchParams.get("enabled");
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-        // Build query conditions
-        const conditions = [eq(eventTypes.environmentId, environmentId)];
-        
-        // Add enabled filter if provided
-        if (enabled !== null) {
-            conditions.push(eq(eventTypes.enabled, enabled === "true"));
-        }
+  const { environmentId } = authResult;
 
-        // Execute query
-        const db = await getDb();
-        const eventTypeList = await db
-            .select()
-            .from(eventTypes)
-            .where(and(...conditions))
-            .orderBy(eventTypes.createdAt);
+  // Parse query parameters
+  const { searchParams } = new URL(request.url);
+  const enabled = searchParams.get("enabled");
 
-        // Format the response
-        const formattedEventTypes = eventTypeList.map(eventType => ({
-            id: eventType.id,
-            environmentId: eventType.environmentId,
-            name: eventType.name,
-            description: eventType.description,
-            schema: eventType.schema ? JSON.parse(eventType.schema) : null,
-            enabled: eventType.enabled,
-            createdAt: eventType.createdAt.toISOString(),
-            updatedAt: eventType.updatedAt.toISOString()
-        }));
+  // Build query conditions
+  const conditions = [eq(eventTypes.environmentId, environmentId)];
 
-    return NextResponse.json({ eventTypes: formattedEventTypes });
+  // Add enabled filter if provided
+  if (enabled !== null) {
+    conditions.push(eq(eventTypes.enabled, enabled === "true"));
+  }
+
+  // Execute query
+  const db = await getDb();
+  const eventTypeList = await db
+    .select()
+    .from(eventTypes)
+    .where(and(...conditions))
+    .orderBy(eventTypes.createdAt);
+
+  // Format the response
+  const formattedEventTypes = eventTypeList.map(eventType => ({
+    id: eventType.id,
+    environmentId: eventType.environmentId,
+    name: eventType.name,
+    description: eventType.description,
+    schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+    enabled: eventType.enabled,
+    createdAt: eventType.createdAt.toISOString(),
+    updatedAt: eventType.updatedAt.toISOString()
+  }));
+
+  return NextResponse.json({ eventTypes: formattedEventTypes });
 }
 
 /**
@@ -246,65 +246,65 @@ export async function GET(request: NextRequest) {
  *     x-speakeasy-name-override: "create"
  */
 export async function POST(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { eventTypes: ["create"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
+  const authResult = await authenticateApiRequest(request, { eventTypes: ["create"] });
+
+  if (!authResult.success) {
+    return authResult.response;
+  }
+
+  const { environmentId, body } = authResult;
+
+  const {
+    name,
+    description,
+    schema,
+    enabled = true
+  } = body as {
+    name: string;
+    description?: string;
+    schema?: any;
+    enabled?: boolean;
+  };
+
+  if (!name) {
+    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
+
+  // Validate schema if provided
+  if (schema) {
+    const schemaValidation = validateSchema(schema);
+    if (!schemaValidation.valid) {
+      return NextResponse.json({
+        error: "Invalid schema",
+        details: schemaValidation.errors
+      }, { status: 400 });
     }
-    
-    const { environmentId, body } = authResult;
+  }
 
-        const { 
-            name, 
-            description, 
-            schema, 
-            enabled = true 
-        } = body as {
-            name: string;
-            description?: string;
-            schema?: any;
-            enabled?: boolean;
-        };
+  // Generate event type ID (environmentId + random string)
+  const eventTypeId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+  const now = new Date();
 
-        if (!name) {
-            return NextResponse.json({ error: "Name is required" }, { status: 400 });
-        }
+  const db = await getDb();
+  await db.insert(eventTypes).values({
+    id: eventTypeId,
+    environmentId,
+    name,
+    description,
+    schema: schema ? JSON.stringify(schema) : null,
+    enabled,
+    createdAt: now,
+    updatedAt: now,
+  });
 
-        // Validate schema if provided
-        if (schema) {
-            const schemaValidation = validateSchema(schema);
-            if (!schemaValidation.valid) {
-                return NextResponse.json({ 
-                    error: "Invalid schema", 
-                    details: schemaValidation.errors 
-                }, { status: 400 });
-            }
-        }
-
-        // Generate event type ID (environmentId + random string)
-        const eventTypeId = `${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
-        const now = new Date();
-
-        const db = await getDb();
-        await db.insert(eventTypes).values({
-            id: eventTypeId,
-            environmentId,
-            name,
-            description,
-            schema: schema ? JSON.stringify(schema) : null,
-            enabled,
-            createdAt: now,
-            updatedAt: now,
-        });
-
-        return NextResponse.json({
-            id: eventTypeId,
-            environmentId,
-            name,
-            description,
-            schema,
-            enabled,
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-        });
+  return NextResponse.json({
+    id: eventTypeId,
+    environmentId,
+    name,
+    description,
+    schema,
+    enabled,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  });
 }

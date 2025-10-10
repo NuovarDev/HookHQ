@@ -50,7 +50,7 @@ export async function POST(
 ) {
   try {
     const authResult = await authenticateApiRequest(request, { messages: ["create"] });
-    
+
     if (!authResult.success) {
       return authResult.response;
     }
@@ -58,22 +58,22 @@ export async function POST(
     const { messageId, endpointId } = await params;
 
     if (!messageId || !endpointId) {
-      return NextResponse.json({ 
-        error: "Message ID and Endpoint ID are required" 
+      return NextResponse.json({
+        error: "Message ID and Endpoint ID are required"
       }, { status: 400 });
     }
 
     const { env } = await getCloudflareContext({ async: true });
-    
+
     // Construct the KV key for the failed message
     const failedMessageKey = `failed:${messageId}:${endpointId}`;
 
     // Get the failed message from KV
     const failedMessageRaw = await env.KV.get(failedMessageKey);
-    
+
     if (!failedMessageRaw) {
-      return NextResponse.json({ 
-        error: "Failed message not found or expired" 
+      return NextResponse.json({
+        error: "Failed message not found or expired"
       }, { status: 404 });
     }
 
@@ -82,7 +82,7 @@ export async function POST(
 
     // Generate a new webhook ID for the retry
     const retryWebhookId = crypto.randomUUID();
-    
+
     // Create a new message for the queue with the original data
     const retryMessage = {
       id: retryWebhookId,

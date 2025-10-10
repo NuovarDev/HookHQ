@@ -122,52 +122,52 @@ import { authenticateApiRequest } from "@/lib/apiHelpers";
  *     x-speakeasy-name-override: "list"
  */
 export async function GET(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { endpoints: ["read"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
-    
-    const { environmentId } = authResult;
+  const authResult = await authenticateApiRequest(request, { endpoints: ["read"] });
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const enabled = searchParams.get("enabled");
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    // Build query conditions
-    const conditions = [eq(endpoints.environmentId, environmentId)];
-    
-    // Add enabled filter if provided
-    if (enabled !== null) {
-        conditions.push(eq(endpoints.isActive, enabled === "true"));
-    }
+  const { environmentId } = authResult;
 
-    // Execute query
-    const db = await getDb();
-    const endpointList = await db
-        .select()
-        .from(endpoints)
-        .where(and(...conditions))
-        .orderBy(endpoints.createdAt);
+  // Parse query parameters
+  const { searchParams } = new URL(request.url);
+  const enabled = searchParams.get("enabled");
 
-    // Format the response
-    const formattedEndpoints = endpointList.map(endpoint => ({
-        id: endpoint.id,
-        environmentId: endpoint.environmentId,
-        name: endpoint.name,
-        description: endpoint.description,
-        url: endpoint.url,
-        enabled: endpoint.isActive,
-        retryPolicy: endpoint.retryPolicy,
-        maxAttempts: endpoint.maxRetries,
-        timeoutMs: endpoint.timeoutMs,
-        customHeaders: endpoint.headers ? JSON.parse(endpoint.headers) : {},
-        proxyGroupId: endpoint.proxyGroupId,
-        createdAt: endpoint.createdAt.toISOString(),
-        updatedAt: endpoint.updatedAt.toISOString()
-    }));
+  // Build query conditions
+  const conditions = [eq(endpoints.environmentId, environmentId)];
 
-    return NextResponse.json({ endpoints: formattedEndpoints });
+  // Add enabled filter if provided
+  if (enabled !== null) {
+    conditions.push(eq(endpoints.isActive, enabled === "true"));
+  }
+
+  // Execute query
+  const db = await getDb();
+  const endpointList = await db
+    .select()
+    .from(endpoints)
+    .where(and(...conditions))
+    .orderBy(endpoints.createdAt);
+
+  // Format the response
+  const formattedEndpoints = endpointList.map(endpoint => ({
+    id: endpoint.id,
+    environmentId: endpoint.environmentId,
+    name: endpoint.name,
+    description: endpoint.description,
+    url: endpoint.url,
+    enabled: endpoint.isActive,
+    retryPolicy: endpoint.retryPolicy,
+    maxAttempts: endpoint.maxRetries,
+    timeoutMs: endpoint.timeoutMs,
+    customHeaders: endpoint.headers ? JSON.parse(endpoint.headers) : {},
+    proxyGroupId: endpoint.proxyGroupId,
+    createdAt: endpoint.createdAt.toISOString(),
+    updatedAt: endpoint.updatedAt.toISOString()
+  }));
+
+  return NextResponse.json({ endpoints: formattedEndpoints });
 }
 
 /**
@@ -329,74 +329,74 @@ export async function GET(request: NextRequest) {
  *     x-speakeasy-name-override: "create"
  */
 export async function POST(request: NextRequest) {
-    const authResult = await authenticateApiRequest(request, { endpoints: ["create"] });
-    
-    if (!authResult.success) {
-        return authResult.response;
-    }
-    
-    const { environmentId, body } = authResult;
+  const authResult = await authenticateApiRequest(request, { endpoints: ["create"] });
 
-    const { 
-        name, 
-        description, 
-        url, 
-        enabled = true, 
-        retryPolicy = "exponential", 
-        maxAttempts = 3, 
-        timeoutMs = 10000, 
-        customHeaders = {}, 
-        proxyGroupId
-    } = body as {
-        name: string;
-        description?: string;
-        url: string;
-        enabled?: boolean;
-        retryPolicy?: string;
-        maxAttempts?: number;
-        timeoutMs?: number;
-        customHeaders?: Record<string, string>;
-        proxyGroupId?: string;
-    };
+  if (!authResult.success) {
+    return authResult.response;
+  }
 
-    if (!name || !url) {
-        return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
-    }
+  const { environmentId, body } = authResult;
 
-    // Generate endpoint ID with prefix (ep_{environmentId}_{random})
-    const endpointId = `ep_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
-    const now = new Date();
+  const {
+    name,
+    description,
+    url,
+    enabled = true,
+    retryPolicy = "exponential",
+    maxAttempts = 3,
+    timeoutMs = 10000,
+    customHeaders = {},
+    proxyGroupId
+  } = body as {
+    name: string;
+    description?: string;
+    url: string;
+    enabled?: boolean;
+    retryPolicy?: string;
+    maxAttempts?: number;
+    timeoutMs?: number;
+    customHeaders?: Record<string, string>;
+    proxyGroupId?: string;
+  };
 
-    const db = await getDb();
-    await db.insert(endpoints).values({
-        id: endpointId,
-        environmentId,
-        name,
-        description,
-        url,
-        isActive: enabled,
-        retryPolicy,
-        maxRetries: maxAttempts,
-        timeoutMs,
-        headers: JSON.stringify(customHeaders),
-        proxyGroupId,
-        createdAt: now,
-        updatedAt: now,
-    });
+  if (!name || !url) {
+    return NextResponse.json({ error: "Name and URL are required" }, { status: 400 });
+  }
 
-    return NextResponse.json({
-        id: endpointId,
-        environmentId,
-        name,
-        description,
-        url,
-        enabled,
-        retryPolicy,
-        maxAttempts,
-        timeoutMs,
-        customHeaders,
-        proxyGroupId,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-    });
+  // Generate endpoint ID with prefix (ep_{environmentId}_{random})
+  const endpointId = `ep_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+  const now = new Date();
+
+  const db = await getDb();
+  await db.insert(endpoints).values({
+    id: endpointId,
+    environmentId,
+    name,
+    description,
+    url,
+    isActive: enabled,
+    retryPolicy,
+    maxRetries: maxAttempts,
+    timeoutMs,
+    headers: JSON.stringify(customHeaders),
+    proxyGroupId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return NextResponse.json({
+    id: endpointId,
+    environmentId,
+    name,
+    description,
+    url,
+    enabled,
+    retryPolicy,
+    maxAttempts,
+    timeoutMs,
+    customHeaders,
+    proxyGroupId,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  });
 }

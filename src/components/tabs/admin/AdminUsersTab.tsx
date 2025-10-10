@@ -5,24 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Plus, 
-  RefreshCw, 
-  Users, 
-  Mail, 
+import {
+  RefreshCw,
+  Users,
+  Mail,
   Calendar,
-  Shield,
-  Edit,
   Trash2,
   UserPlus,
   AlertTriangle,
   CheckCircle,
   Key,
   Eye,
-  EyeOff
+  EyeOff,
 } from "lucide-react";
 import authClient from "@/auth/authClient";
 import { UserWithRole } from "better-auth/plugins";
@@ -34,7 +38,7 @@ export default function AdminUsersTab() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
-  
+
   // Edit dialog states
   const [showEditEmailDialog, setShowEditEmailDialog] = useState(false);
   const [showEditPasswordDialog, setShowEditPasswordDialog] = useState(false);
@@ -68,16 +72,16 @@ export default function AdminUsersTab() {
   const fetchUsers = async () => {
     const { data, error } = await authClient.admin.listUsers({
       query: {
-          searchValue: "some name",
-          searchField: "name",
-          searchOperator: "contains",
-          limit: 100,
-          offset: 100,
-          sortBy: "name",
-          sortDirection: "desc",
-          filterField: "email",
-          filterValue: "hello@example.com",
-          filterOperator: "eq",
+        searchValue: "some name",
+        searchField: "name",
+        searchOperator: "contains",
+        limit: 100,
+        offset: 100,
+        sortBy: "name",
+        sortDirection: "desc",
+        filterField: "email",
+        filterValue: "hello@example.com",
+        filterOperator: "eq",
       },
     });
 
@@ -100,7 +104,7 @@ export default function AdminUsersTab() {
       password: formData.password,
       name: formData.name,
       role: formData.role,
-  });
+    });
 
     if (error) {
       setError(error.message || "Failed to create user");
@@ -132,12 +136,8 @@ export default function AdminUsersTab() {
       });
     }
 
-    setUsers(prev =>
-      prev.map(user =>
-        user.id === userId ? { ...user, isActive } : user
-      )
-    );
-    setSuccess(`User ${isActive ? 'activated' : 'deactivated'} successfully!`);
+    setUsers(prev => prev.map(user => (user.id === userId ? { ...user, isActive } : user)));
+    setSuccess(`User ${isActive ? "activated" : "deactivated"} successfully!`);
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -147,7 +147,7 @@ export default function AdminUsersTab() {
     }
 
     const { data: deletedUser, error } = await authClient.admin.removeUser({
-        userId: userId,
+      userId: userId,
     });
 
     if (error) {
@@ -179,32 +179,30 @@ export default function AdminUsersTab() {
       return;
     }
 
-      setUpdating(true);
-      setError(null);
-      setSuccess(null);
+    setUpdating(true);
+    setError(null);
+    setSuccess(null);
 
-      const { data, error } = await authClient.admin.updateUser({
-        userId: editingUser.id,
-        data: {
-          email: editEmailData.email.trim(),
-        },
-      });
+    const { data, error } = await authClient.admin.updateUser({
+      userId: editingUser.id,
+      data: {
+        email: editEmailData.email.trim(),
+      },
+    });
 
-      if (error) {
-        setError(error.message || "Failed to update email");
-      } else {
-        setUsers(prev =>
-          prev.map(user =>
-            user.id === editingUser.id ? { ...user, email: editEmailData.email.trim() } : user
-          )
-        );
-        setShowEditEmailDialog(false);
-        setEditingUser(null);
-        setSuccess("Email updated successfully!");
-        setTimeout(() => setSuccess(null), 3000);
-      }
+    if (error) {
+      setError(error.message || "Failed to update email");
+    } else {
+      setUsers(prev =>
+        prev.map(user => (user.id === editingUser.id ? { ...user, email: editEmailData.email.trim() } : user))
+      );
+      setShowEditEmailDialog(false);
+      setEditingUser(null);
+      setSuccess("Email updated successfully!");
+      setTimeout(() => setSuccess(null), 3000);
+    }
 
-      setUpdating(false);
+    setUpdating(false);
   };
 
   const handleUpdatePassword = async () => {
@@ -257,25 +255,17 @@ export default function AdminUsersTab() {
   };
 
   const getRoleBadge = (role: string) => {
-    return (
-      <Badge variant={role === "admin" ? "default" : "secondary"}>
-        {role === "admin" ? "Admin" : "User"}
-      </Badge>
-    );
+    return <Badge variant={role === "admin" ? "default" : "secondary"}>{role === "admin" ? "Admin" : "User"}</Badge>;
   };
 
   const getStatusBadge = (isActive: boolean) => {
-    return (
-      <Badge variant={isActive ? "default" : "secondary"}>
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
-    );
+    return <Badge variant={isActive ? "default" : "secondary"}>{isActive ? "Active" : "Inactive"}</Badge>;
   };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
+      year: "numeric",
+      month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
@@ -316,9 +306,7 @@ export default function AdminUsersTab() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">User Management</h3>
-          <p className="text-muted-foreground">
-            Manage users and their permissions
-          </p>
+          <p className="text-muted-foreground">Manage users and their permissions</p>
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
@@ -330,9 +318,7 @@ export default function AdminUsersTab() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>
-                Create a new user account and send them an invitation email.
-              </DialogDescription>
+              <DialogDescription>Create a new user account and send them an invitation email.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -341,7 +327,7 @@ export default function AdminUsersTab() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
                   placeholder="user@example.com"
                 />
               </div>
@@ -350,7 +336,7 @@ export default function AdminUsersTab() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="John Doe"
                 />
               </div>
@@ -360,14 +346,14 @@ export default function AdminUsersTab() {
                   id="password"
                   type="password"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Enter password"
                 />
               </div>
               <div>
                 <Label htmlFor="role">Role</Label>
-                <Select 
-                  value={formData.role} 
+                <Select
+                  value={formData.role}
                   onValueChange={(value: "admin" | "user") => setFormData({ ...formData, role: value })}
                 >
                   <SelectTrigger>
@@ -384,7 +370,7 @@ export default function AdminUsersTab() {
                   type="checkbox"
                   id="sendInviteEmail"
                   checked={formData.sendInviteEmail}
-                  onChange={(e) => setFormData({ ...formData, sendInviteEmail: e.target.checked })}
+                  onChange={e => setFormData({ ...formData, sendInviteEmail: e.target.checked })}
                   className="rounded border-gray-300"
                 />
                 <Label htmlFor="sendInviteEmail">Send invitation email</Label>
@@ -393,10 +379,7 @@ export default function AdminUsersTab() {
                 <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleCreateUser} 
-                  disabled={creating || !formData.email}
-                >
+                <Button onClick={handleCreateUser} disabled={creating || !formData.email}>
                   {creating ? "Creating..." : "Create User"}
                 </Button>
               </div>
@@ -411,9 +394,7 @@ export default function AdminUsersTab() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Users</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Create your first user to get started.
-            </p>
+            <p className="text-muted-foreground text-center mb-4">Create your first user to get started.</p>
             <Button onClick={() => setShowCreateDialog(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
               Create User
@@ -422,7 +403,7 @@ export default function AdminUsersTab() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {users.map((user) => (
+          {users.map(user => (
             <Card key={user.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -431,9 +412,7 @@ export default function AdminUsersTab() {
                       <Users className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">
-                        {user.name || "Unnamed User"}
-                      </CardTitle>
+                      <CardTitle className="text-lg">{user.name || "Unnamed User"}</CardTitle>
                       <CardDescription className="flex items-center space-x-2">
                         <Mail className="h-4 w-4" />
                         <span>{user.email}</span>
@@ -456,37 +435,19 @@ export default function AdminUsersTab() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-end space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditEmail(user)}
-                    title="Edit Email"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleEditEmail(user)} title="Edit Email">
                     <Mail className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditPassword(user)}
-                    title="Change Password"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleEditPassword(user)} title="Change Password">
                     <Key className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleUserStatus(user.id, !user.banned)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleToggleUserStatus(user.id, !user.banned)}>
                     {user.banned ? "Activate" : "Deactivate"}
                   </Button>
                   {user.role !== "admin" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleDeleteUser(user.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -513,7 +474,7 @@ export default function AdminUsersTab() {
                 id="edit-email"
                 type="email"
                 value={editEmailData.email}
-                onChange={(e) => setEditEmailData({ email: e.target.value })}
+                onChange={e => setEditEmailData({ email: e.target.value })}
                 placeholder="user@example.com"
               />
             </div>
@@ -521,10 +482,7 @@ export default function AdminUsersTab() {
               <Button variant="outline" onClick={handleCancelEdit}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleUpdateEmail} 
-                disabled={updating || !editEmailData.email.trim()}
-              >
+              <Button onClick={handleUpdateEmail} disabled={updating || !editEmailData.email.trim()}>
                 {updating ? "Updating..." : "Update Email"}
               </Button>
             </div>
@@ -537,9 +495,7 @@ export default function AdminUsersTab() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Change User Password</DialogTitle>
-            <DialogDescription>
-              Set a new password for {editingUser?.name || editingUser?.email}.
-            </DialogDescription>
+            <DialogDescription>Set a new password for {editingUser?.name || editingUser?.email}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -549,7 +505,7 @@ export default function AdminUsersTab() {
                   id="new-password"
                   type={showPassword ? "text" : "password"}
                   value={editPasswordData.newPassword}
-                  onChange={(e) => setEditPasswordData({ ...editPasswordData, newPassword: e.target.value })}
+                  onChange={e => setEditPasswordData({ ...editPasswordData, newPassword: e.target.value })}
                   placeholder="Enter new password"
                   minLength={8}
                 />
@@ -560,11 +516,7 @@ export default function AdminUsersTab() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -574,7 +526,7 @@ export default function AdminUsersTab() {
                 id="confirm-password"
                 type={showPassword ? "text" : "password"}
                 value={editPasswordData.confirmPassword}
-                onChange={(e) => setEditPasswordData({ ...editPasswordData, confirmPassword: e.target.value })}
+                onChange={e => setEditPasswordData({ ...editPasswordData, confirmPassword: e.target.value })}
                 placeholder="Confirm new password"
                 minLength={8}
               />
@@ -583,9 +535,7 @@ export default function AdminUsersTab() {
               <div className="flex">
                 <AlertTriangle className="h-5 w-5 text-yellow-400" />
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Important
-                  </h3>
+                  <h3 className="text-sm font-medium text-yellow-800">Important</h3>
                   <div className="mt-1 text-sm text-yellow-700">
                     The user will need to use this new password to log in. Consider notifying them of this change.
                   </div>
@@ -596,8 +546,8 @@ export default function AdminUsersTab() {
               <Button variant="outline" onClick={handleCancelEdit}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleUpdatePassword} 
+              <Button
+                onClick={handleUpdatePassword}
                 disabled={updating || !editPasswordData.newPassword.trim() || !editPasswordData.confirmPassword.trim()}
               >
                 {updating ? "Updating..." : "Update Password"}

@@ -3,7 +3,7 @@ import * as environmentsSchema from "./environments.schema"; // This will be gen
 import * as webhooksSchema from "./webhooks.schema"; // This will be generated in a later step
 
 export const schema = {
-    ...authSchema,
-    ...environmentsSchema,
-    ...webhooksSchema,
+  ...authSchema,
+  ...environmentsSchema,
+  ...webhooksSchema,
 } as const;

@@ -1,7 +1,7 @@
-import { webhookAttempts, endpoints, proxyServers, proxyGroups } from "../db/webhooks.schema";
+import { webhookAttempts, endpoints, proxyServers, proxyGroups } from "@/db/webhooks.schema";
 import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { schema } from "../db/schema";
+import { schema } from "@/db/schema";
 
 interface WebhookMessage {
   id: string;

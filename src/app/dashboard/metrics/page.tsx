@@ -1,7 +1,7 @@
 import { initAuth } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import MetricsTab from "@/components/MetricsTab";
+import MetricsTab from "@/components/tabs/MetricsTab";
 
 export default async function MetricsPage() {
   const authInstance = await initAuth();
@@ -9,7 +9,7 @@ export default async function MetricsPage() {
   const session = await authInstance.api.getSession({ headers: await headers() });
 
   if (!session) {
-      redirect("/"); // Redirect to home if no session
+    redirect("/"); // Redirect to home if no session
   }
 
   return (

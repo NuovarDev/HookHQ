@@ -1,10 +1,10 @@
 "use client";
 
-import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useState, Suspense, useEffect } from "react"
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useState, Suspense, useEffect } from "react";
 import { PortalTokenPayload } from "@/lib/portalAuth";
-import type React from "react"
+import type React from "react";
 import {
   X,
   LayoutDashboard,
@@ -17,16 +17,16 @@ import {
   ArrowLeft,
   LoaderCircle,
   AlertCircle,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { createContext, useContext } from 'react';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createContext, useContext } from "react";
 
 const navigation = [
-  { name: 'Dashboard', href: '/portal', current: false, icon: LayoutDashboard },
-  { name: 'Endpoints', href: '/portal/endpoints', current: false, icon: Webhook },
-]
+  { name: "Dashboard", href: "/portal", current: false, icon: LayoutDashboard },
+  { name: "Endpoints", href: "/portal/endpoints", current: false, icon: Webhook },
+];
 
 // Create Portal Context
 interface PortalContextType {
@@ -46,7 +46,7 @@ const PortalContext = createContext<PortalContextType | null>(null);
 export function usePortalContext() {
   const context = useContext(PortalContext);
   if (!context) {
-    throw new Error('usePortalContext must be used within PortalProvider');
+    throw new Error("usePortalContext must be used within PortalProvider");
   }
   return context;
 }
@@ -54,10 +54,10 @@ export function usePortalContext() {
 function PortalLayout({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const [theme, setTheme] = useState<"light" | "dark">("light")
-  const [hasThemeParam, setHasThemeParam] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [hasThemeParam, setHasThemeParam] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [authState, setAuthState] = useState<{
     loading: boolean;
@@ -66,7 +66,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     error?: string;
   }>({
     loading: true,
-    authenticated: false
+    authenticated: false,
   });
 
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -80,12 +80,12 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     const urlToken = searchParams.get("token");
     const storedToken = sessionStorage.getItem("portal_token");
     const token = urlToken || storedToken;
-    
+
     if (!token) {
       setAuthState({
         loading: false,
         authenticated: false,
-        error: "No access token provided"
+        error: "No access token provided",
       });
       return;
     }
@@ -106,13 +106,13 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
           setAuthState({
             loading: false,
             authenticated: true,
-            payload: data.payload
+            payload: data.payload,
           });
         } else {
           setAuthState({
             loading: false,
             authenticated: false,
-            error: data.error || "Token verification failed"
+            error: data.error || "Token verification failed",
           });
           // Clear invalid token from session
           sessionStorage.removeItem("portal_token");
@@ -122,7 +122,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
         setAuthState({
           loading: false,
           authenticated: false,
-          error: "Failed to verify token"
+          error: "Failed to verify token",
         });
         // Clear token from session on error
         sessionStorage.removeItem("portal_token");
@@ -135,10 +135,10 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     const storedTheme = sessionStorage.getItem("portal_theme") as "light" | "dark" | null;
     const storedThemeWasLocked = sessionStorage.getItem("portal_theme_locked") === "true";
     const hasParam = themeParam !== null;
-    
+
     // Only set hasThemeParam to true if it's a locking theme (not "default")
     setHasThemeParam(hasParam && themeParam !== "default");
-    
+
     if (hasParam) {
       if (themeParam === "default") {
         // theme=default unlocks the theme and allows user control
@@ -148,7 +148,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
         const currentTheme = storedTheme || "light";
         setTheme(currentTheme);
         setSessionTheme(currentTheme);
-        
+
         // Apply theme to document
         if (currentTheme === "dark") {
           document.documentElement.classList.add("dark");
@@ -163,7 +163,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
         setThemeWasLocked(true);
         sessionStorage.setItem("portal_theme", themeValue);
         sessionStorage.setItem("portal_theme_locked", "true");
-        
+
         // Apply theme to document
         if (themeValue === "dark") {
           document.documentElement.classList.add("dark");
@@ -177,7 +177,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
       setTheme(themeValue);
       setSessionTheme(themeValue);
       setThemeWasLocked(storedThemeWasLocked);
-      
+
       // Apply theme to document
       if (themeValue === "dark") {
         document.documentElement.classList.add("dark");
@@ -192,9 +192,9 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     const embedParam = searchParams.get("embed");
     const storedEmbed = sessionStorage.getItem("portal_embed") === "true";
     const isEmbeddedValue = embedParam === "true" || storedEmbed;
-    
+
     setIsEmbedded(isEmbeddedValue);
-    
+
     // Store embed state in session if it came from URL
     if (embedParam === "true") {
       sessionStorage.setItem("portal_embed", "true");
@@ -214,15 +214,15 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => {
     // Only allow theme toggle when no theme parameter is present and theme wasn't originally locked
     if (!hasThemeParam && !themeWasLocked) {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      setSessionTheme(newTheme)
-      sessionStorage.setItem("portal_theme", newTheme)
+      const newTheme = theme === "light" ? "dark" : "light";
+      setTheme(newTheme);
+      setSessionTheme(newTheme);
+      sessionStorage.setItem("portal_theme", newTheme);
       // Clear the locked flag since user manually changed theme
-      sessionStorage.removeItem("portal_theme_locked")
-      document.documentElement.classList.toggle("dark")
+      sessionStorage.removeItem("portal_theme_locked");
+      document.documentElement.classList.toggle("dark");
     }
-  }
+  };
 
   const handleBackClick = () => {
     // Clear session storage when leaving portal
@@ -230,7 +230,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem("portal_theme");
     sessionStorage.removeItem("portal_theme_locked");
     sessionStorage.removeItem("portal_embed");
-    
+
     if (payload.returnUrl) {
       window.location.href = payload.returnUrl;
     } else {
@@ -238,7 +238,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const currentPage = navigation.find((item) => item.href === pathname)
+  const currentPage = navigation.find(item => item.href === pathname);
 
   if (authState.loading) {
     return (
@@ -257,7 +257,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
         <div className="max-w-md mx-auto">
           <Alert variant="destructive">
             <AlertDescription className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" /> Invalid or expired token
+              <AlertCircle className="h-4 w-4" /> Invalid or expired token
             </AlertDescription>
           </Alert>
         </div>
@@ -265,50 +265,56 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-      const { payload } = authState;
+  const { payload } = authState;
 
-      // If embedded, show only content with solid background
-      if (isEmbedded) {
-        return (
-          <div className={`min-h-screen ${theme === "dark" ? "bg-black" : "bg-white"}`}>
-            <main className="p-6">
-              <PortalContext.Provider value={{
-                payload: authState.payload!,
-                token: sessionToken || searchParams.get("token")!,
-                theme: theme,
-                hasThemeParam: hasThemeParam,
-                themeWasLocked: themeWasLocked,
-                isEmbedded: isEmbedded
-              }}>
-                {children}
-              </PortalContext.Provider>
-            </main>
-          </div>
-        );
-      }
+  // If embedded, show only content with solid background
+  if (isEmbedded) {
+    return (
+      <div className={`min-h-screen ${theme === "dark" ? "bg-black" : "bg-white"}`}>
+        <main className="p-6">
+          <PortalContext.Provider
+            value={{
+              payload: authState.payload!,
+              token: sessionToken || searchParams.get("token")!,
+              theme: theme,
+              hasThemeParam: hasThemeParam,
+              themeWasLocked: themeWasLocked,
+              isEmbedded: isEmbedded,
+            }}
+          >
+            {children}
+          </PortalContext.Provider>
+        </main>
+      </div>
+    );
+  }
 
-      return (
-        <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 border-r border-border bg-card transition-all duration-200 lg:translate-x-0",
           collapsed ? "w-16" : "w-64",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center border-b border-border px-4">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={handleBackClick} className="h-9 w-9"><ArrowLeft className="h-5 w-5" /></Button>
-                { !collapsed && <span className="text-lg">{ payload.applicationName ? payload.applicationName : "Go Back" }</span> }
-              </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleBackClick} className="h-9 w-9">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              {!collapsed && (
+                <span className="text-lg">{payload.applicationName ? payload.applicationName : "Go Back"}</span>
+              )}
+            </div>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 space-y-1 p-4">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
+            {navigation.map(item => {
+              const isActive = pathname === item.href;
               return (
                 <Link
                   key={item.name}
@@ -318,7 +324,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
                     isActive
                       ? "border-border bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    collapsed && "justify-center",
+                    collapsed && "justify-center"
                   )}
                   onClick={() => setSidebarOpen(false)}
                   title={collapsed ? item.name : undefined}
@@ -326,12 +332,12 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
                   <item.icon className="h-5 w-5 shrink-0" />
                   {!collapsed && item.name}
                 </Link>
-              )
+              );
             })}
           </nav>
 
           {/* Theme Toggle */}
-          { !hasThemeParam && !themeWasLocked && (
+          {!hasThemeParam && !themeWasLocked && (
             <div className="border-t border-border p-4">
               <Button
                 variant="outline"
@@ -392,37 +398,39 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <main className="texture-overlay min-h-[calc(100vh-4rem)] p-6">
-              <PortalContext.Provider value={{
-                payload: authState.payload!,
-                token: sessionToken || searchParams.get("token")!,
-                theme: theme,
-                hasThemeParam: hasThemeParam,
-                themeWasLocked: themeWasLocked,
-                isEmbedded: isEmbedded,
-                breadcrumbTitle: breadcrumbTitle,
-                setBreadcrumbTitle: setBreadcrumbTitle
-              }}>
+          <PortalContext.Provider
+            value={{
+              payload: authState.payload!,
+              token: sessionToken || searchParams.get("token")!,
+              theme: theme,
+              hasThemeParam: hasThemeParam,
+              themeWasLocked: themeWasLocked,
+              isEmbedded: isEmbedded,
+              breadcrumbTitle: breadcrumbTitle,
+              setBreadcrumbTitle: setBreadcrumbTitle,
+            }}
+          >
             {children}
           </PortalContext.Provider>
         </main>
       </div>
     </div>
-  )
+  );
 }
 
 export default function PortalPage({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <LoaderCircle className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <LoaderCircle className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
-      <PortalLayout>
-        {children}
-      </PortalLayout>
+      }
+    >
+      <PortalLayout>{children}</PortalLayout>
     </Suspense>
   );
 }

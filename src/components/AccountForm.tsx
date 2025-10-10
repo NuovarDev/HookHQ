@@ -1,23 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { 
-  User, 
-  Mail, 
-  Shield, 
-  CheckCircle, 
-  AlertCircle,
-  Save,
-  Eye,
-  EyeOff,
-  Calendar,
-  Key
-} from "lucide-react";
+import { User, Mail, CheckCircle, AlertCircle, Eye, EyeOff, Calendar, Key } from "lucide-react";
 import authClient from "@/auth/authClient";
 
 interface User {
@@ -40,19 +29,19 @@ export default function AccountForm({ user }: AccountFormProps) {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: user.name || "",
     email: user.email || "",
   });
-  
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  
+
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,8 +60,8 @@ export default function AccountForm({ user }: AccountFormProps) {
     setMessage(null);
 
     await authClient.updateUser({
-        name: formData.name,
-    })
+      name: formData.name,
+    });
 
     setMessage({ type: "success", text: "Profile updated successfully!" });
     setIsEditing(false);
@@ -81,7 +70,7 @@ export default function AccountForm({ user }: AccountFormProps) {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setMessage({ type: "error", text: "New passwords do not match." });
       return;
@@ -108,7 +97,7 @@ export default function AccountForm({ user }: AccountFormProps) {
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setMessage({ type: "success", text: "Password changed successfully!" });
     }
-      
+
     setIsChangingPassword(false);
     setIsChangingPasswordLoading(false);
   };
@@ -137,9 +126,7 @@ export default function AccountForm({ user }: AccountFormProps) {
             <User className="h-5 w-5" />
             Profile Information
           </CardTitle>
-          <CardDescription>
-            Manage your personal information and account details.
-          </CardDescription>
+          <CardDescription>Manage your personal information and account details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Read-only view */}
@@ -172,17 +159,17 @@ export default function AccountForm({ user }: AccountFormProps) {
                   </div>
                 </div>
               </div>
-              
+
               {user.createdAt && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground">Member Since</Label>
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <span className="text-sm">
-                      {new Date(user.createdAt as string).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
+                      {new Date(user.createdAt as string).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
                       })}
                     </span>
                   </div>
@@ -190,9 +177,7 @@ export default function AccountForm({ user }: AccountFormProps) {
               )}
 
               <div className="pt-4">
-                <Button onClick={() => setIsEditing(true)}>
-                  Edit Profile
-                </Button>
+                <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
               </div>
             </div>
           ) : (
@@ -221,12 +206,10 @@ export default function AccountForm({ user }: AccountFormProps) {
                     placeholder="Enter your email"
                     disabled
                   />
-                  <p className="text-xs text-gray-500">
-                    Email cannot be changed. Contact support if needed.
-                  </p>
+                  <p className="text-xs text-gray-500">Email cannot be changed. Contact support if needed.</p>
                 </div>
               </div>
-              
+
               <div className="flex space-x-2 pt-4">
                 <Button type="submit" disabled={isUpdating}>
                   {isUpdating ? "Saving..." : "Save Changes"}
@@ -247,16 +230,12 @@ export default function AccountForm({ user }: AccountFormProps) {
             <Key className="h-5 w-5" />
             Password Management
           </CardTitle>
-          <CardDescription>
-            Change your password to keep your account secure.
-          </CardDescription>
+          <CardDescription>Change your password to keep your account secure.</CardDescription>
         </CardHeader>
         <CardContent>
           {!isChangingPassword ? (
             <div className="space-y-4">
-              <Button onClick={() => setIsChangingPassword(true)}>
-                Change Password
-              </Button>
+              <Button onClick={() => setIsChangingPassword(true)}>Change Password</Button>
             </div>
           ) : (
             <form onSubmit={handleChangePassword} className="space-y-4">
@@ -279,15 +258,11 @@ export default function AccountForm({ user }: AccountFormProps) {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <div className="relative">
@@ -308,15 +283,11 @@ export default function AccountForm({ user }: AccountFormProps) {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
-                    {showNewPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
                 <div className="relative">
@@ -337,15 +308,11 @@ export default function AccountForm({ user }: AccountFormProps) {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              
+
               <div className="flex space-x-2 pt-4">
                 <Button type="submit" disabled={isChangingPasswordLoading}>
                   {isChangingPasswordLoading ? "Changing..." : "Change Password"}
@@ -361,17 +328,15 @@ export default function AccountForm({ user }: AccountFormProps) {
 
       {/* Message Display */}
       {message && (
-        <div className={`p-4 rounded-md ${
-          message.type === "success" 
-            ? "bg-green-50 border border-green-200 text-green-800" 
-            : "bg-red-50 border border-red-200 text-red-800"
-        }`}>
+        <div
+          className={`p-4 rounded-md ${
+            message.type === "success"
+              ? "bg-green-50 border border-green-200 text-green-800"
+              : "bg-red-50 border border-red-200 text-red-800"
+          }`}
+        >
           <div className="flex items-center space-x-2">
-            {message.type === "success" ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
+            {message.type === "success" ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
             <span className="text-sm font-medium">{message.text}</span>
           </div>
         </div>

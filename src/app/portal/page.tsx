@@ -1,12 +1,12 @@
-"use client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ArrowUpRight, CheckCircle2, XCircle, Webhook } from "lucide-react"
-import Link from "next/link"
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { usePortalContext } from "./layout"
-import { useEffect, useState } from "react"
-import { Badge } from "@/components/ui/badge"
+"use client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowUpRight, CheckCircle2, XCircle, Webhook } from "lucide-react";
+import Link from "next/link";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { usePortalContext } from "./layout";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface Endpoint {
   id: string;
@@ -59,20 +59,20 @@ export default function PortalDashboard() {
     try {
       setLoading(true);
       const response = await fetch(`/api/portal/endpoints?token=${encodeURIComponent(token)}`);
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch endpoints");
       }
-      
-      const data = await response.json() as { endpoints: Endpoint[] };
+
+      const data = (await response.json()) as { endpoints: Endpoint[] };
       setEndpoints(data.endpoints || []);
-      
+
       // Calculate aggregated metrics
       const allMetrics7d = data.endpoints.flatMap(endpoint => endpoint.metrics7d);
       const totalEvents7d = allMetrics7d.length;
-      const totalSuccess7d = allMetrics7d.filter(m => m.status === 'delivered').length;
+      const totalSuccess7d = allMetrics7d.filter(m => m.status === "delivered").length;
       const totalFailed7d = totalEvents7d - totalSuccess7d;
-      const successRate7d = totalEvents7d > 0 ? ((totalSuccess7d / totalEvents7d) * 100) : 0;
+      const successRate7d = totalEvents7d > 0 ? (totalSuccess7d / totalEvents7d) * 100 : 0;
 
       // Generate chart data for the last 7 days
       const chartData7d = generateChartData(allMetrics7d);
@@ -82,7 +82,7 @@ export default function PortalDashboard() {
         totalSuccess7d,
         totalFailed7d,
         successRate7d,
-        chartData7d
+        chartData7d,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data");
@@ -91,40 +91,41 @@ export default function PortalDashboard() {
     }
   };
 
-  const generateChartData = (metrics: Endpoint['metrics7d']) => {
+  const generateChartData = (metrics: Endpoint["metrics7d"]) => {
     const chartData = [];
     const now = new Date();
-    
+
     for (let i = 6; i >= 0; i--) {
       const dayStart = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-      
+
       const dayMetrics = metrics.filter(m => {
         const attemptedAt = new Date(m.attemptedAt);
         return attemptedAt >= dayStart && attemptedAt < dayEnd;
       });
-      
-      const success = dayMetrics.filter(m => m.status === 'delivered').length;
-      const failed = dayMetrics.filter(m => m.status !== 'delivered').length;
-      
+
+      const success = dayMetrics.filter(m => m.status === "delivered").length;
+      const failed = dayMetrics.filter(m => m.status !== "delivered").length;
+
       chartData.push({
-        date: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: dayStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         events: success + failed,
         success,
-        failed
+        failed,
       });
     }
-    
+
     return chartData;
   };
-  
+
   return (
     <>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
-            Monitor your webhook endpoints and delivery metrics {payload.applicationName && `for ${payload.applicationName}`}
+            Monitor your webhook endpoints and delivery metrics{" "}
+            {payload.applicationName && `for ${payload.applicationName}`}
           </p>
         </div>
 
@@ -196,7 +197,7 @@ export default function PortalDashboard() {
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value) => `${value}`}
+                        tickFormatter={value => `${value}`}
                       />
                       <Tooltip
                         content={({ active, payload }) => {
@@ -219,9 +220,9 @@ export default function PortalDashboard() {
                                   </p>
                                 </div>
                               </div>
-                            )
+                            );
                           }
-                          return null
+                          return null;
                         }}
                       />
                       <Line type="monotone" dataKey="events" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
@@ -247,7 +248,7 @@ export default function PortalDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {endpoints.map((endpoint) => (
+                  {endpoints.map(endpoint => (
                     <Link
                       key={endpoint.id}
                       href={`/portal/endpoints/${endpoint.id}`}
@@ -259,7 +260,10 @@ export default function PortalDashboard() {
                             <Webhook className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <span className="flex items-center gap-2"><p className="font-medium truncate">{endpoint.name}</p><Badge variant="outline">{endpoint.id}</Badge></span>
+                            <span className="flex items-center gap-2">
+                              <p className="font-medium truncate">{endpoint.name}</p>
+                              <Badge variant="outline">{endpoint.id}</Badge>
+                            </span>
                             <p className="text-sm text-muted-foreground truncate mb-2">{endpoint.description}</p>
                             <p className="text-sm text-muted-foreground font-mono truncate">{endpoint.url}</p>
                           </div>
@@ -295,5 +299,5 @@ export default function PortalDashboard() {
         )}
       </div>
     </>
-  )
+  );
 }
