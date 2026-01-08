@@ -42,8 +42,8 @@ To deploy `workers-webhooks` manually, follow the steps below.
     - `AUTH_SECRET=YOUR_AUTH_SECRET`
 5. Create the D1 database
     - `npx wrangler d1 create webhooks-db`
-6. Create the R2 bucket
-    - `npx wrangler r2 create webhooks-r2`
+6. Create the KV namespace
+    - `npx wrangler kv namespace create webhooks-kv`
 7. Create the Queues
     - `npx wrangler queues create webhooks-queue`
     - `npx wrangler queues create webhooks-dlq`
