@@ -1,21 +1,28 @@
 "use client";
 
 import authClient from "@/auth/authClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Moon, Sun } from "lucide-react";
+import { AlertCircle, ArrowLeft, LoaderCircle, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { useTheme } from "next-themes";
 
+const MIN_TOTP_SPINNER_MS = 400;
+
 function LoginContent() {
   const { data: session, error: sessionError } = authClient.useSession();
   const [isAuthActionInProgress, setIsAuthActionInProgress] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [lastSubmittedTotpCode, setLastSubmittedTotpCode] = useState("");
+  const [isAwaitingTwoFactor, setIsAwaitingTwoFactor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const router = useRouter();
@@ -60,6 +67,10 @@ function LoginContent() {
 
       if (result.error) {
         setError(result.error.message ?? "Authentication failed");
+      } else if ((result.data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+        setIsAwaitingTwoFactor(true);
+        setTotpCode("");
+        setLastSubmittedTotpCode("");
       } else {
         // Login succeeded - middleware will handle redirect to dashboard
         window.location.reload();
@@ -71,9 +82,56 @@ function LoginContent() {
     }
   };
 
+  const handleVerifyTotp = async (code = totpCode) => {
+    if (isAuthActionInProgress || code.length !== 6) return;
+
+    const startedAt = Date.now();
+    setIsAuthActionInProgress(true);
+    setError(null);
+    setLastSubmittedTotpCode(code);
+
+    try {
+      const result = await authClient.twoFactor.verifyTotp({
+        code,
+        trustDevice: false,
+      });
+
+      if (result.error) {
+        setError(result.error.message ?? "Invalid authentication code");
+      } else {
+        window.location.reload();
+      }
+    } catch (e: any) {
+      setError(`An unexpected error occurred: ${e.message}`);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_TOTP_SPINNER_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_TOTP_SPINNER_MS - elapsed));
+      }
+      setIsAuthActionInProgress(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAwaitingTwoFactor) return;
+
+    if (totpCode.length < 6) {
+      setLastSubmittedTotpCode("");
+      return;
+    }
+
+    if (totpCode === lastSubmittedTotpCode || isAuthActionInProgress) return;
+
+    void handleVerifyTotp(totpCode);
+  }, [handleVerifyTotp, isAuthActionInProgress, isAwaitingTwoFactor, lastSubmittedTotpCode, totpCode]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      handleSignIn();
+      if (isAwaitingTwoFactor) {
+        void handleVerifyTotp();
+      } else {
+        handleSignIn();
+      }
     }
   };
 
@@ -102,7 +160,24 @@ function LoginContent() {
 
       <div className="w-full max-w-md">
         <div className="bg-card border border-border p-8">
-          <div className="flex items-center gap-3 mb-8">
+          <div className="mb-8 flex items-center gap-3">
+            {isAwaitingTwoFactor ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="-ml-2"
+                onClick={() => {
+                  setIsAwaitingTwoFactor(false);
+                  setTotpCode("");
+                  setLastSubmittedTotpCode("");
+                  setError(null);
+                }}
+                disabled={isAuthActionInProgress}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            ) : null}
             <div className="h-10 w-10 bg-black flex items-center justify-center dark:border-border dark:border">
               <Image src="/logo.svg" alt="HookHQ" width={36} height={36} className="text-primary-foreground" />
             </div>
@@ -114,8 +189,14 @@ function LoginContent() {
 
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Sign in</h2>
-              <p className="text-sm text-muted-foreground">Enter your credentials to access your dashboard</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                {isAwaitingTwoFactor ? "Two-factor verification" : "Sign in"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {isAwaitingTwoFactor
+                  ? "Enter the 6-digit code from your authenticator app to finish signing in."
+                  : "Enter your credentials to access your dashboard"}
+              </p>
             </div>
 
             {error && (
@@ -125,43 +206,82 @@ function LoginContent() {
               </div>
             )}
 
-            <form className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="border-border"
-                  required
-                />
-              </div>
+            <form className="space-y-4" onSubmit={event => event.preventDefault()}>
+              {!isAwaitingTwoFactor ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      className="border-border"
+                      required
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  className="border-border"
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      className="border-border"
+                      required
+                    />
+                  </div>
 
-              <Button
-                onClick={handleSignIn}
-                className="w-full"
-                disabled={isAuthActionInProgress || !email || !password}
-              >
-                {isAuthActionInProgress ? "Signing In..." : "Sign In"}
-              </Button>
+                  <Button
+                    onClick={handleSignIn}
+                    className="w-full"
+                    disabled={isAuthActionInProgress || !email || !password}
+                  >
+                    {isAuthActionInProgress ? "Signing In..." : "Sign In"}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center gap-3">
+                      <InputOTP
+                        id="totpCode"
+                        value={totpCode}
+                        onChange={value => setTotpCode(value.replace(/\D/g, "").slice(0, 6))}
+                        maxLength={6}
+                        inputMode="numeric"
+                        autoFocus={true}
+                        autoComplete="one-time-code"
+                        pattern="[0-9]*"
+                        containerClassName="justify-center"
+                        onKeyDown={handleKeyPress}
+                      >
+                        <InputOTPGroup>
+                          {Array.from({ length: 6 }).map((_, index) => (
+                            <InputOTPSlot
+                              key={index}
+                              index={index}
+                              className={`h-12 w-12 text-xl ${
+                                error ? "border-red-500 text-red-600 dark:border-red-500 dark:text-red-300 ring-red-400" : ""
+                              }`}
+                            />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+
+                      <div className="flex h-12 w-6 items-center justify-center" aria-hidden={!isAuthActionInProgress}>
+                        {isAuthActionInProgress ? <LoaderCircle className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </form>
             <br />
           </div>

@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AccountForm from "@/components/AccountForm";
 import DeleteAccountButton from "@/components/DeleteAccountButton";
+import TwoFactorSettings from "@/components/TwoFactorSettings";
 
 export default async function AccountPage() {
   const authInstance = await initAuth();
@@ -21,6 +22,10 @@ export default async function AccountPage() {
       </div>
 
       <AccountForm user={session.user} />
+      <TwoFactorSettings
+        email={session.user.email}
+        initialEnabled={Boolean((session.user as { twoFactorEnabled?: boolean }).twoFactorEnabled)}
+      />
 
       <div className="border-t pt-6">
         <DeleteAccountButton />

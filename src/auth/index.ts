@@ -2,7 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { openAPI, apiKey, admin } from "better-auth/plugins";
+import { openAPI, apiKey, admin, twoFactor } from "better-auth/plugins";
 import { getDb } from "../db";
 
 // Define an asynchronous function to build your auth configuration
@@ -35,7 +35,9 @@ async function authBuilder() {
               enabled: false,
             },
           }),
-          admin()],
+          admin(),
+          twoFactor()
+        ],
         emailAndPassword: {
           enabled: true,
           requireEmailVerification: false,
@@ -85,7 +87,7 @@ export const auth = betterAuth({
     },
     {
       // Include only configurations that influence the Drizzle schema
-      plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: 'wh_' }), admin()],
+      plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: 'wh_' }), admin(), twoFactor()],
       emailAndPassword: {
         enabled: true,
       },

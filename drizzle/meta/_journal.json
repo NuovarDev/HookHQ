@@ -8,6 +8,13 @@
       "when": 1760072983511,
       "tag": "0000_known_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1773628931776,
+      "tag": "0001_equal_red_ghost",
+      "breakpoints": true
     }
   ]
 }
