@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
+import EventTypeSelector from "@/components/shared/EventTypeSelector";
 import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,19 +25,32 @@ import {
   createEndpoint,
   deleteEndpoint,
   fetchEndpoints,
+  fetchEventTypes,
   type Endpoint,
+  type EventType,
   updateEndpoint,
 } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
-import { ErrorBody } from "@/lib/webhookApi";
 
 type EndpointFormState = {
   name: string;
   description: string;
-  url: string;
+  eventTypes: string[];
+  destinationType: "webhook" | "sqs";
+  target: string;
+  sqsRegion: string;
+  sqsAccessKeyId: string;
+  sqsSecretAccessKey: string;
+  sqsDelaySeconds: number;
+  sqsMessageGroupId: string;
   enabled: boolean;
-  retryPolicy: "exponential" | "linear" | "fixed";
+  retryStrategy: "none" | "fixed" | "linear" | "exponential";
   maxAttempts: number;
+  baseDelaySeconds: number;
+  maxDelaySeconds: number;
+  jitterFactor: number;
+  autoDisableEnabled: boolean;
+  autoDisableThreshold: number;
   timeoutMs: number;
   customHeaders: string;
   proxyGroupId: string;
@@ -50,13 +64,29 @@ interface ProxyGroup {
   isActive: boolean;
 }
 
+function getEndpointTarget(endpoint: Endpoint) {
+  return endpoint.destinationType === "webhook" ? endpoint.destination.url : endpoint.destination.queueUrl;
+}
+
 const initialFormState: EndpointFormState = {
   name: "",
   description: "",
-  url: "",
+  eventTypes: ["*"],
+  destinationType: "webhook",
+  target: "",
+  sqsRegion: "",
+  sqsAccessKeyId: "",
+  sqsSecretAccessKey: "",
+  sqsDelaySeconds: 0,
+  sqsMessageGroupId: "",
   enabled: true,
-  retryPolicy: "exponential",
+  retryStrategy: "exponential",
   maxAttempts: 3,
+  baseDelaySeconds: 5,
+  maxDelaySeconds: 300,
+  jitterFactor: 0.2,
+  autoDisableEnabled: false,
+  autoDisableThreshold: 10,
   timeoutMs: 10_000,
   customHeaders: "",
   proxyGroupId: "none",
@@ -87,19 +117,43 @@ function getEndpointPayload(formData: EndpointFormState) {
   return {
     name: formData.name.trim(),
     description: formData.description.trim() || undefined,
-    url: formData.url.trim(),
+    eventTypes: formData.eventTypes,
+    destinationType: formData.destinationType,
+    destination:
+      formData.destinationType === "webhook"
+        ? {
+            url: formData.target.trim(),
+            timeoutMs: formData.timeoutMs,
+            customHeaders,
+            proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
+          }
+        : {
+            queueUrl: formData.target.trim(),
+            region: formData.sqsRegion.trim(),
+            accessKeyId: formData.sqsAccessKeyId.trim(),
+            secretAccessKey: formData.sqsSecretAccessKey.trim(),
+            delaySeconds: formData.sqsDelaySeconds || undefined,
+            messageGroupId: formData.sqsMessageGroupId.trim() || undefined,
+          },
     enabled: formData.enabled,
-    retryPolicy: formData.retryPolicy,
-    maxAttempts: formData.maxAttempts,
-    timeoutMs: formData.timeoutMs,
-    customHeaders,
-    proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
+    retry: {
+      strategy: formData.retryStrategy,
+      maxAttempts: formData.maxAttempts,
+      baseDelaySeconds: formData.baseDelaySeconds,
+      maxDelaySeconds: formData.maxDelaySeconds,
+      jitterFactor: formData.jitterFactor,
+    },
+    autoDisable: {
+      enabled: formData.autoDisableEnabled,
+      threshold: formData.autoDisableThreshold,
+    },
   };
 }
 
 export default function EndpointsTab() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -112,10 +166,15 @@ export default function EndpointsTab() {
 
     async function loadData() {
       try {
-        const [nextEndpoints, nextProxyGroups] = await Promise.all([fetchEndpoints(), fetchProxyGroups()]);
+        const [nextEndpoints, nextProxyGroups, nextEventTypes] = await Promise.all([
+          fetchEndpoints(),
+          fetchProxyGroups(),
+          fetchEventTypes(),
+        ]);
         if (!isMounted) return;
         setEndpoints(nextEndpoints);
         setProxyGroups(nextProxyGroups);
+        setEventTypes(nextEventTypes);
       } catch (nextError) {
         if (!isMounted) return;
         setError(nextError instanceof Error ? nextError.message : "Failed to load endpoints");
@@ -147,13 +206,28 @@ export default function EndpointsTab() {
     setFormData({
       name: endpoint.name,
       description: endpoint.description || "",
-      url: endpoint.url,
+      eventTypes: endpoint.eventTypes,
+      destinationType: endpoint.destinationType,
+      target: getEndpointTarget(endpoint),
+      sqsRegion: endpoint.destinationType === "sqs" ? endpoint.destination.region : "",
+      sqsAccessKeyId: endpoint.destinationType === "sqs" ? endpoint.destination.accessKeyId : "",
+      sqsSecretAccessKey: endpoint.destinationType === "sqs" ? endpoint.destination.secretAccessKey : "",
+      sqsDelaySeconds: endpoint.destinationType === "sqs" ? (endpoint.destination.delaySeconds ?? 0) : 0,
+      sqsMessageGroupId: endpoint.destinationType === "sqs" ? (endpoint.destination.messageGroupId ?? "") : "",
       enabled: endpoint.enabled,
-      retryPolicy: (endpoint.retryPolicy as EndpointFormState["retryPolicy"]) || "exponential",
-      maxAttempts: endpoint.maxAttempts,
-      timeoutMs: endpoint.timeoutMs,
-      customHeaders: endpoint.customHeaders ? JSON.stringify(endpoint.customHeaders, null, 2) : "",
-      proxyGroupId: endpoint.proxyGroupId || "none",
+      retryStrategy: endpoint.retry.strategy,
+      maxAttempts: endpoint.retry.maxAttempts,
+      baseDelaySeconds: endpoint.retry.baseDelaySeconds,
+      maxDelaySeconds: endpoint.retry.maxDelaySeconds,
+      jitterFactor: endpoint.retry.jitterFactor,
+      autoDisableEnabled: endpoint.autoDisable.enabled,
+      autoDisableThreshold: endpoint.autoDisable.threshold,
+      timeoutMs: endpoint.destinationType === "webhook" ? (endpoint.destination.timeoutMs ?? 10000) : 10000,
+      customHeaders:
+        endpoint.destinationType === "webhook" && endpoint.destination.customHeaders
+          ? JSON.stringify(endpoint.destination.customHeaders, null, 2)
+          : "",
+      proxyGroupId: endpoint.destinationType === "webhook" ? endpoint.destination.proxyGroupId || "none" : "none",
     });
     setEditingEndpoint(endpoint);
     setCreateDialogOpen(true);
@@ -222,7 +296,7 @@ export default function EndpointsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Endpoints</h2>
-          <p className="text-muted-foreground">Manage your webhook endpoints</p>
+          <p className="text-muted-foreground">Manage your event endpoints</p>
         </div>
 
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -237,8 +311,8 @@ export default function EndpointsTab() {
               <DialogTitle>{editingEndpoint ? "Edit Endpoint" : "Create New Endpoint"}</DialogTitle>
               <DialogDescription>
                 {editingEndpoint
-                  ? "Update your webhook endpoint configuration"
-                  : "Add a new webhook endpoint to receive notifications"}
+                  ? "Update your event endpoint configuration"
+                  : "Add a new event endpoint to receive notifications"}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -249,18 +323,42 @@ export default function EndpointsTab() {
                     id="endpoint-name"
                     value={formData.name}
                     onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
-                    placeholder="My Webhook Endpoint"
+                    placeholder="My Endpoint"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endpoint-url">URL *</Label>
+                  <Label htmlFor="endpoint-target">
+                    {formData.destinationType === "webhook" ? "URL *" : "Queue URL *"}
+                  </Label>
                   <Input
-                    id="endpoint-url"
-                    value={formData.url}
-                    onChange={event => setFormData(current => ({ ...current, url: event.target.value }))}
-                    placeholder="https://example.com/webhook"
+                    id="endpoint-target"
+                    value={formData.target}
+                    onChange={event => setFormData(current => ({ ...current, target: event.target.value }))}
+                    placeholder={
+                      formData.destinationType === "webhook"
+                        ? "https://example.com/webhook"
+                        : "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
+                    }
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-destination-type">Destination Type</Label>
+                <Select
+                  value={formData.destinationType}
+                  onValueChange={(value: EndpointFormState["destinationType"]) =>
+                    setFormData(current => ({ ...current, destinationType: value }))
+                  }
+                >
+                  <SelectTrigger id="endpoint-destination-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="webhook">Webhook</SelectItem>
+                    <SelectItem value="sqs">Amazon SQS</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -273,19 +371,33 @@ export default function EndpointsTab() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-event-types">Subscribed Event Types</Label>
+                <EventTypeSelector
+                  eventTypes={eventTypes}
+                  value={formData.eventTypes}
+                  onChange={value => setFormData(current => ({ ...current, eventTypes: value }))}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Choose which event types should trigger this destination. “All event types” includes events sent
+                  without a type.
+                </p>
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-retry-policy">Retry Policy</Label>
                   <Select
-                    value={formData.retryPolicy}
-                    onValueChange={(value: EndpointFormState["retryPolicy"]) =>
-                      setFormData(current => ({ ...current, retryPolicy: value }))
+                    value={formData.retryStrategy}
+                    onValueChange={(value: EndpointFormState["retryStrategy"]) =>
+                      setFormData(current => ({ ...current, retryStrategy: value }))
                     }
                   >
                     <SelectTrigger id="endpoint-retry-policy">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="exponential">Exponential</SelectItem>
                       <SelectItem value="linear">Linear</SelectItem>
                       <SelectItem value="fixed">Fixed</SelectItem>
@@ -310,55 +422,206 @@ export default function EndpointsTab() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="endpoint-timeout">Timeout (ms)</Label>
+                  <Label htmlFor="endpoint-base-delay">Base Delay (s)</Label>
                   <Input
-                    id="endpoint-timeout"
+                    id="endpoint-base-delay"
                     type="number"
-                    min={100}
-                    value={formData.timeoutMs}
+                    min={1}
+                    value={formData.baseDelaySeconds}
                     onChange={event =>
                       setFormData(current => ({
                         ...current,
-                        timeoutMs: Number.parseInt(event.target.value || "100", 10),
+                        baseDelaySeconds: Number.parseInt(event.target.value || "1", 10),
                       }))
                     }
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="endpoint-custom-headers">Custom Headers (JSON)</Label>
-                <Textarea
-                  id="endpoint-custom-headers"
-                  className="min-h-[100px] font-mono text-sm"
-                  value={formData.customHeaders}
-                  onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
-                  placeholder='{"Authorization":"Bearer token","X-Custom":"value"}'
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-auto-disable">Auto Disable</Label>
+                  <Select
+                    value={formData.autoDisableEnabled ? "enabled" : "disabled"}
+                    onValueChange={value =>
+                      setFormData(current => ({ ...current, autoDisableEnabled: value === "enabled" }))
+                    }
+                  >
+                    <SelectTrigger id="endpoint-auto-disable">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="disabled">Disabled</SelectItem>
+                      <SelectItem value="enabled">Enabled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-auto-disable-threshold">Disable After Consecutive Failures</Label>
+                  <Input
+                    id="endpoint-auto-disable-threshold"
+                    type="number"
+                    min={1}
+                    value={formData.autoDisableThreshold}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        autoDisableThreshold: Number.parseInt(event.target.value || "1", 10),
+                      }))
+                    }
+                    disabled={!formData.autoDisableEnabled}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="endpoint-proxy-group">Proxy Group (Optional)</Label>
-                <Select
-                  value={formData.proxyGroupId}
-                  onValueChange={value => setFormData(current => ({ ...current, proxyGroupId: value }))}
-                >
-                  <SelectTrigger id="endpoint-proxy-group">
-                    <SelectValue placeholder="Select proxy group for static IP delivery" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Direct Delivery (No Proxy)</SelectItem>
-                    {proxyGroups.map(group => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.name} ({group.loadBalancingStrategy})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Assign a proxy group to use static IP delivery, or leave empty for direct delivery.
-                </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-max-delay">Max Delay (s)</Label>
+                  <Input
+                    id="endpoint-max-delay"
+                    type="number"
+                    min={1}
+                    value={formData.maxDelaySeconds}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        maxDelaySeconds: Number.parseInt(event.target.value || "1", 10),
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-jitter">Jitter</Label>
+                  <Input
+                    id="endpoint-jitter"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={formData.jitterFactor}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        jitterFactor: Number.parseFloat(event.target.value || "0"),
+                      }))
+                    }
+                  />
+                </div>
+
+                {formData.destinationType === "webhook" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-timeout">Timeout (ms)</Label>
+                    <Input
+                      id="endpoint-timeout"
+                      type="number"
+                      min={100}
+                      value={formData.timeoutMs}
+                      onChange={event =>
+                        setFormData(current => ({
+                          ...current,
+                          timeoutMs: Number.parseInt(event.target.value || "100", 10),
+                        }))
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-sqs-delay">SQS Delay (s)</Label>
+                    <Input
+                      id="endpoint-sqs-delay"
+                      type="number"
+                      min={0}
+                      max={900}
+                      value={formData.sqsDelaySeconds}
+                      onChange={event =>
+                        setFormData(current => ({
+                          ...current,
+                          sqsDelaySeconds: Number.parseInt(event.target.value || "0", 10),
+                        }))
+                      }
+                    />
+                  </div>
+                )}
               </div>
+
+              {formData.destinationType === "webhook" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-custom-headers">Custom Headers (JSON)</Label>
+                    <Textarea
+                      id="endpoint-custom-headers"
+                      className="min-h-[100px] font-mono text-sm"
+                      value={formData.customHeaders}
+                      onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
+                      placeholder='{"Authorization":"Bearer token","X-Custom":"value"}'
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-proxy-group">Proxy Group (Optional)</Label>
+                    <Select
+                      value={formData.proxyGroupId}
+                      onValueChange={value => setFormData(current => ({ ...current, proxyGroupId: value }))}
+                    >
+                      <SelectTrigger id="endpoint-proxy-group">
+                        <SelectValue placeholder="Select proxy group for static IP delivery" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Direct Delivery (No Proxy)</SelectItem>
+                        {proxyGroups.map(group => (
+                          <SelectItem key={group.id} value={group.id}>
+                            {group.name} ({group.loadBalancingStrategy})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-sqs-region">AWS Region</Label>
+                    <Input
+                      id="endpoint-sqs-region"
+                      value={formData.sqsRegion}
+                      onChange={event => setFormData(current => ({ ...current, sqsRegion: event.target.value }))}
+                      placeholder="us-east-1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-sqs-access-key">Access Key ID</Label>
+                    <Input
+                      id="endpoint-sqs-access-key"
+                      value={formData.sqsAccessKeyId}
+                      onChange={event => setFormData(current => ({ ...current, sqsAccessKeyId: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-sqs-secret">Secret Access Key</Label>
+                    <Input
+                      id="endpoint-sqs-secret"
+                      type="password"
+                      value={formData.sqsSecretAccessKey}
+                      onChange={event =>
+                        setFormData(current => ({ ...current, sqsSecretAccessKey: event.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-sqs-group-id">FIFO Group ID</Label>
+                    <Input
+                      id="endpoint-sqs-group-id"
+                      value={formData.sqsMessageGroupId}
+                      onChange={event =>
+                        setFormData(current => ({ ...current, sqsMessageGroupId: event.target.value }))
+                      }
+                      placeholder="Required for FIFO queues"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -380,12 +643,13 @@ export default function EndpointsTab() {
         >
           <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
             <EditableTemplate
-              template={`curl ${getPublicApiUrl()}/endpoints \\
+              template={`curl ${getPublicApiUrl("endpoints", true)} \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
-  "name": "My First Endpoint",
-  "url": "https://example.com/webhook"
+  "name": "My First Destination",
+  "destinationType": "webhook",
+  "destination": { "url": "https://example.com/webhook" }
 }'`}
               className="whitespace-pre"
             />
@@ -417,8 +681,10 @@ export default function EndpointsTab() {
               <CardContent>
                 <div className="space-y-3">
                   <div>
-                    <h4 className="mb-1 text-sm font-medium">URL</h4>
-                    <div className="break-all text-sm text-muted-foreground">{endpoint.url}</div>
+                    <h4 className="mb-1 text-sm font-medium">
+                      {endpoint.destinationType === "webhook" ? "URL" : "Queue"}
+                    </h4>
+                    <div className="break-all text-sm text-muted-foreground">{getEndpointTarget(endpoint)}</div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 text-sm">
@@ -442,19 +708,24 @@ export default function EndpointsTab() {
                       </span>
                     </div>
 
-                    {endpoint.proxyGroupId && (
+                    {endpoint.destinationType === "webhook" && endpoint.destination.proxyGroupId && (
                       <div className="flex items-center gap-2">
                         <Users className="h-3 w-3 text-gray-400" />
                         <span className="text-muted-foreground">Proxy Group ID:</span>
                         <span className="flex items-center gap-1 rounded bg-blue-100 px-2 py-1 font-mono text-xs dark:bg-blue-900">
-                          {endpoint.proxyGroupId}
+                          {endpoint.destination.proxyGroupId}
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-4 w-4 p-0 hover:bg-blue-200"
-                            onClick={() => copyToClipboard(endpoint.proxyGroupId!, `proxy-${endpoint.proxyGroupId}`)}
+                            onClick={() =>
+                              copyToClipboard(
+                                endpoint.destination.proxyGroupId!,
+                                `proxy-${endpoint.destination.proxyGroupId}`
+                              )
+                            }
                           >
-                            {copiedId === `proxy-${endpoint.proxyGroupId}` ? (
+                            {copiedId === `proxy-${endpoint.destination.proxyGroupId}` ? (
                               <Check className="h-3 w-3 text-green-600" />
                             ) : (
                               <Copy className="h-3 w-3" />
@@ -470,7 +741,11 @@ export default function EndpointsTab() {
                       <Badge variant={endpoint.enabled ? "default" : "secondary"}>
                         {endpoint.enabled ? "Enabled" : "Disabled"}
                       </Badge>
-                      <Badge variant="outline">{endpoint.retryPolicy}</Badge>
+                      <Badge variant="outline">{endpoint.destinationType}</Badge>
+                      <Badge variant="outline">{endpoint.retry.strategy}</Badge>
+                      <Badge variant="outline">
+                        {endpoint.eventTypes.includes("*") ? "All event types" : endpoint.eventTypes.join(", ")}
+                      </Badge>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => handleToggleEndpoint(endpoint)}>
                       {endpoint.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}

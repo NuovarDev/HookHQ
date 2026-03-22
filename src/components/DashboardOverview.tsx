@@ -47,9 +47,9 @@ interface DashboardMetricsData {
 }
 
 const quickLinks = [
-  { label: "Create Endpoint", href: "/dashboard/webhooks" },
+  { label: "Create Endpoint", href: "/dashboard/endpoints" },
   { label: "View Metrics", href: "/dashboard/metrics" },
-  { label: "Webhook Logs", href: "/dashboard/log" },
+  { label: "Event Logs", href: "/dashboard/log" },
   ...(process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true" ? [{ label: "API Documentation", href: getPublicApiUrl() }] : []),
 ];
 

@@ -2,34 +2,22 @@ import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
+import { buildEndpointGroupInsertValues, formatEndpointGroup } from "@/lib/publicApi/serializers";
 import {
-  authHeaderSchema,
   enabledQuerySchema,
   endpointGroupCreateSchema,
   endpointGroupSchema,
   errorResponseSchema,
+  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
-
-function formatGroup(group: typeof endpointGroups.$inferSelect) {
-  return {
-    id: group.id,
-    environmentId: group.environmentId,
-    name: group.name,
-    description: group.description,
-    endpointIds: group.endpointIds ? JSON.parse(group.endpointIds) : [],
-    enabled: group.isActive,
-    createdAt: group.createdAt.toISOString(),
-    updatedAt: group.updatedAt.toISOString(),
-  };
-}
 
 const listGroupsRoute = createRoute({
   method: "get",
   path: "/endpoint-groups",
   tags: ["Endpoint Groups"],
   summary: "List Endpoint Groups",
-  request: { headers: authHeaderSchema, query: enabledQuerySchema },
+  request: { headers: optionalAuthHeaderSchema, query: enabledQuerySchema },
   responses: {
     200: {
       description: "Success",
@@ -47,7 +35,7 @@ const createGroupRoute = createRoute({
   tags: ["Endpoint Groups"],
   summary: "Create Endpoint Group",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     body: { required: true, content: { "application/json": { schema: endpointGroupCreateSchema } } },
   },
   responses: {
@@ -73,7 +61,7 @@ export function registerEndpointGroupCollectionRoutes(app: OpenAPIHono<{ Binding
       .from(endpointGroups)
       .where(and(...conditions))
       .orderBy(endpointGroups.createdAt);
-    return c.json({ endpointGroups: groups.map(formatGroup) }, 200);
+    return c.json({ endpointGroups: groups.map(formatEndpointGroup) }, 200);
   }) as never);
 
   app.openapi(createGroupRoute, (async (c: any) => {
@@ -85,28 +73,18 @@ export function registerEndpointGroupCollectionRoutes(app: OpenAPIHono<{ Binding
     const now = new Date();
     const id = `grp_${auth.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
     const db = await getDb(c.env);
-    await db.insert(endpointGroups).values({
+    const values = buildEndpointGroupInsertValues({
       id,
       environmentId: auth.environmentId,
       name: body.name,
       description: body.description,
-      endpointIds: JSON.stringify(body.endpointIds ?? []),
-      isActive: body.enabled ?? true,
-      createdAt: now,
-      updatedAt: now,
+      endpointIds: body.endpointIds,
+      eventTypes: body.eventTypes,
+      enabled: body.enabled,
+      failureAlerts: body.failureAlerts,
+      now,
     });
-    return c.json(
-      formatGroup({
-        id,
-        environmentId: auth.environmentId,
-        name: body.name,
-        description: body.description ?? null,
-        endpointIds: JSON.stringify(body.endpointIds ?? []),
-        isActive: body.enabled ?? true,
-        createdAt: now,
-        updatedAt: now,
-      } as typeof endpointGroups.$inferSelect),
-      200
-    );
+    await db.insert(endpointGroups).values(values);
+    return c.json(formatEndpointGroup(values as typeof endpointGroups.$inferSelect), 200);
   }) as never);
 }

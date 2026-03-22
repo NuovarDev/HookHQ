@@ -145,17 +145,6 @@ export default function AccountForm({ user }: AccountFormProps) {
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-gray-400" />
                     <span className="text-sm">{formData.email}</span>
-                    {user.emailVerified ? (
-                      <Badge variant="secondary" className="text-xs">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs text-orange-600">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Unverified
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </div>

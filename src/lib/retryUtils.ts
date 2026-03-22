@@ -1,188 +1,145 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/db";
+import { serverConfig } from "@/db/environments.schema";
+import type { RetryConfig, RetryStrategy } from "@/lib/destinations/types";
+import { eq } from "drizzle-orm";
 
-export type RetryPolicy = "none" | "retry";
-export type BackoffStrategy = "linear" | "exponential" | "fixed";
+export interface GlobalRetryConfig extends RetryConfig {}
 
-export interface RetryConfig {
-  maxAttempts: number;
-  retryPolicy: RetryPolicy;
-  backoffStrategy: BackoffStrategy;
-  baseDelaySeconds: number;
+function clamp(min: number, value: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
-export interface GlobalRetryConfig {
-  defaultMaxRetries: number;
-  defaultRetryPolicy: RetryPolicy;
-  defaultBackoffStrategy: BackoffStrategy;
-  defaultBaseDelaySeconds: number;
-}
-
-/**
- * Calculate exponential backoff delay
- */
-export function calculateExponentialBackoff(
-  attempts: number,
-  baseDelaySeconds: number
-): number {
-  return Math.min(baseDelaySeconds * Math.pow(2, attempts - 1), 300); // Cap at 5 minutes
-}
-
-/**
- * Calculate linear backoff delay
- */
-export function calculateLinearBackoff(
-  attempts: number,
-  baseDelaySeconds: number
-): number {
-  return Math.min(baseDelaySeconds * attempts, 300); // Cap at 5 minutes
-}
-
-/**
- * Calculate fixed backoff delay
- */
-export function calculateFixedBackoff(
-  attempts: number,
-  baseDelaySeconds: number
-): number {
-  return Math.min(baseDelaySeconds, 300); // Cap at 5 minutes, ignore attempts
-}
-
-/**
- * Calculate backoff delay based on strategy
- */
-export function calculateBackoffDelay(
-  attempts: number,
-  baseDelaySeconds: number,
-  strategy: BackoffStrategy
-): number {
-  switch (strategy) {
-    case "exponential":
-      return calculateExponentialBackoff(attempts, baseDelaySeconds);
-    case "linear":
-      return calculateLinearBackoff(attempts, baseDelaySeconds);
-    case "fixed":
-      return calculateFixedBackoff(attempts, baseDelaySeconds);
-    default:
-      return baseDelaySeconds;
+function resolveLegacyStrategy(defaultRetryPolicy?: string, defaultBackoffStrategy?: string): RetryStrategy {
+  if (defaultRetryPolicy === "none") {
+    return "none";
   }
+
+  if (defaultRetryPolicy === "fixed" || defaultRetryPolicy === "linear" || defaultRetryPolicy === "exponential") {
+    return defaultRetryPolicy;
+  }
+
+  if (
+    defaultBackoffStrategy === "fixed" ||
+    defaultBackoffStrategy === "linear" ||
+    defaultBackoffStrategy === "exponential"
+  ) {
+    return defaultBackoffStrategy;
+  }
+
+  return "exponential";
 }
 
-/**
- * Get global retry configuration from database with KV caching
- */
+export function calculateBackoffDelay(attempts: number, retryConfig: RetryConfig): number {
+  if (retryConfig.strategy === "none") {
+    return 0;
+  }
+
+  const baseAttempt = Math.max(1, attempts);
+  let delay = retryConfig.baseDelaySeconds;
+
+  switch (retryConfig.strategy) {
+    case "fixed":
+      delay = retryConfig.baseDelaySeconds;
+      break;
+    case "linear":
+      delay = retryConfig.baseDelaySeconds * baseAttempt;
+      break;
+    case "exponential":
+      delay = retryConfig.baseDelaySeconds * 2 ** (baseAttempt - 1);
+      break;
+    default:
+      delay = retryConfig.baseDelaySeconds;
+      break;
+  }
+
+  delay = clamp(1, delay, retryConfig.maxDelaySeconds);
+
+  if (retryConfig.jitterFactor > 0) {
+    const jitterRange = delay * retryConfig.jitterFactor;
+    const jitterOffset = (Math.random() * 2 - 1) * jitterRange;
+    delay += jitterOffset;
+  }
+
+  return Math.max(1, Math.round(delay));
+}
+
 export async function getGlobalRetryConfig(env?: CloudflareEnv): Promise<GlobalRetryConfig> {
   try {
     const resolvedEnv = env ?? (await getCloudflareContext({ async: true })).env;
-    
-    // Try to get from cache first
     const cacheKey = "global:retry:config";
     const cachedConfig = await resolvedEnv.KV.get(cacheKey);
-    
+
     if (cachedConfig) {
       return JSON.parse(cachedConfig) as GlobalRetryConfig;
     }
 
-    // Cache miss - get from database
     const db = await getDb(resolvedEnv);
-    
-    // For now, return default config since we don't have a config table yet
-    // TODO: Implement actual database table for global config
-    const defaultConfig: GlobalRetryConfig = {
-      defaultMaxRetries: 3,
-      defaultRetryPolicy: "retry",
-      defaultBackoffStrategy: "exponential",
-      defaultBaseDelaySeconds: 1,
-    };
+    const config = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
 
-    // Cache the result
-    await resolvedEnv.KV.put(cacheKey, JSON.stringify(defaultConfig), { 
-      expirationTtl: 60 * 60 * 24 // 24 hours
-    });
+    const resolved: GlobalRetryConfig =
+      config[0] != null
+        ? {
+            strategy: resolveLegacyStrategy(config[0].defaultRetryStrategy, config[0].defaultBackoffStrategy),
+            maxAttempts: config[0].defaultMaxRetries,
+            baseDelaySeconds: config[0].defaultBaseDelaySeconds ?? 5,
+            maxDelaySeconds: config[0].defaultMaxRetryDelaySeconds ?? 300,
+            jitterFactor: (config[0].defaultRetryJitterFactor ?? 20) / 100,
+          }
+        : {
+            strategy: "exponential",
+            maxAttempts: 3,
+            baseDelaySeconds: 5,
+            maxDelaySeconds: 300,
+            jitterFactor: 0.2,
+          };
 
-    return defaultConfig;
+    await resolvedEnv.KV.put(cacheKey, JSON.stringify(resolved), { expirationTtl: 60 * 60 * 24 });
+    return resolved;
   } catch (error) {
-    console.error('Error getting global retry config:', error);
-    
-    // Return safe defaults on error
+    console.error("Error getting global retry config:", error);
     return {
-      defaultMaxRetries: 3,
-      defaultRetryPolicy: "retry",
-      defaultBackoffStrategy: "exponential",
-      defaultBaseDelaySeconds: 1,
+      strategy: "exponential",
+      maxAttempts: 3,
+      baseDelaySeconds: 5,
+      maxDelaySeconds: 300,
+      jitterFactor: 0.2,
     };
   }
 }
 
-/**
- * Invalidate global retry configuration cache
- */
-export async function invalidateGlobalRetryConfigCache(): Promise<void> {
+export async function invalidateGlobalRetryConfigCache(env?: CloudflareEnv): Promise<void> {
   try {
-    const { env } = await getCloudflareContext({ async: true });
-    await env.KV.delete("global:retry:config");
+    const resolvedEnv = env ?? (await getCloudflareContext({ async: true })).env;
+    await resolvedEnv.KV.delete("global:retry:config");
   } catch (error) {
-    console.error('Error invalidating global retry config cache:', error);
+    console.error("Error invalidating global retry config cache:", error);
   }
 }
 
-/**
- * Create retry configuration for an endpoint
- */
 export async function createRetryConfig(
-  endpointRetryPolicy?: string,
-  endpointMaxRetries?: number,
-  endpointBackoffStrategy?: string,
-  endpointBaseDelaySeconds?: number,
+  overrides: Partial<RetryConfig> = {},
   env?: CloudflareEnv
 ): Promise<RetryConfig> {
   const globalConfig = await getGlobalRetryConfig(env);
 
   return {
-    maxAttempts: endpointMaxRetries ?? globalConfig.defaultMaxRetries,
-    retryPolicy: (endpointRetryPolicy as RetryPolicy) ?? globalConfig.defaultRetryPolicy,
-    backoffStrategy: (endpointBackoffStrategy as BackoffStrategy) ?? globalConfig.defaultBackoffStrategy,
-    baseDelaySeconds: endpointBaseDelaySeconds ?? globalConfig.defaultBaseDelaySeconds,
+    strategy: overrides.strategy ?? globalConfig.strategy,
+    maxAttempts: Math.max(1, overrides.maxAttempts ?? globalConfig.maxAttempts),
+    baseDelaySeconds: Math.max(1, overrides.baseDelaySeconds ?? globalConfig.baseDelaySeconds),
+    maxDelaySeconds: Math.max(1, overrides.maxDelaySeconds ?? globalConfig.maxDelaySeconds),
+    jitterFactor: clamp(0, overrides.jitterFactor ?? globalConfig.jitterFactor, 1),
   };
 }
 
-/**
- * Determine if a message should be retried based on retry policy and attempts
- */
-export function shouldRetry(
-  success: boolean,
-  attempts: number,
-  retryConfig: RetryConfig
-): boolean {
-  // If successful, don't retry
-  if (success) {
+export function shouldRetry(success: boolean, attempts: number, retryConfig: RetryConfig): boolean {
+  if (success || retryConfig.strategy === "none") {
     return false;
   }
 
-  // If retry policy is "none", don't retry
-  if (retryConfig.retryPolicy === "none") {
-    return false;
-  }
-
-  // If we've exceeded max attempts, don't retry
-  if (attempts >= retryConfig.maxAttempts) {
-    return false;
-  }
-
-  // Otherwise, retry
-  return true;
+  return attempts < retryConfig.maxAttempts;
 }
 
-/**
- * Calculate retry delay for a message
- */
-export function calculateRetryDelay(
-  attempts: number,
-  retryConfig: RetryConfig
-): number {
-  return calculateBackoffDelay(
-    attempts,
-    retryConfig.baseDelaySeconds,
-    retryConfig.backoffStrategy
-  );
+export function calculateRetryDelay(attempts: number, retryConfig: RetryConfig): number {
+  return calculateBackoffDelay(attempts, retryConfig);
 }

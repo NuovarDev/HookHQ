@@ -3,35 +3,24 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
 import { invalidateEndpointGroupCache } from "@/lib/cacheUtils";
+import { parseFailureAlertConfig } from "@/lib/destinations/config";
+import { buildEndpointGroupUpdateValues, formatEndpointGroup } from "@/lib/publicApi/serializers";
 import {
-  authHeaderSchema,
   deleteResponseSchema,
   endpointGroupSchema,
   endpointGroupUpdateSchema,
   errorResponseSchema,
   idParamSchema,
+  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
-
-function formatGroup(group: typeof endpointGroups.$inferSelect) {
-  return {
-    id: group.id,
-    environmentId: group.environmentId,
-    name: group.name,
-    description: group.description,
-    endpointIds: group.endpointIds ? JSON.parse(group.endpointIds) : [],
-    enabled: group.isActive,
-    createdAt: group.createdAt.toISOString(),
-    updatedAt: group.updatedAt.toISOString(),
-  };
-}
 
 const getGroupRoute = createRoute({
   method: "get",
   path: "/endpoint-groups/{id}",
   tags: ["Endpoint Groups"],
   summary: "Get Endpoint Group",
-  request: { headers: authHeaderSchema, params: idParamSchema },
+  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -48,7 +37,7 @@ const deleteGroupRoute = createRoute({
   path: "/endpoint-groups/{id}",
   tags: ["Endpoint Groups"],
   summary: "Delete Endpoint Group",
-  request: { headers: authHeaderSchema, params: idParamSchema },
+  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -72,7 +61,7 @@ const updateGroupRoute = createRoute({
   tags: ["Endpoint Groups"],
   summary: "Update Endpoint Group",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     params: idParamSchema,
     body: { required: true, content: { "application/json": { schema: endpointGroupUpdateSchema } } },
   },
@@ -102,7 +91,7 @@ export function registerEndpointGroupItemRoutes(app: OpenAPIHono<{ Bindings: Clo
     const db = await getDb(c.env);
     const group = await db.select().from(endpointGroups).where(eq(endpointGroups.id, id)).limit(1);
     if (group.length === 0) return jsonError("Endpoint group not found", 404);
-    return c.json({ group: formatGroup(group[0]) }, 200);
+    return c.json({ group: formatEndpointGroup(group[0]) }, 200);
   }) as never);
 
   app.openapi(deleteGroupRoute, (async (c: any) => {
@@ -132,17 +121,21 @@ export function registerEndpointGroupItemRoutes(app: OpenAPIHono<{ Bindings: Clo
     const db = await getDb(c.env);
     const existing = await db.select().from(endpointGroups).where(eq(endpointGroups.id, id)).limit(1);
     if (existing.length === 0) return jsonError("Endpoint group not found", 404);
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.endpointIds !== undefined) updateData.endpointIds = JSON.stringify(body.endpointIds);
-    if (body.enabled !== undefined) updateData.isActive = body.enabled;
+    const updateData = buildEndpointGroupUpdateValues({
+      name: body.name,
+      description: body.description,
+      endpointIds: body.endpointIds,
+      eventTypes: body.eventTypes,
+      enabled: body.enabled,
+      failureAlerts: body.failureAlerts,
+      existingFailureAlerts: parseFailureAlertConfig(existing[0].failureAlertConfig),
+    });
     await db
       .update(endpointGroups)
       .set(updateData as never)
       .where(eq(endpointGroups.id, id));
     await invalidateEndpointGroupCache(id);
     const updated = await db.select().from(endpointGroups).where(eq(endpointGroups.id, id)).limit(1);
-    return c.json({ message: "Endpoint group updated successfully", group: formatGroup(updated[0]) }, 200);
+    return c.json({ message: "Endpoint group updated successfully", group: formatEndpointGroup(updated[0]) }, 200);
   }) as never);
 }

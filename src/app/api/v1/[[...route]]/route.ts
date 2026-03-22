@@ -8,7 +8,10 @@ import publicApiApp from "@/lib/publicApi";
 
 async function handleRequest(request: Request) {
   const { env } = await getCloudflareContext({ async: true });
-  return publicApiApp.fetch(request, env);
+  const headers = new Headers(request.headers);
+  headers.set("x-local-dev-queue", "1");
+  const proxiedRequest = new Request(request, { headers });
+  return publicApiApp.fetch(proxiedRequest, env);
 }
 
 export const GET = handleRequest;

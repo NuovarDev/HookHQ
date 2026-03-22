@@ -1,0 +1,2 @@
+ALTER TABLE `endpoints` ADD `auto_disable_config` text DEFAULT '{}' NOT NULL;
+ALTER TABLE `server_config` ADD `default_auto_disable_config` text DEFAULT '{}' NOT NULL;

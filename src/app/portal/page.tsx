@@ -7,6 +7,8 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { usePortalContext } from "./layout";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Endpoint {
   id: string;
@@ -44,11 +46,26 @@ interface MetricsData {
   }>;
 }
 
+interface PortalGroup {
+  id: string;
+  name: string;
+  failureAlerts: {
+    enabled: boolean;
+    threshold: number;
+    windowMinutes: number;
+    endpointIds: string[];
+    channelType: "webhook" | "slack";
+    destinationUrl?: string;
+  };
+}
+
 export default function PortalDashboard() {
   const { payload, token, theme } = usePortalContext();
   const [loading, setLoading] = useState(false);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
+  const [group, setGroup] = useState<PortalGroup | null>(null);
+  const [savingAlerts, setSavingAlerts] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,6 +83,12 @@ export default function PortalDashboard() {
 
       const data = (await response.json()) as { endpoints: Endpoint[] };
       setEndpoints(data.endpoints || []);
+
+      const groupResponse = await fetch(`/api/portal/group?token=${encodeURIComponent(token)}`);
+      if (groupResponse.ok) {
+        const groupData = (await groupResponse.json()) as { group: PortalGroup };
+        setGroup(groupData.group);
+      }
 
       // Calculate aggregated metrics
       const allMetrics7d = data.endpoints.flatMap(endpoint => endpoint.metrics7d);
@@ -116,6 +139,28 @@ export default function PortalDashboard() {
     }
 
     return chartData;
+  };
+
+  const updateGroupAlerts = async (nextAlerts: PortalGroup["failureAlerts"]) => {
+    try {
+      setSavingAlerts(true);
+      const response = await fetch(`/api/portal/group?token=${encodeURIComponent(token)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ failureAlerts: nextAlerts }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update failure alerts");
+      }
+
+      const data = (await response.json()) as { group: PortalGroup };
+      setGroup(data.group);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update failure alerts");
+    } finally {
+      setSavingAlerts(false);
+    }
   };
 
   return (
@@ -295,6 +340,138 @@ export default function PortalDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {group && (
+              <Card className="border-0">
+                <CardHeader>
+                  <CardTitle>Failure Alerts</CardTitle>
+                  <CardDescription>Receive alerts when events fail to deliver to your endpoints</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={group.failureAlerts.enabled ? "default" : "secondary"}>
+                      {group.failureAlerts.enabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                    <Badge variant="outline">{group.failureAlerts.channelType.charAt(0).toUpperCase() + group.failureAlerts.channelType.slice(1)}</Badge>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-muted-foreground">Alert URL</span>
+                      <Input
+                        value={group.failureAlerts.destinationUrl || ""}
+                        onChange={event =>
+                          setGroup(current =>
+                            current
+                              ? {
+                                  ...current,
+                                  failureAlerts: {
+                                    ...current.failureAlerts,
+                                    destinationUrl: event.target.value,
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                        placeholder="https://hooks.slack.com/services/..."
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-muted-foreground">Channel</span>
+                      <Select
+                        value={group.failureAlerts.channelType}
+                        onValueChange={value =>
+                          setGroup(current =>
+                            current
+                              ? {
+                                  ...current,
+                                  failureAlerts: {
+                                    ...current.failureAlerts,
+                                    channelType: value as "webhook" | "slack",
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="webhook">Webhook</SelectItem>
+                          <SelectItem value="slack">Slack</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-muted-foreground">Failure Threshold</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={group.failureAlerts.threshold}
+                        onChange={event =>
+                          setGroup(current =>
+                            current
+                              ? {
+                                  ...current,
+                                  failureAlerts: {
+                                    ...current.failureAlerts,
+                                    threshold: Number.parseInt(event.target.value || "1", 10),
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-muted-foreground">Window (minutes)</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={group.failureAlerts.windowMinutes}
+                        onChange={event =>
+                          setGroup(current =>
+                            current
+                              ? {
+                                  ...current,
+                                  failureAlerts: {
+                                    ...current.failureAlerts,
+                                    windowMinutes: Number.parseInt(event.target.value || "1", 10),
+                                  },
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={group.failureAlerts.enabled}
+                      onChange={event =>
+                        setGroup(current =>
+                          current
+                            ? {
+                                ...current,
+                                failureAlerts: {
+                                  ...current.failureAlerts,
+                                  enabled: event.target.checked,
+                                },
+                              }
+                            : current
+                        )
+                      }
+                    />
+                    Enable failure alerts
+                  </label>
+                  <Button onClick={() => updateGroupAlerts(group.failureAlerts)} disabled={savingAlerts}>
+                    {savingAlerts ? "Saving..." : "Save Alert Settings"}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
           </>
         )}
       </div>

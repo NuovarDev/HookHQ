@@ -1,15 +1,16 @@
-import { RetryConfig } from "@/lib/retryUtils";
+import type { DestinationConfig, RetryConfig } from "@/lib/destinations/types";
 
-export interface WebhookMessage {
+export interface DeliveryMessage {
   id: string;
   endpointId: string;
-  eventType: string;
+  eventType?: string;
   eventId?: string;
-  payload: any | null;
+  payload: unknown | null;
   payloadKey?: string | null;
   timestamp: string;
   idempotencyKey?: string;
   retryConfig: RetryConfig;
+  destination: DestinationConfig;
   isManualRetry?: boolean;
   originalMessageId?: string;
 }

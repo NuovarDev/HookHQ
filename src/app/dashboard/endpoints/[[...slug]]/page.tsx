@@ -7,11 +7,11 @@ import EndpointsTab from "@/components/tabs/endpoints/EndpointsTab";
 import EventTypesTab from "@/components/tabs/endpoints/EventTypesTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface WebhooksPageProps {
+interface EndpointsPageProps {
   params: Promise<{ slug?: string[] }>;
 }
 
-export default function WebhooksPage({ params }: WebhooksPageProps) {
+export default function EndpointsPage({ params }: EndpointsPageProps) {
   const [resolvedParams, setResolvedParams] = useState<{ slug?: string[] }>({});
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function WebhooksPage({ params }: WebhooksPageProps) {
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    window.history.pushState(null, "", `/dashboard/webhooks/${value}`);
+    window.history.pushState(null, "", `/dashboard/endpoints/${value}`);
   };
 
   return (

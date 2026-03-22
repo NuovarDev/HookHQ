@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   MessageSquare,
@@ -23,6 +24,7 @@ interface WebhookMessage {
   environmentId: string;
   endpointIds: string[];
   endpointGroupIds: string[];
+  retryableEndpointIds: string[];
   payload: any;
   payloadSize?: number;
   status: "pending" | "processing" | "delivered" | "failed" | "retrying";
@@ -48,6 +50,8 @@ export default function MessagesTab() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
+  const [retryingIds, setRetryingIds] = useState<string[]>([]);
+  const [dialogContent, setDialogContent] = useState<{ title: string; value: unknown } | null>(null);
 
   const fetchMessages = async () => {
     try {
@@ -78,6 +82,28 @@ export default function MessagesTab() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchMessages();
+  };
+
+  const handleRetry = async (messageId: string, endpointId: string) => {
+    const retryKey = `${messageId}:${endpointId}`;
+
+    try {
+      setRetryingIds(current => [...current, retryKey]);
+      const response = await fetch(`/api/v1/messages/${messageId}/${endpointId}/retry`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+        throw new Error(errorBody?.message || errorBody?.error || "Failed to retry message");
+      }
+
+      await fetchMessages();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to retry message");
+    } finally {
+      setRetryingIds(current => current.filter(id => id !== retryKey));
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -133,6 +159,18 @@ export default function MessagesTab() {
     if (duration < 1000) return `${duration}ms`;
     if (duration < 60000) return `${Math.round(duration / 1000)}s`;
     return `${Math.round(duration / 60000)}m`;
+  };
+
+  const formatJson = (value: unknown) => {
+    if (typeof value === "string") {
+      try {
+        return JSON.stringify(JSON.parse(value), null, 2);
+      } catch {
+        return value;
+      }
+    }
+
+    return JSON.stringify(value, null, 2);
   };
 
   return (
@@ -235,9 +273,27 @@ export default function MessagesTab() {
                     <h4 className="text-sm font-medium mb-1">Targets</h4>
                     <div className="flex flex-wrap gap-1">
                       {message.endpointIds.map(id => (
-                        <Badge key={id} variant="secondary" className="text-xs">
-                          Endpoint: {id}
-                        </Badge>
+                        <div key={id} className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            Endpoint: {id}
+                          </Badge>
+                          {message.retryableEndpointIds.includes(id) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => handleRetry(message.id, id)}
+                              disabled={retryingIds.includes(`${message.id}:${id}`)}
+                            >
+                              <RefreshCw
+                                className={`mr-1 h-3 w-3 ${
+                                  retryingIds.includes(`${message.id}:${id}`) ? "animate-spin" : ""
+                                }`}
+                              />
+                              Retry
+                            </Button>
+                          )}
+                        </div>
                       ))}
                       {message.endpointGroupIds.map(id => (
                         <Badge key={id} variant="outline" className="text-xs">
@@ -254,7 +310,13 @@ export default function MessagesTab() {
                         Size: {message.payloadSize} bytes
                         {message.payload && (
                           <span className="ml-2">
-                            • <button className="text-blue-600 hover:underline">View payload</button>
+                            •{" "}
+                            <button
+                              className="text-blue-600 hover:underline"
+                              onClick={() => setDialogContent({ title: "Payload", value: message.payload })}
+                            >
+                              View payload
+                            </button>
                           </span>
                         )}
                       </div>
@@ -270,6 +332,12 @@ export default function MessagesTab() {
                           <div className="text-xs text-red-500 mt-1">{formatTimestamp(message.lastErrorAt)}</div>
                         )}
                       </div>
+                      {message.retryableEndpointIds.length > 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Manual retry is available for retained failed deliveries. Retries are not dependent on payload
+                          logging, but they do require the failed delivery record to still exist.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -283,7 +351,13 @@ export default function MessagesTab() {
                         </Badge>
                         {message.responseBody && (
                           <span className="ml-2">
-                            • <button className="text-blue-600 hover:underline">View response</button>
+                            •{" "}
+                            <button
+                              className="text-blue-600 hover:underline"
+                              onClick={() => setDialogContent({ title: "Response Body", value: message.responseBody })}
+                            >
+                              View response
+                            </button>
                           </span>
                         )}
                       </div>
@@ -302,6 +376,18 @@ export default function MessagesTab() {
           ))}
         </div>
       )}
+
+      <Dialog open={dialogContent !== null} onOpenChange={open => !open && setDialogContent(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{dialogContent?.title}</DialogTitle>
+            <DialogDescription>Logged content for this message.</DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[70vh] overflow-auto rounded-md bg-muted p-4 text-xs">
+            {dialogContent ? formatJson(dialogContent.value) : ""}
+          </pre>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -8,19 +8,25 @@ export const endpoints = sqliteTable("endpoints", {
   url: text("url").notNull(),
   description: text("description"),
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
-  retryPolicy: text("retry_policy").default("retry"), // none, retry
-  backoffStrategy: text("backoff_strategy").default("exponential"), // linear, exponential, fixed
+  retryPolicy: text("retry_policy").default("retry"), // legacy field kept for compatibility
+  backoffStrategy: text("backoff_strategy").default("exponential"), // legacy field kept for compatibility
+  retryStrategy: text("retry_strategy").default("exponential"),
   baseDelaySeconds: integer("base_delay_seconds").default(5), // in seconds
+  maxRetryDelaySeconds: integer("max_retry_delay_seconds").default(300).notNull(),
+  retryJitterFactor: real("retry_jitter_factor").default(0.2).notNull(),
   maxRetries: integer("max_retries").default(3).notNull(),
   timeoutMs: integer("timeout_ms").default(30000).notNull(),
   headers: text("headers"), // JSON string of custom headers
   proxyGroupId: text("proxy_group_id"), // Optional proxy group assignment
+  destinationType: text("destination_type").default("webhook"),
+  destinationConfig: text("destination_config").default("{}").notNull(),
+  autoDisableConfig: text("auto_disable_config").default("{}").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-  topics: text("topics").default("[]"), // JSON array of topics
+  topics: text("topics").default('["*"]'), // JSON array of event type subscriptions
 });
 
 // Webhook endpoint groups table
@@ -30,7 +36,9 @@ export const endpointGroups = sqliteTable("endpoint_groups", {
   name: text("name").notNull(),
   description: text("description"),
   endpointIds: text("endpoint_ids").notNull(), // JSON array of endpoint IDs
+  eventTypes: text("event_types").default('["*"]').notNull(), // JSON array of event type subscriptions
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+  failureAlertConfig: text("failure_alert_config").default("{}").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .defaultNow()

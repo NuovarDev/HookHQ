@@ -8,9 +8,12 @@ export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
 
   if (!authResult.success) {
-    return NextResponse.json({
-      error: authResult.error
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: authResult.error,
+      },
+      { status: 401 }
+    );
   }
 
   const { payload } = authResult;
@@ -32,15 +35,16 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({
-        error: "Endpoint group not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint group not found",
+        },
+        { status: 404 }
+      );
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
-    const groupEndpoints = endpointList.filter(endpoint =>
-      groupEndpointIds.includes(endpoint.id)
-    );
+    const groupEndpoints = endpointList.filter(endpoint => groupEndpointIds.includes(endpoint.id));
 
     // Get latest attempt per messageId using SQL window function
     const rankedAttemptsSubquery = db
@@ -50,18 +54,21 @@ export async function GET(request: NextRequest) {
         status: webhookAttempts.status,
         attemptNumber: webhookAttempts.attemptNumber,
         attemptedAt: webhookAttempts.attemptedAt,
-        rowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${webhookAttempts.messageId} ORDER BY ${webhookAttempts.attemptNumber} DESC, ${webhookAttempts.attemptedAt} DESC)`.as('row_number'),
+        rowNumber:
+          sql<number>`ROW_NUMBER() OVER (PARTITION BY ${webhookAttempts.messageId} ORDER BY ${webhookAttempts.attemptNumber} DESC, ${webhookAttempts.attemptedAt} DESC)`.as(
+            "row_number"
+          ),
       })
       .from(webhookAttempts)
       .where(
         and(
           inArray(webhookAttempts.endpointId, groupEndpointIds),
-          gte(webhookAttempts.attemptedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+          gte(webhookAttempts.attemptedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
         )
       )
-      .as('ranked_attempts');
+      .as("ranked_attempts");
 
-    const latestAttempts = await db
+    const latestAttempts = (await db
       .select({
         messageId: rankedAttemptsSubquery.messageId,
         endpointId: rankedAttemptsSubquery.endpointId,
@@ -70,13 +77,13 @@ export async function GET(request: NextRequest) {
         attemptedAt: rankedAttemptsSubquery.attemptedAt,
       })
       .from(rankedAttemptsSubquery)
-      .where(sql`${rankedAttemptsSubquery.rowNumber} = 1`) as Array<{
-        messageId: string;
-        endpointId: string;
-        status: string;
-        attemptNumber: number;
-        attemptedAt: Date;
-      }>;
+      .where(sql`${rankedAttemptsSubquery.rowNumber} = 1`)) as Array<{
+      messageId: string;
+      endpointId: string;
+      status: string;
+      attemptNumber: number;
+      attemptedAt: Date;
+    }>;
 
     return NextResponse.json({
       endpoints: groupEndpoints.map(endpoint => ({
@@ -88,22 +95,28 @@ export async function GET(request: NextRequest) {
         createdAt: endpoint.createdAt.toISOString(),
         updatedAt: endpoint.updatedAt.toISOString(),
         topics: endpoint.topics ? JSON.parse(endpoint.topics) : [],
-        metrics24h: latestAttempts.filter(metric =>
-          metric.endpointId === endpoint.id &&
-          metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        metrics24h: latestAttempts.filter(
+          metric =>
+            metric.endpointId === endpoint.id &&
+            metric.attemptedAt &&
+            metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
         ),
-        metrics7d: latestAttempts.filter(metric =>
-          metric.endpointId === endpoint.id &&
-          metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        )
-      }))
+        metrics7d: latestAttempts.filter(
+          metric =>
+            metric.endpointId === endpoint.id &&
+            metric.attemptedAt &&
+            metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        ),
+      })),
     });
-
   } catch (error) {
     console.error("Error fetching portal endpoints:", error);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -111,9 +124,12 @@ export async function POST(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
 
   if (!authResult.success) {
-    return NextResponse.json({
-      error: authResult.error
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: authResult.error,
+      },
+      { status: 401 }
+    );
   }
 
   const { payload } = authResult;
@@ -125,9 +141,12 @@ export async function POST(request: NextRequest) {
   };
 
   if (!name || !url) {
-    return NextResponse.json({
-      error: "Name and URL are required"
-    }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "Name and URL are required",
+      },
+      { status: 400 }
+    );
   }
 
   const db = await getDb();
@@ -146,10 +165,21 @@ export async function POST(request: NextRequest) {
       description,
       isActive: true,
       retryPolicy: "exponential",
+      backoffStrategy: "exponential",
+      retryStrategy: "exponential",
+      baseDelaySeconds: 5,
+      maxRetryDelaySeconds: 300,
+      retryJitterFactor: 0.2,
       maxRetries: 3,
       timeoutMs: 30000,
-      headers: null,
+      headers: JSON.stringify({}),
       proxyGroupId: null,
+      destinationType: "webhook",
+      destinationConfig: JSON.stringify({
+        url,
+        timeoutMs: 30000,
+        proxyGroupId: null,
+      }),
       createdAt: now,
       updatedAt: now,
     });
@@ -169,7 +199,7 @@ export async function POST(request: NextRequest) {
         .update(endpointGroups)
         .set({
           endpointIds: JSON.stringify(updatedEndpointIds),
-          updatedAt: now
+          updatedAt: now,
         })
         .where(eq(endpointGroups.id, payload.endpointGroupId));
     }
@@ -181,13 +211,15 @@ export async function POST(request: NextRequest) {
       description,
       isActive: true,
       createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
+      updatedAt: now.toISOString(),
     });
-
   } catch (error) {
     console.error("Error creating portal endpoint:", error);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

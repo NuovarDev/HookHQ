@@ -4,9 +4,9 @@ import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
 import { generatePortalToken } from "@/lib/portalAuth";
 import {
-  authHeaderSchema,
   errorResponseSchema,
   idParamSchema,
+  optionalAuthHeaderSchema,
   portalTokenRequestSchema,
   portalTokenResponseSchema,
 } from "@/lib/publicApi/schemas";
@@ -18,7 +18,7 @@ const createPortalTokenRoute = createRoute({
   tags: ["Endpoint Groups"],
   summary: "Generate Portal Token",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     params: idParamSchema,
     body: { required: true, content: { "application/json": { schema: portalTokenRequestSchema } } },
   },

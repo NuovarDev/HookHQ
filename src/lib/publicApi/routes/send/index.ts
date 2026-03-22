@@ -1,6 +1,6 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { authenticatePublicApiRequest } from "@/lib/publicApi/auth";
-import { handleSendWebhookRequest } from "@/lib/publicApi/send";
+import { handleSendEventRequest } from "@/lib/publicApi/send";
 
 const payloadSchema = z.object({}).catchall(z.any()).openapi("SendPayload");
 
@@ -152,7 +152,7 @@ export function registerSendWebhookOpenApiRoutes(app: OpenAPIHono<{ Bindings: Cl
       return authResult.response;
     }
 
-    return handleSendWebhookRequest({
+    return handleSendEventRequest({
       body: c.req.valid("json"),
       env: c.env,
       request: c.req.raw,

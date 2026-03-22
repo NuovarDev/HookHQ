@@ -1,10 +1,11 @@
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import {
-  authHeaderSchema,
   errorResponseSchema,
   messageRetryParamSchema,
+  optionalAuthHeaderSchema,
   retryResponseSchema,
 } from "@/lib/publicApi/schemas";
+import { enqueueDeliveryMessage } from "@/lib/queue/enqueue";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
 const retryMessageRoute = createRoute({
@@ -12,7 +13,9 @@ const retryMessageRoute = createRoute({
   path: "/messages/{messageId}/{endpointId}/retry",
   tags: ["Messages"],
   summary: "Retry Failed Message",
-  request: { headers: authHeaderSchema, params: messageRetryParamSchema },
+  description:
+    "Retry a permanently failed delivery for a specific endpoint. This only works while the failed delivery record is still retained in failure storage.",
+  request: { headers: optionalAuthHeaderSchema, params: messageRetryParamSchema },
   responses: {
     200: { description: "Success", content: { "application/json": { schema: retryResponseSchema } } },
     401: { description: "Unauthorized", content: { "application/json": { schema: errorResponseSchema } } },
@@ -33,20 +36,19 @@ export function registerMessageRoutes(app: OpenAPIHono<{ Bindings: CloudflareEnv
     const failedMessageRaw = await c.env.KV.get(key);
     if (!failedMessageRaw) return jsonError("Failed message not found or expired", 404);
     const failedMessageData = JSON.parse(failedMessageRaw);
-    const { webhookData } = failedMessageData;
+    const { message: deliveryMessage } = failedMessageData;
     const retryWebhookId = crypto.randomUUID();
-    await c.env.WEBHOOKS.send({
-      id: retryWebhookId,
-      endpointId: webhookData.endpointId,
-      eventType: webhookData.eventType,
-      eventId: webhookData.eventId,
-      payload: webhookData.payload,
-      timestamp: new Date().toISOString(),
-      idempotencyKey: webhookData.idempotencyKey,
-      retryConfig: webhookData.retryConfig,
-      isManualRetry: true,
-      originalMessageId: messageId,
-    });
+    await enqueueDeliveryMessage(
+      c.env,
+      {
+        ...deliveryMessage,
+        id: retryWebhookId,
+        isManualRetry: true,
+        originalMessageId: messageId,
+        timestamp: new Date().toISOString(),
+      },
+      c.req.raw
+    );
     await c.env.KV.delete(key);
     return c.json(
       {

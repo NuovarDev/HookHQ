@@ -4,11 +4,11 @@ import { getDb } from "@/db";
 import { eventTypes } from "@/db/webhooks.schema";
 import { validateSchema } from "@/lib/schemaValidation";
 import {
-  authHeaderSchema,
   enabledQuerySchema,
   errorResponseSchema,
   eventTypeCreateSchema,
   eventTypeSchema,
+  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -30,7 +30,7 @@ const listEventTypesRoute = createRoute({
   path: "/event-types",
   tags: ["Event Types"],
   summary: "List Event Types",
-  request: { headers: authHeaderSchema, query: enabledQuerySchema },
+  request: { headers: optionalAuthHeaderSchema, query: enabledQuerySchema },
   responses: {
     200: {
       description: "Success",
@@ -47,7 +47,7 @@ const createEventTypeRoute = createRoute({
   tags: ["Event Types"],
   summary: "Create Event Type",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     body: { required: true, content: { "application/json": { schema: eventTypeCreateSchema } } },
   },
   responses: {

@@ -64,7 +64,7 @@ const user = {
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", current: false, icon: LayoutDashboard },
-  { name: "Webhooks", href: "/dashboard/webhooks", current: false, icon: Webhook, prefix: true },
+  { name: "Endpoints", href: "/dashboard/endpoints", current: false, icon: Webhook, prefix: true },
   { name: "Proxy", href: "/dashboard/proxy", current: false, icon: Server, prefix: true },
   { name: "Log", href: "/dashboard/log", current: false, icon: History },
   { name: "Metrics", href: "/dashboard/metrics", current: false, icon: BarChart3 },

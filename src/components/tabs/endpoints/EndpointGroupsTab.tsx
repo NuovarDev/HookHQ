@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
+import EventTypeSelector from "@/components/shared/EventTypeSelector";
 import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,10 @@ import {
   deleteEndpointGroup,
   fetchEndpointGroups,
   fetchEndpoints,
+  fetchEventTypes,
   type Endpoint,
   type EndpointGroup,
+  type EventType,
   updateEndpointGroup,
 } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
@@ -33,19 +36,38 @@ type EndpointGroupFormState = {
   name: string;
   description: string;
   endpointIds: string[];
+  eventTypes: string[];
   enabled: boolean;
+  failureAlertsEnabled: boolean;
+  failureAlertThreshold: number;
+  failureAlertWindowMinutes: number;
+  failureAlertChannelType: "webhook" | "slack";
+  failureAlertDestinationUrl: string;
+  failureAlertEndpointIds: string[];
 };
 
 const initialFormState: EndpointGroupFormState = {
   name: "",
   description: "",
   endpointIds: [],
+  eventTypes: ["*"],
   enabled: true,
+  failureAlertsEnabled: false,
+  failureAlertThreshold: 5,
+  failureAlertWindowMinutes: 60,
+  failureAlertChannelType: "webhook",
+  failureAlertDestinationUrl: "",
+  failureAlertEndpointIds: [],
 };
+
+function getEndpointTarget(endpoint: Endpoint) {
+  return endpoint.destinationType === "webhook" ? endpoint.destination.url : endpoint.destination.queueUrl;
+}
 
 export default function EndpointGroupsTab() {
   const [endpointGroups, setEndpointGroups] = useState<EndpointGroup[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -58,10 +80,15 @@ export default function EndpointGroupsTab() {
 
     async function loadData() {
       try {
-        const [nextEndpointGroups, nextEndpoints] = await Promise.all([fetchEndpointGroups(), fetchEndpoints()]);
+        const [nextEndpointGroups, nextEndpoints, nextEventTypes] = await Promise.all([
+          fetchEndpointGroups(),
+          fetchEndpoints(),
+          fetchEventTypes(),
+        ]);
         if (!isMounted) return;
         setEndpointGroups(nextEndpointGroups);
         setEndpoints(nextEndpoints);
+        setEventTypes(nextEventTypes);
       } catch (nextError) {
         if (!isMounted) return;
         setError(nextError instanceof Error ? nextError.message : "Failed to load endpoint groups");
@@ -94,7 +121,14 @@ export default function EndpointGroupsTab() {
       name: group.name,
       description: group.description || "",
       endpointIds: group.endpointIds,
+      eventTypes: group.eventTypes,
       enabled: group.enabled,
+      failureAlertsEnabled: group.failureAlerts.enabled,
+      failureAlertThreshold: group.failureAlerts.threshold,
+      failureAlertWindowMinutes: group.failureAlerts.windowMinutes,
+      failureAlertChannelType: group.failureAlerts.channelType,
+      failureAlertDestinationUrl: group.failureAlerts.destinationUrl || "",
+      failureAlertEndpointIds: group.failureAlerts.endpointIds,
     });
     setEditingGroup(group);
     setCreateDialogOpen(true);
@@ -107,7 +141,16 @@ export default function EndpointGroupsTab() {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         endpointIds: formData.endpointIds,
+        eventTypes: formData.eventTypes,
         enabled: formData.enabled,
+        failureAlerts: {
+          enabled: formData.failureAlertsEnabled,
+          threshold: formData.failureAlertThreshold,
+          windowMinutes: formData.failureAlertWindowMinutes,
+          channelType: formData.failureAlertChannelType,
+          destinationUrl: formData.failureAlertDestinationUrl,
+          endpointIds: formData.failureAlertEndpointIds,
+        },
       };
 
       if (editingGroup) {
@@ -153,6 +196,15 @@ export default function EndpointGroupsTab() {
       endpointIds: current.endpointIds.includes(endpointId)
         ? current.endpointIds.filter(id => id !== endpointId)
         : [...current.endpointIds, endpointId],
+    }));
+  }
+
+  function toggleAlertEndpointSelection(endpointId: string) {
+    setFormData(current => ({
+      ...current,
+      failureAlertEndpointIds: current.failureAlertEndpointIds.includes(endpointId)
+        ? current.failureAlertEndpointIds.filter(id => id !== endpointId)
+        : [...current.failureAlertEndpointIds, endpointId],
     }));
   }
 
@@ -239,7 +291,7 @@ export default function EndpointGroupsTab() {
                           />
                           <div className="flex-1">
                             <div className="text-sm font-medium">{endpoint.name}</div>
-                            <div className="text-xs text-gray-500">{endpoint.url}</div>
+                            <div className="text-xs text-gray-500">{getEndpointTarget(endpoint)}</div>
                           </div>
                           <Badge variant={endpoint.enabled ? "default" : "secondary"}>
                             {endpoint.enabled ? "Enabled" : "Disabled"}
@@ -249,6 +301,109 @@ export default function EndpointGroupsTab() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="group-event-types">Subscribed Event Types</Label>
+                <EventTypeSelector
+                  eventTypes={eventTypes}
+                  value={formData.eventTypes}
+                  onChange={value => setFormData(current => ({ ...current, eventTypes: value }))}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Choose which event types this group accepts. “All event types” includes events sent without a type.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 rounded-md border p-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.failureAlertsEnabled}
+                      onChange={event =>
+                        setFormData(current => ({ ...current, failureAlertsEnabled: event.target.checked }))
+                      }
+                      className="rounded"
+                    />
+                    Enable failure alerts
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Trigger Slack or webhook alerts when delivery failures cross the threshold.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="group-alert-url">Alert Destination URL</Label>
+                  <Input
+                    id="group-alert-url"
+                    value={formData.failureAlertDestinationUrl}
+                    onChange={event =>
+                      setFormData(current => ({ ...current, failureAlertDestinationUrl: event.target.value }))
+                    }
+                    placeholder="https://hooks.slack.com/services/..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="group-alert-threshold">Failure Threshold</Label>
+                  <Input
+                    id="group-alert-threshold"
+                    type="number"
+                    min={1}
+                    value={formData.failureAlertThreshold}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        failureAlertThreshold: Number.parseInt(event.target.value || "1", 10),
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="group-alert-window">Window (minutes)</Label>
+                  <Input
+                    id="group-alert-window"
+                    type="number"
+                    min={1}
+                    value={formData.failureAlertWindowMinutes}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        failureAlertWindowMinutes: Number.parseInt(event.target.value || "1", 10),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Alerting Endpoints</Label>
+                <div className="max-h-40 overflow-y-auto rounded-md border p-2">
+                  {formData.endpointIds.length === 0 ? (
+                    <div className="py-4 text-center text-sm text-gray-500">
+                      Select group endpoints first. Leaving this empty alerts on all endpoints in the group.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {formData.endpointIds.map(endpointId => (
+                        <label key={endpointId} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.failureAlertEndpointIds.includes(endpointId)}
+                            onChange={() => toggleAlertEndpointSelection(endpointId)}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{getEndpointName(endpointId)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  If none are selected, the alert policy applies to every endpoint in the group.
+                </p>
               </div>
             </div>
 
@@ -272,7 +427,7 @@ export default function EndpointGroupsTab() {
         >
           <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
             <EditableTemplate
-              template={`curl ${getPublicApiUrl()}/endpoint-groups \\
+              template={`curl ${getPublicApiUrl("endpoint-groups", true)} \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
@@ -335,6 +490,10 @@ export default function EndpointGroupsTab() {
                       <Badge variant="outline">
                         {group.endpointIds.length} endpoint{group.endpointIds.length !== 1 ? "s" : ""}
                       </Badge>
+                      <Badge variant="outline">
+                        {group.eventTypes.includes("*") ? "All event types" : group.eventTypes.join(", ")}
+                      </Badge>
+                      {group.failureAlerts.enabled && <Badge variant="outline">alerts</Badge>}
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => handleToggleGroup(group)}>
                       {group.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}

@@ -6,6 +6,7 @@
     "clean": "rm -rf .open-next && rm -rf .wrangler && rm -rf node_modules && rm -rf .next",
     "clean-deploy": "pnpm clean && pnpm i && pnpm run deploy",
     "dev": "wrangler d1 migrations apply DATABASE --local && next dev",
+    "dev:worker": "wrangler dev",
     "build": "next build",
     "build:cloudflare": "opennextjs-cloudflare build",
     "start": "next start",
@@ -28,6 +29,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
     "@headlessui/react": "^2.2.8",
     "@hono/zod-openapi": "^1.2.3",
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -40,6 +42,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.12",
     "@scalar/hono-api-reference": "^0.10.4",
+    "@smithy/signature-v4": "^5.3.12",
     "@types/jsonwebtoken": "^9.0.10",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
@@ -62,6 +65,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@aws-sdk/types": "^3.973.6",
     "@cloudflare/workers-types": "^4.20250813.0",
     "@opennextjs/cloudflare": "^1.6.5",
     "@testing-library/jest-dom": "^6.8.0",

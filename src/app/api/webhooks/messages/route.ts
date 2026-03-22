@@ -2,6 +2,7 @@ import { initAuth } from "@/auth";
 import { getDb } from "@/db";
 import { webhookMessages } from "@/db/webhooks.schema";
 import { users } from "@/db/auth.schema";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { eq, desc, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const environmentId = user[0].lastEnvironment;
+    const { env } = await getCloudflareContext({ async: true });
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -54,36 +56,52 @@ export async function GET(request: NextRequest) {
       .offset(offset);
 
     // Format the response
-    const formattedMessages = messages.map(msg => ({
-      id: msg.id,
-      eventId: msg.eventId,
-      eventType: msg.eventType,
-      environmentId: msg.environmentId,
-      endpointIds: JSON.parse(msg.endpointIds),
-      endpointGroupIds: JSON.parse(msg.endpointGroupIds),
-      payload: msg.payload ? JSON.parse(msg.payload) : null,
-      payloadSize: msg.payloadSize,
-      status: msg.status,
-      attempts: msg.attempts,
-      maxAttempts: msg.maxAttempts,
-      createdAt: msg.createdAt.toISOString(),
-      queuedAt: msg.queuedAt?.toISOString(),
-      processingStartedAt: msg.processingStartedAt?.toISOString(),
-      deliveredAt: msg.deliveredAt?.toISOString(),
-      failedAt: msg.failedAt?.toISOString(),
-      lastError: msg.lastError,
-      lastErrorAt: msg.lastErrorAt?.toISOString(),
-      responseStatus: msg.responseStatus,
-      responseTimeMs: msg.responseTimeMs,
-      responseBody: msg.responseBody,
-      idempotencyKey: msg.idempotencyKey,
-      metadata: msg.metadata ? JSON.parse(msg.metadata) : null
-    }));
+    const formattedMessages = await Promise.all(
+      messages.map(async msg => {
+        const endpointIds = JSON.parse(msg.endpointIds) as string[];
+        const retryableEndpointIds = (
+          await Promise.all(
+            endpointIds.map(async endpointId => {
+              const retryKey = `failed:${msg.id}:${endpointId}`;
+              const retryable = await env.KV.get(retryKey, "text");
+              return retryable ? endpointId : null;
+            })
+          )
+        ).filter(Boolean) as string[];
+
+        return {
+          id: msg.id,
+          eventId: msg.eventId,
+          eventType: msg.eventType,
+          environmentId: msg.environmentId,
+          endpointIds,
+          endpointGroupIds: JSON.parse(msg.endpointGroupIds),
+          retryableEndpointIds,
+          payload: msg.payload ? JSON.parse(msg.payload) : null,
+          payloadSize: msg.payloadSize,
+          status: msg.status,
+          attempts: msg.attempts,
+          maxAttempts: msg.maxAttempts,
+          createdAt: msg.createdAt.toISOString(),
+          queuedAt: msg.queuedAt?.toISOString(),
+          processingStartedAt: msg.processingStartedAt?.toISOString(),
+          deliveredAt: msg.deliveredAt?.toISOString(),
+          failedAt: msg.failedAt?.toISOString(),
+          lastError: msg.lastError,
+          lastErrorAt: msg.lastErrorAt?.toISOString(),
+          responseStatus: msg.responseStatus,
+          responseTimeMs: msg.responseTimeMs,
+          responseBody: msg.responseBody,
+          idempotencyKey: msg.idempotencyKey,
+          metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
+        };
+      })
+    );
 
     return NextResponse.json({
       messages: formattedMessages,
       total: formattedMessages.length,
-      hasMore: formattedMessages.length === limit
+      hasMore: formattedMessages.length === limit,
     });
   } catch (error) {
     console.error("Error fetching webhook messages:", error);

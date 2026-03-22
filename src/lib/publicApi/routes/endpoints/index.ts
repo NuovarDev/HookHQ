@@ -1,33 +1,18 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
+import { serverConfig } from "@/db/environments.schema";
 import { endpoints } from "@/db/webhooks.schema";
+import { parseAutoDisableConfig } from "@/lib/destinations/config";
+import { buildEndpointInsertValues, formatEndpoint } from "@/lib/publicApi/serializers";
 import {
-  authHeaderSchema,
   enabledQuerySchema,
   endpointCreateSchema,
   endpointSchema,
   errorResponseSchema,
+  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
-
-function formatEndpoint(endpoint: typeof endpoints.$inferSelect) {
-  return {
-    id: endpoint.id,
-    environmentId: endpoint.environmentId,
-    name: endpoint.name,
-    description: endpoint.description,
-    url: endpoint.url,
-    enabled: endpoint.isActive,
-    retryPolicy: endpoint.retryPolicy,
-    maxAttempts: endpoint.maxRetries,
-    timeoutMs: endpoint.timeoutMs,
-    customHeaders: endpoint.headers ? JSON.parse(endpoint.headers) : {},
-    proxyGroupId: endpoint.proxyGroupId,
-    createdAt: endpoint.createdAt.toISOString(),
-    updatedAt: endpoint.updatedAt.toISOString(),
-  };
-}
 
 const listEndpointsRoute = createRoute({
   method: "get",
@@ -35,7 +20,7 @@ const listEndpointsRoute = createRoute({
   tags: ["Endpoints"],
   summary: "List Endpoints",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     query: enabledQuerySchema,
   },
   responses: {
@@ -59,7 +44,7 @@ const createEndpointRoute = createRoute({
   tags: ["Endpoints"],
   summary: "Create Endpoint",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     body: {
       required: true,
       content: {
@@ -114,39 +99,22 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
     const endpointId = `ep_${auth.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
 
     const db = await getDb(c.env);
-    await db.insert(endpoints).values({
+    const [globalConfig] = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
+    const values = buildEndpointInsertValues({
       id: endpointId,
       environmentId: auth.environmentId,
       name: body.name,
       description: body.description,
-      url: body.url,
-      isActive: body.enabled ?? true,
-      retryPolicy: body.retryPolicy ?? "exponential",
-      maxRetries: body.maxAttempts ?? 3,
-      timeoutMs: body.timeoutMs ?? 10000,
-      headers: JSON.stringify(body.customHeaders ?? {}),
-      proxyGroupId: body.proxyGroupId,
-      createdAt: now,
-      updatedAt: now,
+      eventTypes: body.eventTypes,
+      enabled: body.enabled,
+      destinationType: body.destinationType,
+      destination: body.destination,
+      retry: body.retry,
+      autoDisable: body.autoDisable ?? parseAutoDisableConfig(globalConfig?.defaultAutoDisableConfig),
+      now,
     });
+    await db.insert(endpoints).values(values);
 
-    return c.json(
-      formatEndpoint({
-        id: endpointId,
-        environmentId: auth.environmentId,
-        name: body.name,
-        description: body.description ?? null,
-        url: body.url,
-        isActive: body.enabled ?? true,
-        retryPolicy: body.retryPolicy ?? "exponential",
-        maxRetries: body.maxAttempts ?? 3,
-        timeoutMs: body.timeoutMs ?? 10000,
-        headers: JSON.stringify(body.customHeaders ?? {}),
-        proxyGroupId: body.proxyGroupId ?? null,
-        createdAt: now,
-        updatedAt: now,
-      } as typeof endpoints.$inferSelect),
-      200
-    );
+    return c.json(formatEndpoint(values as typeof endpoints.$inferSelect), 200);
   }) as never);
 }

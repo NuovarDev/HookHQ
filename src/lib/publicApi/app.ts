@@ -19,6 +19,21 @@ import { registerSendWebhookOpenApiRoutes } from "@/lib/publicApi/routes/send";
 export const publicApiApp = new OpenAPIHono<{ Bindings: CloudflareEnv }>({
   defaultHook: (result, c) => {
     if (!result.success) {
+      const authorizationIssue = result.error.issues.find(issue => {
+        const normalizedPath = issue.path.map(segment => String(segment).toLowerCase());
+        return normalizedPath[normalizedPath.length - 1] === "authorization";
+      });
+
+      if (authorizationIssue) {
+        return c.json(
+          {
+            error: "Unauthorized",
+            message: "Missing or invalid Authorization header",
+          },
+          401
+        );
+      }
+
       return c.json(
         {
           error: "Bad Request",
@@ -45,7 +60,7 @@ publicApiApp.use(
 );
 publicApiApp.use("*", etag());
 
-if (process.env.NEXT_PUBLIC_API_DOCS_ENABLED === 'true') {
+if (process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true") {
   publicApiApp.doc("/spec", {
     openapi: "3.0.0",
     info: {

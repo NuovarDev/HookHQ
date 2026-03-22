@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { invalidateGlobalRetryConfigCache } from "@/lib/retryUtils";
 import { serverConfig } from "@/db/environments.schema";
 import { eq } from "drizzle-orm";
+import { serializeAutoDisableConfig, serializeFailureAlertConfig } from "@/lib/destinations/config";
 
 // GET /api/admin/config - Get server configuration
 export async function GET() {
@@ -23,11 +24,7 @@ export async function GET() {
     const db = await getDb();
 
     // Get server configuration from database
-    const config = await db
-      .select()
-      .from(serverConfig)
-      .where(eq(serverConfig.id, "default"))
-      .limit(1);
+    const config = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
 
     if (config.length === 0) {
       // Return default configuration if none exists
@@ -42,6 +39,22 @@ export async function GET() {
         defaultTimeoutMs: 30000,
         defaultRetryPolicy: "retry",
         defaultBackoffStrategy: "exponential",
+        defaultRetryStrategy: "exponential",
+        defaultBaseDelaySeconds: 5,
+        defaultMaxRetryDelaySeconds: 300,
+        defaultRetryJitterFactor: 20,
+        defaultFailureAlertConfig: serializeFailureAlertConfig({
+          enabled: false,
+          threshold: 5,
+          windowMinutes: 60,
+          endpointIds: [],
+          channelType: "webhook",
+          destinationUrl: "",
+        }),
+        defaultAutoDisableConfig: serializeAutoDisableConfig({
+          enabled: false,
+          threshold: 10,
+        }),
         queueManagementEnabled: false,
         jwtExpiration: "1day",
         createdAt: new Date().toISOString(),
@@ -71,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json() as {
+    const body = (await request.json()) as {
       cloudflareApiKey: string;
       cloudflareAccountId: string;
       cloudflareQueueId: string;
@@ -80,6 +93,12 @@ export async function POST(request: NextRequest) {
       defaultMaxRetries: string;
       defaultTimeoutMs: string;
       defaultBackoffStrategy: string;
+      defaultRetryStrategy?: string;
+      defaultBaseDelaySeconds?: string;
+      defaultMaxRetryDelaySeconds?: string;
+      defaultRetryJitterFactor?: string;
+      defaultFailureAlertConfig?: string;
+      defaultAutoDisableConfig?: string;
       queueManagementEnabled: string;
       jwtExpiration: string;
     };
@@ -92,6 +111,12 @@ export async function POST(request: NextRequest) {
       defaultMaxRetries,
       defaultTimeoutMs,
       defaultBackoffStrategy,
+      defaultRetryStrategy,
+      defaultBaseDelaySeconds,
+      defaultMaxRetryDelaySeconds,
+      defaultRetryJitterFactor,
+      defaultFailureAlertConfig,
+      defaultAutoDisableConfig,
       queueManagementEnabled,
       jwtExpiration,
     } = body;
@@ -99,7 +124,10 @@ export async function POST(request: NextRequest) {
     // Validate JWT expiration format
     const jwtExpirationRegex = /^(\d+)(hour|day|week|month)$/;
     if (!jwtExpirationRegex.test(jwtExpiration)) {
-      return NextResponse.json({ error: "Invalid JWT expiration format. Must be in format like '1day', '12hour', '2week', '3month'" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid JWT expiration format. Must be in format like '1day', '12hour', '2week', '3month'" },
+        { status: 400 }
+      );
     }
 
     // Validate JWT expiration values
@@ -125,11 +153,7 @@ export async function POST(request: NextRequest) {
     const db = await getDb();
 
     // Check if config exists
-    const existingConfig = await db
-      .select()
-      .from(serverConfig)
-      .where(eq(serverConfig.id, "default"))
-      .limit(1);
+    const existingConfig = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
 
     const configData = {
       id: "default",
@@ -141,6 +165,26 @@ export async function POST(request: NextRequest) {
       defaultMaxRetries: parseInt(defaultMaxRetries),
       defaultTimeoutMs: parseInt(defaultTimeoutMs),
       defaultBackoffStrategy,
+      defaultRetryStrategy: defaultRetryStrategy || defaultBackoffStrategy,
+      defaultBaseDelaySeconds: parseInt(defaultBaseDelaySeconds || "5"),
+      defaultMaxRetryDelaySeconds: parseInt(defaultMaxRetryDelaySeconds || "300"),
+      defaultRetryJitterFactor: parseInt(defaultRetryJitterFactor || "20"),
+      defaultFailureAlertConfig:
+        defaultFailureAlertConfig ||
+        serializeFailureAlertConfig({
+          enabled: false,
+          threshold: 5,
+          windowMinutes: 60,
+          endpointIds: [],
+          channelType: "webhook",
+          destinationUrl: "",
+        }),
+      defaultAutoDisableConfig:
+        defaultAutoDisableConfig ||
+        serializeAutoDisableConfig({
+          enabled: false,
+          threshold: 10,
+        }),
       queueManagementEnabled: Boolean(queueManagementEnabled),
       jwtExpiration,
       updatedAt: new Date(),
@@ -154,10 +198,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Update existing config
-      await db
-        .update(serverConfig)
-        .set(configData)
-        .where(eq(serverConfig.id, "default"));
+      await db.update(serverConfig).set(configData).where(eq(serverConfig.id, "default"));
     }
 
     // Invalidate retry config cache if retry settings changed

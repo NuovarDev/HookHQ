@@ -2,6 +2,7 @@
 import { default as Next } from "./.open-next/worker.js";
 import { default as Consumer } from "./queues/consumer.js";
 import { default as Api } from "@/lib/publicApi";
+import { reconcileStalePendingMessages } from "@/lib/queue/reconcile";
 
 export default {
   async fetch(request, env, ctx) {
@@ -14,6 +15,9 @@ export default {
     return Next.fetch(request, env, ctx);
   },
   queue: Consumer.queue,
+  scheduled(_controller, env, ctx) {
+    ctx.waitUntil(reconcileStalePendingMessages(env));
+  },
 } satisfies ExportedHandler<CloudflareEnv>;
 
 // @ts-ignore `.open-next/worker.js` is generated at build time

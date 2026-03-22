@@ -4,12 +4,12 @@ import { getDb } from "@/db";
 import { eventTypes } from "@/db/webhooks.schema";
 import { validateSchema } from "@/lib/schemaValidation";
 import {
-  authHeaderSchema,
   deleteResponseSchema,
   errorResponseSchema,
   eventTypeSchema,
   eventTypeUpdateSchema,
   idParamSchema,
+  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -31,7 +31,7 @@ const getEventTypeRoute = createRoute({
   path: "/event-types/{id}",
   tags: ["Event Types"],
   summary: "Get Event Type",
-  request: { headers: authHeaderSchema, params: idParamSchema },
+  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -48,7 +48,7 @@ const deleteEventTypeRoute = createRoute({
   path: "/event-types/{id}",
   tags: ["Event Types"],
   summary: "Delete Event Type",
-  request: { headers: authHeaderSchema, params: idParamSchema },
+  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -72,7 +72,7 @@ const updateEventTypeRoute = createRoute({
   tags: ["Event Types"],
   summary: "Update Event Type",
   request: {
-    headers: authHeaderSchema,
+    headers: optionalAuthHeaderSchema,
     params: idParamSchema,
     body: { required: true, content: { "application/json": { schema: eventTypeUpdateSchema } } },
   },

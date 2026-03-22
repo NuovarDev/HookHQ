@@ -1,20 +1,51 @@
 import { publicApiFetch } from "@/lib/publicApi/utils";
 
-export interface Endpoint {
+type EndpointBase = {
   id: string;
   environmentId: string;
   name: string;
   description?: string | null;
-  url: string;
+  eventTypes: string[];
   enabled: boolean;
-  retryPolicy: string;
-  maxAttempts: number;
-  timeoutMs: number;
-  customHeaders?: Record<string, string>;
-  proxyGroupId?: string | null;
+  retry: {
+    strategy: "none" | "fixed" | "linear" | "exponential";
+    maxAttempts: number;
+    baseDelaySeconds: number;
+    maxDelaySeconds: number;
+    jitterFactor: number;
+  };
+  autoDisable: {
+    enabled: boolean;
+    threshold: number;
+  };
   createdAt: string;
   updatedAt: string;
-}
+};
+
+export type WebhookEndpoint = EndpointBase & {
+  destinationType: "webhook";
+  destination: {
+    url: string;
+    timeoutMs?: number;
+    customHeaders?: Record<string, string>;
+    proxyGroupId?: string | null;
+  };
+};
+
+export type SqsEndpoint = EndpointBase & {
+  destinationType: "sqs";
+  destination: {
+    queueUrl: string;
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    delaySeconds?: number;
+    messageGroupId?: string;
+    messageDeduplicationId?: string;
+  };
+};
+
+export type Endpoint = WebhookEndpoint | SqsEndpoint;
 
 export interface EndpointGroup {
   id: string;
@@ -22,7 +53,16 @@ export interface EndpointGroup {
   name: string;
   description?: string | null;
   endpointIds: string[];
+  eventTypes: string[];
   enabled: boolean;
+  failureAlerts: {
+    enabled: boolean;
+    threshold: number;
+    windowMinutes: number;
+    endpointIds: string[];
+    channelType: "webhook" | "slack";
+    destinationUrl?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -79,13 +119,12 @@ export async function fetchEndpoints() {
 export async function createEndpoint(payload: {
   name: string;
   description?: string;
-  url: string;
+  eventTypes?: string[];
+  destinationType: "webhook" | "sqs";
+  destination: Endpoint["destination"];
   enabled: boolean;
-  retryPolicy: string;
-  maxAttempts: number;
-  timeoutMs: number;
-  customHeaders?: Record<string, string>;
-  proxyGroupId?: string | null;
+  retry: Partial<Endpoint["retry"]>;
+  autoDisable?: Partial<Endpoint["autoDisable"]>;
 }) {
   return requestJson<Endpoint>("/endpoints", {
     method: "POST",
@@ -119,7 +158,9 @@ export async function createEndpointGroup(payload: {
   name: string;
   description?: string;
   endpointIds: string[];
+  eventTypes?: string[];
   enabled: boolean;
+  failureAlerts?: Partial<EndpointGroup["failureAlerts"]>;
 }) {
   return requestJson<EndpointGroup>("/endpoint-groups", {
     method: "POST",
@@ -130,7 +171,7 @@ export async function createEndpointGroup(payload: {
 
 export async function updateEndpointGroup(
   id: string,
-  payload: Partial<Pick<EndpointGroup, "name" | "description" | "endpointIds" | "enabled">>
+  payload: Partial<Pick<EndpointGroup, "name" | "description" | "endpointIds" | "enabled" | "failureAlerts">>
 ) {
   const data = await requestJson<{ message: string; group: EndpointGroup }>(`/endpoint-groups/${id}`, {
     method: "PATCH",

@@ -6,11 +6,11 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "observability": { "enabled": true },
   "placement": {
-    "mode": "smart"
+    "mode": "smart",
   },
   "assets": {
     "binding": "ASSETS",
-    "directory": ".open-next/assets"
+    "directory": ".open-next/assets",
   },
   "d1_databases": [
     {
@@ -18,14 +18,14 @@
       "database_name": "webhooks-db",
       "database_id": "b0dff2d7-9ad1-431b-8c71-cc1cc0c47270",
       "migrations_dir": "drizzle",
-    }
+    },
   ],
   "queues": {
     "producers": [
       {
         "queue": "webhooks-queue",
-        "binding": "WEBHOOKS"
-      }
+        "binding": "WEBHOOKS",
+      },
     ],
     "consumers": [
       {
@@ -33,14 +33,17 @@
         "dead_letter_queue": "webhooks-dlq",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
-        "max_retries": 9
-      }
-    ]
+        "max_retries": 9,
+      },
+    ],
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"],
   },
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "63061515c7114181a50a3c738ef4c848"
-    }
-  ]
+      "id": "63061515c7114181a50a3c738ef4c848",
+    },
+  ],
 }

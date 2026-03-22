@@ -18,6 +18,7 @@ interface ServerConfig {
   defaultMaxRetries: number;
   defaultTimeoutMs: number;
   defaultBackoffStrategy: string;
+  defaultAutoDisableConfig?: string;
   queueManagementEnabled: boolean;
   jwtExpiration: string;
   createdAt: string;
@@ -48,6 +49,8 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
     defaultMaxRetries: 3,
     defaultTimeoutMs: 30000,
     defaultBackoffStrategy: "exponential",
+    autoDisableEnabled: false,
+    autoDisableThreshold: 10,
     queueManagementEnabled: false,
     jwtExpirationValue: 1,
     jwtExpirationUnit: "day",
@@ -87,6 +90,12 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
           defaultMaxRetries: data.config.defaultMaxRetries || 3,
           defaultTimeoutMs: data.config.defaultTimeoutMs || 30000,
           defaultBackoffStrategy: data.config.defaultBackoffStrategy || "exponential",
+          autoDisableEnabled: data.config.defaultAutoDisableConfig
+            ? (JSON.parse(data.config.defaultAutoDisableConfig).enabled ?? false)
+            : false,
+          autoDisableThreshold: data.config.defaultAutoDisableConfig
+            ? (JSON.parse(data.config.defaultAutoDisableConfig).threshold ?? 10)
+            : 10,
           queueManagementEnabled: data.config.queueManagementEnabled || false,
           jwtExpirationValue: jwtValue,
           jwtExpirationUnit: jwtUnit,
@@ -113,6 +122,10 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          defaultAutoDisableConfig: JSON.stringify({
+            enabled: formData.autoDisableEnabled,
+            threshold: formData.autoDisableThreshold,
+          }),
           jwtExpiration: jwtExpiration,
         }),
       });
@@ -405,6 +418,52 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
               />
               <p className="text-sm text-muted-foreground mt-1">How long to keep webhook payloads</p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Destination Safety</CardTitle>
+          </div>
+          <CardDescription>Default behavior for automatically disabling failing destinations</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="autoDisableEnabled" className="mb-2">
+              Auto Disable
+            </Label>
+            <Select
+              value={formData.autoDisableEnabled ? "enabled" : "disabled"}
+              onValueChange={value => setFormData({ ...formData, autoDisableEnabled: value === "enabled" })}
+            >
+              <SelectTrigger id="autoDisableEnabled">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="disabled">Disabled</SelectItem>
+                <SelectItem value="enabled">Enabled</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground mt-1">Applied by default unless an endpoint overrides it</p>
+          </div>
+          <div>
+            <Label htmlFor="autoDisableThreshold" className="mb-2">
+              Consecutive Failure Threshold
+            </Label>
+            <Input
+              id="autoDisableThreshold"
+              type="number"
+              min="1"
+              value={formData.autoDisableThreshold}
+              disabled={!formData.autoDisableEnabled}
+              onChange={e => setFormData({ ...formData, autoDisableThreshold: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Disable an endpoint after this many permanent failures in a row
+            </p>
           </div>
         </CardContent>
       </Card>

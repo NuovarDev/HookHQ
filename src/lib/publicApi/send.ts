@@ -1,11 +1,15 @@
 import { getDb } from "@/db";
 import { endpointGroups, endpoints, eventTypes, webhookMessages } from "@/db/webhooks.schema";
 import { cacheEndpointData } from "@/lib/cacheUtils";
+import { resolveDestinationConfig, resolveRetryConfig } from "@/lib/destinations/config";
+import { enqueueDeliveryMessages } from "@/lib/queue/enqueue";
+import type { DeliveryMessage } from "@/lib/queue/types";
 import { createRetryConfig } from "@/lib/retryUtils";
 import { validateEventPayload } from "@/lib/schemaValidation";
+import { matchesEventSubscription, parseEventSubscriptions } from "@/lib/subscriptions";
 import { and, eq, inArray } from "drizzle-orm";
 
-type SendWebhookBody = {
+type SendEventBody = {
   destinations?: string[];
   eventType?: string;
   payload?: unknown;
@@ -13,20 +17,20 @@ type SendWebhookBody = {
   logPayload?: boolean;
 };
 
-type HandleSendWebhookRequestInput = {
+type HandleSendEventRequestInput = {
   body: unknown;
   env: CloudflareEnv;
   request: Request;
   environmentId: string;
 };
 
-export async function handleSendWebhookRequest({
+export async function handleSendEventRequest({
   body,
   env,
   request,
   environmentId,
-}: HandleSendWebhookRequestInput): Promise<Response> {
-  const { destinations, eventType, eventId, payload, logPayload } = (body ?? {}) as SendWebhookBody;
+}: HandleSendEventRequestInput): Promise<Response> {
+  const { destinations, eventType, eventId, payload, logPayload } = (body ?? {}) as SendEventBody;
 
   if (!destinations || payload === undefined) {
     return Response.json(
@@ -39,10 +43,6 @@ export async function handleSendWebhookRequest({
 
   const endpointGroupIds = destinations.filter(destination => destination.startsWith("grp_"));
   const endpointIds = destinations.filter(destination => !destination.startsWith("grp_"));
-
-  if (endpointGroupIds.length > 0 && !eventType) {
-    return Response.json({ error: "eventType must be specified when endpointGroups are provided" }, { status: 400 });
-  }
 
   if (
     [endpointIds, endpointGroupIds].some(ids =>
@@ -84,24 +84,8 @@ export async function handleSendWebhookRequest({
 
   const date = new Date();
   const webhookId = crypto.randomUUID();
-  const idempotencyKey = request.headers.get("Idempotency-Key");
-
-  await db.insert(webhookMessages).values({
-    id: webhookId,
-    eventId,
-    eventType,
-    environmentId,
-    endpointIds: JSON.stringify(endpointIds),
-    endpointGroupIds: JSON.stringify(endpointGroupIds),
-    payload: logPayload ? JSON.stringify(payload) : null,
-    payloadSize: JSON.stringify(payload).length,
-    status: "pending",
-    attempts: 0,
-    maxAttempts: 3,
-    createdAt: date,
-    queuedAt: date,
-    idempotencyKey,
-  });
+  const idempotencyKey = request.headers.get("Idempotency-Key") ?? undefined;
+  const serializedPayload = JSON.stringify(payload);
 
   const resolvedEndpoints = await resolveEndpointGroups({
     endpointGroupIds,
@@ -109,19 +93,42 @@ export async function handleSendWebhookRequest({
     environmentId,
     env,
   });
-  const allEndpointIds = [...endpointIds, ...resolvedEndpoints];
+  const directEndpoints =
+    endpointIds.length > 0 ? await resolveDirectEndpoints({ endpointIds, eventType, environmentId, env }) : [];
+  const allEndpointIds = [...new Set([...directEndpoints, ...resolvedEndpoints])];
 
   if (allEndpointIds.length === 0) {
     return Response.json({ error: "No endpoints found" }, { status: 400 });
   }
 
+  await db.insert(webhookMessages).values({
+    id: webhookId,
+    eventId,
+    eventType,
+    environmentId,
+    endpointIds: JSON.stringify(allEndpointIds),
+    endpointGroupIds: JSON.stringify(endpointGroupIds),
+    payload: logPayload ? JSON.stringify(payload) : null,
+    payloadSize: serializedPayload.length,
+    status: "pending",
+    attempts: 0,
+    maxAttempts: 3,
+    createdAt: date,
+    queuedAt: date,
+    idempotencyKey,
+    metadata: JSON.stringify({
+      payloadKey: `webhook-payload:${webhookId}`,
+      queueRecoveryAttempts: 0,
+    }),
+  });
+
   const endpointData = await cacheEndpointData(allEndpointIds, environmentId, env);
   const endpointMap = new Map(endpointData.map(endpoint => [endpoint.id, endpoint]));
-  const endpointMessages: MessageSendRequest[] = [];
+  const endpointMessages: DeliveryMessage[] = [];
 
-  const payloadSize = JSON.stringify(payload).length;
+  const payloadSize = serializedPayload.length;
   const shouldUseKV = payloadSize / 1024 > 64 || allEndpointIds.length > 50;
-  let payloadKey: string | null = shouldUseKV ? `webhook-payload:${webhookId}` : null;
+  const payloadKey = `webhook-payload:${webhookId}`;
   let maxRetryPeriodDays = 7;
 
   const baseMessageBody = {
@@ -140,42 +147,38 @@ export async function handleSendWebhookRequest({
 
   for (const endpointId of allEndpointIds) {
     const endpoint = endpointMap.get(endpointId);
-    const retryConfig = await createRetryConfig(
-      endpoint?.retryPolicy || "retry",
-      endpoint?.maxRetries || 3,
-      endpoint?.backoffStrategy || "exponential",
-      endpoint?.baseDelaySeconds || 500,
-      env
-    );
+    if (!endpoint) {
+      continue;
+    }
+
+    const retryConfig = await createRetryConfig(resolveRetryConfig(endpoint), env);
+    const destination = resolveDestinationConfig(endpoint);
 
     if (shouldUseKV) {
       maxRetryPeriodDays = Math.max(
         maxRetryPeriodDays,
-        getRetryPeriodDays(retryConfig.maxAttempts, retryConfig.baseDelaySeconds, retryConfig.backoffStrategy)
+        getRetryPeriodDays(retryConfig.maxAttempts, retryConfig.baseDelaySeconds, retryConfig.strategy)
       );
     }
 
     endpointMessages.push({
-      body: {
-        ...baseMessageBody,
-        endpointId,
-        retryConfig,
-      },
+      ...baseMessageBody,
+      endpointId,
+      retryConfig,
+      destination,
     });
   }
 
-  if (shouldUseKV && payloadKey) {
-    maxRetryPeriodDays = Math.max(3, Math.min(30, maxRetryPeriodDays));
-    await env.KV.put(payloadKey, JSON.stringify(payload), {
-      expirationTtl: 60 * 60 * 24 * maxRetryPeriodDays,
-    });
-  }
+  maxRetryPeriodDays = Math.max(3, Math.min(30, maxRetryPeriodDays));
+  await env.KV.put(payloadKey, serializedPayload, {
+    expirationTtl: 60 * 60 * 24 * maxRetryPeriodDays,
+  });
 
   const batches = Math.ceil(endpointMessages.length / optimalBatchSize);
 
   for (let index = 0; index < batches; index++) {
     const batch = endpointMessages.slice(index * optimalBatchSize, (index + 1) * optimalBatchSize);
-    await env.WEBHOOKS.sendBatch(batch as Iterable<MessageSendRequest<Body>>);
+    await enqueueDeliveryMessages(env, batch, request);
   }
 
   return Response.json({
@@ -199,7 +202,7 @@ async function resolveEndpointGroups({
   environmentId: string;
   env: CloudflareEnv;
 }): Promise<string[]> {
-  if (endpointGroupIds.length === 0 || !eventType) {
+  if (endpointGroupIds.length === 0) {
     return [];
   }
 
@@ -207,7 +210,8 @@ async function resolveEndpointGroups({
   const resolvedEndpoints: string[] = [];
 
   for (const groupId of endpointGroupIds) {
-    const cacheKey = `group:${groupId}:${eventType}`;
+    const cacheEventTypeKey = eventType && eventType.trim() ? eventType : "*";
+    const cacheKey = `group:${groupId}:${cacheEventTypeKey}`;
     const cachedResult = await env.KV.get(cacheKey);
 
     if (cachedResult) {
@@ -233,8 +237,9 @@ async function resolveEndpointGroups({
     }
 
     const groupEndpointIds = JSON.parse(group[0].endpointIds);
+    const groupEventTypes = parseEventSubscriptions(group[0].eventTypes);
 
-    if (groupEndpointIds.length === 0) {
+    if (groupEndpointIds.length === 0 || !matchesEventSubscription(groupEventTypes, eventType)) {
       await env.KV.put(cacheKey, JSON.stringify([]), { expirationTtl: 60 * 60 * 24 * 30 });
       continue;
     }
@@ -251,7 +256,7 @@ async function resolveEndpointGroups({
       );
 
     const groupResolvedEndpoints = subscribedEndpoints
-      .filter(endpoint => JSON.parse(endpoint.topics || "[]").includes(eventType))
+      .filter(endpoint => matchesEventSubscription(parseEventSubscriptions(endpoint.topics), eventType))
       .map(endpoint => endpoint.id);
 
     await env.KV.put(cacheKey, JSON.stringify(groupResolvedEndpoints), {
@@ -264,17 +269,48 @@ async function resolveEndpointGroups({
   return resolvedEndpoints;
 }
 
+async function resolveDirectEndpoints({
+  endpointIds,
+  eventType,
+  environmentId,
+  env,
+}: {
+  endpointIds: string[];
+  eventType?: string;
+  environmentId: string;
+  env: CloudflareEnv;
+}): Promise<string[]> {
+  if (endpointIds.length === 0) {
+    return [];
+  }
+
+  const db = await getDb(env);
+  const selectedEndpoints = await db
+    .select()
+    .from(endpoints)
+    .where(
+      and(eq(endpoints.environmentId, environmentId), eq(endpoints.isActive, true), inArray(endpoints.id, endpointIds))
+    );
+
+  return selectedEndpoints
+    .filter(endpoint => matchesEventSubscription(parseEventSubscriptions(endpoint.topics), eventType))
+    .map(endpoint => endpoint.id);
+}
+
 function getRetryPeriodDays(
   maxAttempts: number,
   baseDelaySeconds: number,
-  backoffStrategy: "exponential" | "linear" | "fixed"
+  strategy: "none" | "exponential" | "linear" | "fixed"
 ): number {
   let maxRetrySeconds = 0;
 
   for (let attempt = 1; attempt < maxAttempts; attempt++) {
     let delaySeconds = 0;
 
-    switch (backoffStrategy) {
+    switch (strategy) {
+      case "none":
+        delaySeconds = 0;
+        break;
       case "exponential":
         delaySeconds = Math.min(baseDelaySeconds * 2 ** (attempt - 1), 300);
         break;

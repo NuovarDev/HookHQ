@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Copy, Search, RefreshCw, ChevronDown, Info, LoaderCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Copy, Search, RefreshCw, Info, LoaderCircle, X } from "lucide-react";
 import Link from "next/link";
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { usePortalContext } from "../../../layout";
@@ -112,6 +114,11 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [eventSearch, setEventSearch] = useState("");
+  const [eventStatusFilter, setEventStatusFilter] = useState<"all" | "delivered" | "failed">("all");
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const [eventTimeRange, setEventTimeRange] = useState<"24h" | "7d">("7d");
+  const [dialogContent, setDialogContent] = useState<{ title: string; value: string } | null>(null);
 
   // Data state
   const [endpoint, setEndpoint] = useState<Endpoint | null>(null);
@@ -174,6 +181,49 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
 
   const toggleTopic = (topic: string) => {
     setSelectedTopics(prev => (prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]));
+  };
+
+  const filteredEvents = recentEvents.filter(event => {
+    const query = eventSearch.trim().toLowerCase();
+    const matchesQuery =
+      query.length === 0 ||
+      event.messageId.toLowerCase().includes(query) ||
+      event.eventId?.toLowerCase().includes(query) ||
+      event.eventType?.toLowerCase().includes(query);
+
+    const normalizedStatus = event.status === "delivered" ? "delivered" : "failed";
+    const matchesStatus = eventStatusFilter === "all" || normalizedStatus === eventStatusFilter;
+    const matchesEventType = eventTypeFilter === "all" || (event.eventType ?? "none") === eventTypeFilter;
+
+    const attemptedAt = new Date(event.attemptedAt).getTime();
+    const timeWindowMs = eventTimeRange === "24h" ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+    const matchesTime = attemptedAt >= Date.now() - timeWindowMs;
+
+    return matchesQuery && matchesStatus && matchesEventType && matchesTime;
+  });
+
+  const selectedEventDetails = filteredEvents.find(event => event.attemptId === selectedEvent) ?? null;
+
+  useEffect(() => {
+    if (selectedEvent && !selectedEventDetails) {
+      setSelectedEvent(null);
+    }
+  }, [selectedEvent, selectedEventDetails]);
+
+  const handleEventRowClick = (attemptId: string) => {
+    setSelectedEvent(current => (current === attemptId ? null : attemptId));
+  };
+
+  const formatLoggedBody = (value?: string) => {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
   };
 
   if (loading) {
@@ -456,25 +506,54 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Events</CardTitle>
-                    <CardDescription>{recentEvents.length} events</CardDescription>
+                    <CardDescription>{filteredEvents.length} events</CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="border-0 bg-transparent">
-                      <Search className="mr-2 h-4 w-4" />
-                      Filter by ID
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-0 bg-transparent">
-                      Last 24h
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-0 bg-transparent">
-                      Status
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="border-0 bg-transparent">
-                      Topics
-                      <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative w-full md:w-64">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={eventSearch}
+                        onChange={event => setEventSearch(event.target.value)}
+                        placeholder="Search ID or event type"
+                        className="pl-9"
+                      />
+                    </div>
+                    <Select value={eventTimeRange} onValueChange={value => setEventTimeRange(value as "24h" | "7d")}>
+                      <SelectTrigger className="w-28">
+                        <SelectValue placeholder="Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="24h">Last 24h</SelectItem>
+                        <SelectItem value="7d">Last 7d</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={eventStatusFilter}
+                      onValueChange={value => setEventStatusFilter(value as "all" | "delivered" | "failed")}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All status</SelectItem>
+                        <SelectItem value="delivered">Successful</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Event type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All event types</SelectItem>
+                        <SelectItem value="none">No event type</SelectItem>
+                        {availableEventTypes.map(eventType => (
+                          <SelectItem key={eventType.id} value={eventType.name}>
+                            {eventType.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button variant="outline" size="sm" className="border-0 bg-transparent" onClick={fetchEndpointData}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
@@ -495,7 +574,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                         </tr>
                       </thead>
                       <tbody>
-                        {recentEvents.length === 0 ? (
+                        {filteredEvents.length === 0 ? (
                           <tr>
                             <td colSpan={4} className="p-8 text-center">
                               <div className="flex flex-col items-center gap-3">
@@ -505,20 +584,20 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                                 <div>
                                   <p className="text-sm font-medium text-muted-foreground">No events found</p>
                                   <p className="text-xs text-muted-foreground">
-                                    Events will appear here when webhooks are triggered
+                                    Adjust the search or filters, or wait for more deliveries to be logged.
                                   </p>
                                 </div>
                               </div>
                             </td>
                           </tr>
                         ) : (
-                          recentEvents.map(event => (
+                          filteredEvents.map(event => (
                             <tr
                               key={event.attemptId}
                               className={`border-b border-border hover:bg-accent/50 cursor-pointer transition-colors ${
                                 selectedEvent === event.attemptId ? "bg-accent/50" : ""
                               }`}
-                              onClick={() => setSelectedEvent(event.attemptId)}
+                              onClick={() => handleEventRowClick(event.attemptId)}
                             >
                               <td className="p-3 font-mono text-sm">{new Date(event.attemptedAt).toLocaleString()}</td>
                               <td className="p-3">
@@ -532,7 +611,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                                   </span>
                                 )}
                               </td>
-                              <td className="p-3 font-mono text-sm">{event.eventType}</td>
+                              <td className="p-3 font-mono text-sm">{event.eventType || "None"}</td>
                               <td className="p-3 font-mono text-sm text-muted-foreground">
                                 {event.messageId.slice(0, 24)}...
                               </td>
@@ -544,77 +623,148 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                   </div>
 
                   {/* Event Detail Panel */}
-                  {selectedEvent &&
-                    (() => {
-                      const event = recentEvents.find(e => e.attemptId === selectedEvent);
-                      if (!event) return null;
-
-                      return (
-                        <div className="w-96 border-l border-border pl-4">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">Event</span>
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium ${
-                                    event.status === "delivered"
-                                      ? "bg-green-500/10 text-green-600"
-                                      : "bg-red-500/10 text-red-600"
-                                  }`}
-                                >
-                                  {event.status === "delivered" ? "Successful" : "Failed"}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-sm text-muted-foreground">Attempts</span>
-                                <span className="inline-flex items-center justify-center h-5 w-5 bg-muted text-xs font-medium">
-                                  {event.attemptNumber}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-medium">Event Type</span>
-                                </div>
-                                <div className="bg-muted p-3 font-mono text-xs">{event.eventType}</div>
-                              </div>
-
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-medium">Message ID</span>
-                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                                <div className="bg-muted p-3 font-mono text-xs">{event.messageId}</div>
-                              </div>
-
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-medium">Timestamp</span>
-                                </div>
-                                <div className="bg-muted p-3 font-mono text-xs">
-                                  {new Date(event.createdAt).toISOString()}
-                                </div>
-                              </div>
-
-                              {event.attemptedAt && (
-                                <div>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">Last Attempt</span>
-                                  </div>
-                                  <div className="bg-muted p-3 font-mono text-xs">
-                                    {new Date(event.attemptedAt).toISOString()}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                  {selectedEventDetails && (
+                    <div className="w-96 border-l border-border pl-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Event</span>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium ${
+                                selectedEventDetails.status === "delivered"
+                                  ? "bg-green-500/10 text-green-600"
+                                  : "bg-red-500/10 text-red-600"
+                              }`}
+                            >
+                              {selectedEventDetails.status === "delivered" ? "Successful" : "Failed"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm text-muted-foreground">Attempts</span>
+                            <span className="inline-flex items-center justify-center h-5 w-5 bg-muted text-xs font-medium">
+                              {selectedEventDetails.attemptNumber}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              onClick={() => setSelectedEvent(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })()}
+
+                        <div className="space-y-3">
+                          <div>
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-medium">Event Type</span>
+                            </div>
+                            <div className="bg-muted p-3 font-mono text-xs">
+                              {selectedEventDetails.eventType || "No event type"}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-medium">Message ID</span>
+                            </div>
+                            <div className="bg-muted p-3 font-mono text-xs break-all">
+                              {selectedEventDetails.messageId}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-medium">Timestamp</span>
+                            </div>
+                            <div className="bg-muted p-3 font-mono text-xs">
+                              {new Date(selectedEventDetails.createdAt).toISOString()}
+                            </div>
+                          </div>
+
+                          {selectedEventDetails.attemptedAt && (
+                            <div>
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-sm font-medium">Last Attempt</span>
+                              </div>
+                              <div className="bg-muted p-3 font-mono text-xs">
+                                {new Date(selectedEventDetails.attemptedAt).toISOString()}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedEventDetails.errorMessage && (
+                            <div>
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-sm font-medium">Error</span>
+                              </div>
+                              <div className="max-h-40 overflow-auto rounded-md bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-200">
+                                {selectedEventDetails.errorMessage}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedEventDetails.requestBody && (
+                            <div>
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-sm font-medium">Payload</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() =>
+                                    setDialogContent({
+                                      title: "Logged Payload",
+                                      value:
+                                        formatLoggedBody(selectedEventDetails.requestBody) ??
+                                        selectedEventDetails.requestBody ?? "",
+                                    })
+                                  }
+                                >
+                                  View
+                                </Button>
+                              </div>
+                              <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs">
+                                {(
+                                  formatLoggedBody(selectedEventDetails.requestBody) ?? selectedEventDetails.requestBody
+                                ).slice(0, 600)}
+                              </pre>
+                            </div>
+                          )}
+
+                          {selectedEventDetails.responseBody && (
+                            <div>
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-sm font-medium">Response</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs"
+                                  onClick={() =>
+                                    setDialogContent({
+                                      title: "Logged Response",
+                                      value:
+                                        formatLoggedBody(selectedEventDetails.responseBody) ??
+                                        selectedEventDetails.responseBody ?? "",
+                                    })
+                                  }
+                                >
+                                  View
+                                </Button>
+                              </div>
+                              <pre className="max-h-40 overflow-auto rounded-md bg-muted p-3 text-xs">
+                                {(
+                                  formatLoggedBody(selectedEventDetails.responseBody) ??
+                                  selectedEventDetails.responseBody
+                                ).slice(0, 600)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -631,7 +781,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
               <CardContent className="space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Filter topics..." className="pl-9 border-0" />
+                  <Input placeholder="Filter topics..." className="pl-9" />
                 </div>
 
                 <div className="space-y-2">
@@ -679,14 +829,9 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                 <CardTitle>Configuration & Credentials</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button variant="outline" className="border-0 bg-transparent">
-                  <Info className="mr-2 h-4 w-4" />
-                  Configuration Guide
-                </Button>
-
                 <div className="space-y-2">
                   <Label htmlFor="webhook-url">Webhook URL *</Label>
-                  <Input id="webhook-url" defaultValue={endpoint.url} className="border-0 font-mono text-sm" />
+                  <Input id="webhook-url" defaultValue={endpoint.url} className="font-mono text-sm" />
                   <p className="text-xs text-muted-foreground">The URL to send webhook events to via HTTP POST</p>
                 </div>
 
@@ -696,6 +841,16 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={dialogContent !== null} onOpenChange={open => !open && setDialogContent(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{dialogContent?.title}</DialogTitle>
+            <DialogDescription>Full logged content for this delivery attempt.</DialogDescription>
+          </DialogHeader>
+          <pre className="max-h-[70vh] overflow-auto rounded-md bg-muted p-4 text-xs">{dialogContent?.value ?? ""}</pre>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

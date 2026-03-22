@@ -1,8 +1,15 @@
 import { z } from "@hono/zod-openapi";
 
 export const authHeaderSchema = z.object({
-  authorization: z.string().optional().openapi({
+  authorization: z.string().openapi({
     description: "Bearer API key",
+    example: "Bearer wh_1234567890abcdef",
+  }),
+});
+
+export const optionalAuthHeaderSchema = z.object({
+  authorization: z.string().optional().openapi({
+    description: "Bearer API key. Optional when using a session cookie.",
     example: "Bearer wh_1234567890abcdef",
   }),
 });
@@ -47,7 +54,65 @@ export const enabledQuerySchema = z.object({
   enabled: z.enum(["true", "false"]).optional(),
 });
 
-export const retryPolicySchema = z.enum(["exponential", "linear", "fixed"]);
+export const eventSubscriptionSchema = z
+  .array(z.string().min(1))
+  .min(1)
+  .openapi({
+    description:
+      'Event type subscriptions. Use ["*"] to subscribe to all events, including events sent without a type.',
+    example: ["*"],
+  });
+
+export const destinationTypeSchema = z.enum(["webhook", "sqs"]);
+export const retryStrategySchema = z.enum(["none", "fixed", "linear", "exponential"]);
+export const alertChannelTypeSchema = z.enum(["webhook", "slack"]);
+
+export const retryConfigSchema = z
+  .object({
+    strategy: retryStrategySchema,
+    maxAttempts: z.number().int().min(1),
+    baseDelaySeconds: z.number().int().min(1),
+    maxDelaySeconds: z.number().int().min(1),
+    jitterFactor: z.number().min(0).max(1),
+  })
+  .openapi("RetryConfig");
+
+const webhookDestinationConfigSchema = z.object({
+  url: z.string().url(),
+  timeoutMs: z.number().int().min(1000).optional(),
+  customHeaders: z.record(z.string(), z.string()).optional(),
+  proxyGroupId: z.string().nullable().optional(),
+});
+
+const sqsDestinationConfigSchema = z.object({
+  queueUrl: z.string().url(),
+  region: z.string().min(1),
+  accessKeyId: z.string().min(1),
+  secretAccessKey: z.string().min(1),
+  delaySeconds: z.number().int().min(0).max(900).optional(),
+  messageGroupId: z.string().optional(),
+  messageDeduplicationId: z.string().optional(),
+});
+
+export const failureAlertConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    threshold: z.number().int().min(1),
+    windowMinutes: z.number().int().min(1),
+    endpointIds: z.array(z.string()),
+    channelType: alertChannelTypeSchema,
+    destinationUrl: z.string().optional(),
+  })
+  .openapi("FailureAlertConfig");
+
+export const autoDisableConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    threshold: z.number().int().min(1).openapi({
+      description: "Disable the destination after this many consecutive permanent delivery failures.",
+    }),
+  })
+  .openapi("AutoDisableConfig");
 
 export const endpointSchema = z
   .object({
@@ -55,13 +120,12 @@ export const endpointSchema = z
     environmentId: z.string(),
     name: z.string(),
     description: z.string().nullable().optional(),
-    url: z.string(),
+    eventTypes: eventSubscriptionSchema,
+    destinationType: destinationTypeSchema,
+    destination: z.union([webhookDestinationConfigSchema, sqsDestinationConfigSchema]),
     enabled: z.boolean(),
-    retryPolicy: retryPolicySchema.nullable().optional(),
-    maxAttempts: z.number().nullable().optional(),
-    timeoutMs: z.number().nullable().optional(),
-    customHeaders: genericObjectSchema,
-    proxyGroupId: z.string().nullable().optional(),
+    retry: retryConfigSchema,
+    autoDisable: autoDisableConfigSchema,
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -71,13 +135,12 @@ export const endpointCreateSchema = z
   .object({
     name: z.string(),
     description: z.string().optional(),
-    url: z.string().url(),
+    eventTypes: eventSubscriptionSchema.optional(),
+    destinationType: destinationTypeSchema.default("webhook"),
+    destination: z.union([webhookDestinationConfigSchema, sqsDestinationConfigSchema]),
     enabled: z.boolean().optional(),
-    retryPolicy: retryPolicySchema.optional(),
-    maxAttempts: z.number().int().min(0).optional(),
-    timeoutMs: z.number().int().min(0).optional(),
-    customHeaders: z.record(z.string(), z.string()).optional(),
-    proxyGroupId: z.string().optional(),
+    retry: retryConfigSchema.partial().optional(),
+    autoDisable: autoDisableConfigSchema.partial().optional(),
   })
   .openapi("CreateEndpointRequest");
 
@@ -85,13 +148,12 @@ export const endpointUpdateSchema = z
   .object({
     name: z.string().optional(),
     description: z.string().optional(),
-    url: z.string().url().optional(),
+    eventTypes: eventSubscriptionSchema.optional(),
+    destinationType: destinationTypeSchema.optional(),
+    destination: z.union([webhookDestinationConfigSchema, sqsDestinationConfigSchema]).optional(),
     enabled: z.boolean().optional(),
-    retryPolicy: retryPolicySchema.optional(),
-    maxAttempts: z.number().int().min(0).optional(),
-    timeoutMs: z.number().int().min(0).optional(),
-    customHeaders: z.record(z.string(), z.string()).optional(),
-    proxyGroupId: z.string().nullable().optional(),
+    retry: retryConfigSchema.partial().optional(),
+    autoDisable: autoDisableConfigSchema.partial().optional(),
   })
   .openapi("UpdateEndpointRequest");
 
@@ -102,7 +164,9 @@ export const endpointGroupSchema = z
     name: z.string(),
     description: z.string().nullable().optional(),
     endpointIds: z.array(z.string()),
+    eventTypes: eventSubscriptionSchema,
     enabled: z.boolean(),
+    failureAlerts: failureAlertConfigSchema,
     createdAt: z.string(),
     updatedAt: z.string(),
   })
@@ -113,7 +177,9 @@ export const endpointGroupCreateSchema = z
     name: z.string(),
     description: z.string().optional(),
     endpointIds: z.array(z.string()).optional(),
+    eventTypes: eventSubscriptionSchema.optional(),
     enabled: z.boolean().optional(),
+    failureAlerts: failureAlertConfigSchema.partial().optional(),
   })
   .openapi("CreateEndpointGroupRequest");
 
@@ -122,7 +188,9 @@ export const endpointGroupUpdateSchema = z
     name: z.string().optional(),
     description: z.string().optional(),
     endpointIds: z.array(z.string()).optional(),
+    eventTypes: eventSubscriptionSchema.optional(),
     enabled: z.boolean().optional(),
+    failureAlerts: failureAlertConfigSchema.partial().optional(),
   })
   .openapi("UpdateEndpointGroupRequest");
 

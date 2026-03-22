@@ -158,7 +158,7 @@ export default function EventTypesTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Event Types</h2>
-          <p className="text-muted-foreground">Define event schemas for structured webhook notifications</p>
+          <p className="text-muted-foreground">Define event schemas for structured event notifications</p>
         </div>
 
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -236,11 +236,11 @@ export default function EventTypesTab() {
         <EmptyStateCard
           icon={Zap}
           title="No Event Types"
-          description="Create your first event type to define structured webhook notifications."
+          description="Create your first event type to define structured event notifications."
         >
           <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
             <EditableTemplate
-              template={`curl ${getPublicApiUrl()}/event-types \\
+              template={`curl ${getPublicApiUrl("event-types", true)} \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
