@@ -3,6 +3,7 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { cors } from "hono/cors";
 import { etag } from "hono/etag";
 import { logger } from "hono/logger";
+import { isApiDocsEnabled } from "@/lib/publicApi/docs";
 import { registerAdminRoutes } from "@/lib/publicApi/routes/admin/queue-metrics";
 import { registerEndpointGroupItemRoutes } from "@/lib/publicApi/routes/endpoint-groups/[id]";
 import { registerEndpointGroupPortalRoutes } from "@/lib/publicApi/routes/endpoint-groups/[id]/token";
@@ -60,45 +61,58 @@ publicApiApp.use(
 );
 publicApiApp.use("*", etag());
 
-if (process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true") {
+publicApiApp.use("/spec", async (c, next) => {
+  if (!isApiDocsEnabled(c.env.NEXT_PUBLIC_API_DOCS_ENABLED)) {
+    return c.json({ error: "Not Found" }, 404);
+  }
 
-  publicApiApp.openAPIRegistry.registerComponent('securitySchemes', 'ApiKeyAuth', {
-    description: 'Bearer API key authentication',
-    type: 'http',
-    scheme: 'bearer',
-  });
+  await next();
+});
 
-  publicApiApp.openAPIRegistry.registerComponent('securitySchemes', 'SessionCookie', {
-    description: 'Session cookie authentication.',
-    type: 'apiKey',
-    in: 'cookie',
-    name: 'hookhq.session_token',
-  });
+publicApiApp.use("/ui", async (c, next) => {
+  if (!isApiDocsEnabled(c.env.NEXT_PUBLIC_API_DOCS_ENABLED)) {
+    return c.json({ error: "Not Found" }, 404);
+  }
 
-  publicApiApp.doc("/spec", {
-    openapi: "3.0.3",
-    info: {
-      title: "HookHQ API",
-      version: "1.0.0",
-      description: "The HookHQ API is a RESTful API that allows you to manage your endpoints and send messages.",
-    },
-    servers: [{ url: "/api/v1" }],
-    externalDocs: {
-      description: 'HookHQ Documentation',
-      url: `https://hookhq.dev/`,
-    },
-    security: [{ ApiKeyAuth: [] }, { SessionCookie: [] }],
-  });
+  await next();
+});
 
-  publicApiApp.get(
-    "/ui",
-    Scalar({
-      url: "spec",
-      pageTitle: "HookHQ API Reference",
-      theme: "deepSpace",
-    })
-  );
-}
+publicApiApp.openAPIRegistry.registerComponent("securitySchemes", "ApiKeyAuth", {
+  description: "Bearer API key authentication",
+  type: "http",
+  scheme: "bearer",
+});
+
+publicApiApp.openAPIRegistry.registerComponent("securitySchemes", "SessionCookie", {
+  description: "Session cookie authentication.",
+  type: "apiKey",
+  in: "cookie",
+  name: "hookhq.session_token",
+});
+
+publicApiApp.doc("/spec", {
+  openapi: "3.0.3",
+  info: {
+    title: "HookHQ API",
+    version: "1.0.0",
+    description: "The HookHQ API is a RESTful API that allows you to manage your endpoints and send messages.",
+  },
+  servers: [{ url: "/api/v1" }],
+  externalDocs: {
+    description: "HookHQ Documentation",
+    url: "https://hookhq.dev/",
+  },
+  security: [{ ApiKeyAuth: [] }, { SessionCookie: [] }],
+});
+
+publicApiApp.get(
+  "/ui",
+  Scalar({
+    url: "spec",
+    pageTitle: "HookHQ API Reference",
+    theme: "deepSpace",
+  })
+);
 
 registerAdminRoutes(publicApiApp);
 registerEnvironmentCollectionRoutes(publicApiApp);

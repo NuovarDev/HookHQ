@@ -1,5 +1,7 @@
 export interface CloudflareBindings {
   DATABASE: D1Database;
+  AUTH_SECRET?: string;
+  DESTINATION_ENCRYPTION_KEY?: string;
 }
 
 declare global {

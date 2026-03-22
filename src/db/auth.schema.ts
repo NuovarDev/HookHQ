@@ -5,9 +5,7 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" })
-    .default(false)
-    .notNull(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -20,9 +18,7 @@ export const users = sqliteTable("users", {
   banned: integer("banned", { mode: "boolean" }).default(false),
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
-  twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(
-    false,
-  ),
+  twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
   lastEnvironment: text("last_environment"),
 });
 
@@ -53,7 +49,7 @@ export const sessions = sqliteTable(
     longitude: text("longitude"),
     impersonatedBy: text("impersonated_by"),
   },
-  (table) => [index("sessions_userId_idx").on(table.userId)],
+  table => [index("sessions_userId_idx").on(table.userId)]
 );
 
 export const accounts = sqliteTable(
@@ -83,7 +79,7 @@ export const accounts = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("accounts_userId_idx").on(table.userId)],
+  table => [index("accounts_userId_idx").on(table.userId)]
 );
 
 export const verifications = sqliteTable(
@@ -101,7 +97,7 @@ export const verifications = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("verifications_identifier_idx").on(table.identifier)],
+  table => [index("verifications_identifier_idx").on(table.identifier)]
 );
 
 export const apikeys = sqliteTable("apikeys", {
@@ -117,9 +113,7 @@ export const apikeys = sqliteTable("apikeys", {
   refillAmount: integer("refill_amount"),
   lastRefillAt: integer("last_refill_at", { mode: "timestamp_ms" }),
   enabled: integer("enabled", { mode: "boolean" }).default(true),
-  rateLimitEnabled: integer("rate_limit_enabled", { mode: "boolean" }).default(
-    true,
-  ),
+  rateLimitEnabled: integer("rate_limit_enabled", { mode: "boolean" }).default(true),
   rateLimitTimeWindow: integer("rate_limit_time_window").default(86400000),
   rateLimitMax: integer("rate_limit_max").default(10),
   requestCount: integer("request_count").default(0),

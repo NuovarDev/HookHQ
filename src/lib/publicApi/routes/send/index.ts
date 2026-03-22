@@ -59,10 +59,6 @@ export const sendWebhookRoute = createRoute({
   description: "Send an event to endpoints and/or endpoint groups. When sending to a group, `eventType` is required.",
   request: {
     headers: z.object({
-      authorization: z.string().openapi({
-        description: "Bearer API key",
-        example: "Bearer wh_1234567890abcdef",
-      }),
       "idempotency-key": z.string().optional().openapi({
         description: "Optional idempotency key",
         example: "1234567890",

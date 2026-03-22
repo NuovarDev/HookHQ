@@ -94,6 +94,9 @@
       "AUTH_SECRET": {
         "description": "Generate a random string using `openssl rand -base64 32`. Required."
       },
+      "DESTINATION_ENCRYPTION_KEY": {
+        "description": "Generate a random string using `openssl rand -base64 32`. Required."
+      },
       "NEXT_PUBLIC_API_DOCS_ENABLED": {
         "description": "Whether to enable public API docs at /api and /api/auth/reference. Default is 'true'."
       },

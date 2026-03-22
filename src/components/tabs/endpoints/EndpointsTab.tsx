@@ -119,7 +119,7 @@ async function fetchProxyGroups() {
   }
 }
 
-function getEndpointPayload(formData: EndpointFormState) {
+function getEndpointPayload(formData: EndpointFormState, existingEndpoint: Endpoint | null) {
   const customHeaders = formData.customHeaders.trim()
     ? (JSON.parse(formData.customHeaders) as Record<string, string>)
     : undefined;
@@ -134,7 +134,7 @@ function getEndpointPayload(formData: EndpointFormState) {
         ? {
             url: formData.target.trim(),
             timeoutMs: formData.timeoutMs,
-            customHeaders,
+            ...(customHeaders !== undefined || !existingEndpoint ? { customHeaders } : {}),
             proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
           }
         : formData.destinationType === "sqs"
@@ -142,13 +142,17 @@ function getEndpointPayload(formData: EndpointFormState) {
               queueUrl: formData.target.trim(),
               region: formData.sqsRegion.trim(),
               accessKeyId: formData.sqsAccessKeyId.trim(),
-              secretAccessKey: formData.sqsSecretAccessKey.trim(),
+              ...(formData.sqsSecretAccessKey.trim() || !existingEndpoint
+                ? { secretAccessKey: formData.sqsSecretAccessKey.trim() }
+                : {}),
               delaySeconds: formData.sqsDelaySeconds || undefined,
               messageGroupId: formData.sqsMessageGroupId.trim() || undefined,
             }
           : {
               topicName: formData.target.trim(),
-              serviceAccountJson: formData.pubsubServiceAccountJson,
+              ...(formData.pubsubServiceAccountJson.trim() || !existingEndpoint
+                ? { serviceAccountJson: formData.pubsubServiceAccountJson.trim() }
+                : {}),
               attributes: formData.pubsubAttributes.trim()
                 ? (JSON.parse(formData.pubsubAttributes) as Record<string, string>)
                 : undefined,
@@ -230,10 +234,10 @@ export default function EndpointsTab() {
       target: getEndpointTarget(endpoint),
       sqsRegion: endpoint.destinationType === "sqs" ? endpoint.destination.region : "",
       sqsAccessKeyId: endpoint.destinationType === "sqs" ? endpoint.destination.accessKeyId : "",
-      sqsSecretAccessKey: endpoint.destinationType === "sqs" ? endpoint.destination.secretAccessKey : "",
+      sqsSecretAccessKey: "",
       sqsDelaySeconds: endpoint.destinationType === "sqs" ? (endpoint.destination.delaySeconds ?? 0) : 0,
       sqsMessageGroupId: endpoint.destinationType === "sqs" ? (endpoint.destination.messageGroupId ?? "") : "",
-      pubsubServiceAccountJson: endpoint.destinationType === "pubsub" ? endpoint.destination.serviceAccountJson : "",
+      pubsubServiceAccountJson: "",
       pubsubAttributes:
         endpoint.destinationType === "pubsub" && endpoint.destination.attributes
           ? JSON.stringify(endpoint.destination.attributes, null, 2)
@@ -248,10 +252,7 @@ export default function EndpointsTab() {
       autoDisableEnabled: endpoint.autoDisable.enabled,
       autoDisableThreshold: endpoint.autoDisable.threshold,
       timeoutMs: endpoint.destinationType === "webhook" ? (endpoint.destination.timeoutMs ?? 10000) : 10000,
-      customHeaders:
-        endpoint.destinationType === "webhook" && endpoint.destination.customHeaders
-          ? JSON.stringify(endpoint.destination.customHeaders, null, 2)
-          : "",
+      customHeaders: "",
       proxyGroupId: endpoint.destinationType === "webhook" ? endpoint.destination.proxyGroupId || "none" : "none",
     });
     setEditingEndpoint(endpoint);
@@ -261,7 +262,7 @@ export default function EndpointsTab() {
   async function handleSubmit() {
     try {
       setError(null);
-      const payload = getEndpointPayload(formData);
+      const payload = getEndpointPayload(formData, editingEndpoint);
 
       if (editingEndpoint) {
         const updatedEndpoint = await updateEndpoint(editingEndpoint.id, payload);
@@ -495,6 +496,12 @@ export default function EndpointsTab() {
                       placeholder={`{"type":"service_account","project_id":"my-project",...}`}
                       rows={4}
                     />
+                    {editingEndpoint?.destinationType === "pubsub" &&
+                    editingEndpoint.destination.hasServiceAccountJson ? (
+                      <p className="text-sm text-muted-foreground">
+                        A service account is already stored. Paste a new JSON document only if you want to replace it.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="col-span-2 space-y-2">
@@ -629,6 +636,12 @@ export default function EndpointsTab() {
                       onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
                       placeholder='{"Authorization":"Bearer token","X-Custom":"value"}'
                     />
+                    {editingEndpoint?.destinationType === "webhook" && editingEndpoint.destination.hasCustomHeaders ? (
+                      <p className="text-sm text-muted-foreground">
+                        Custom headers are already stored. Leave this blank to keep them, or enter new JSON to replace
+                        them.
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">
@@ -680,6 +693,12 @@ export default function EndpointsTab() {
                         setFormData(current => ({ ...current, sqsSecretAccessKey: event.target.value }))
                       }
                     />
+                    {editingEndpoint?.destinationType === "sqs" && editingEndpoint.destination.hasSecretAccessKey ? (
+                      <p className="text-sm text-muted-foreground">
+                        A secret access key is already stored. Leave this blank to keep it, or enter a new value to
+                        replace it.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="endpoint-sqs-group-id">FIFO Group ID</Label>

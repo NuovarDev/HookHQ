@@ -13,17 +13,23 @@ import type { AutoDisableConfig, DestinationConfig, FailureAlertConfig, RetryCon
 
 function normalizeDestinationInput(
   destinationType: "webhook" | "sqs" | "pubsub" | undefined,
-  destination: Record<string, unknown> | DestinationConfig
+  destination: Record<string, unknown> | DestinationConfig,
+  existingDestination?: DestinationConfig
 ): DestinationConfig {
   const rawDestination = destination as Record<string, unknown>;
 
   if (destinationType === "sqs") {
+    const existing = existingDestination?.type === "sqs" ? existingDestination : undefined;
+
     return {
       type: "sqs",
-      queueUrl: String(rawDestination.queueUrl ?? ""),
-      region: String(rawDestination.region ?? ""),
-      accessKeyId: String(rawDestination.accessKeyId ?? ""),
-      secretAccessKey: String(rawDestination.secretAccessKey ?? ""),
+      queueUrl: String(rawDestination.queueUrl ?? existing?.queueUrl ?? ""),
+      region: String(rawDestination.region ?? existing?.region ?? ""),
+      accessKeyId: String(rawDestination.accessKeyId ?? existing?.accessKeyId ?? ""),
+      secretAccessKey:
+        typeof rawDestination.secretAccessKey === "string" && rawDestination.secretAccessKey.trim()
+          ? rawDestination.secretAccessKey
+          : (existing?.secretAccessKey ?? ""),
       delaySeconds: rawDestination.delaySeconds != null ? Number(rawDestination.delaySeconds) : undefined,
       messageGroupId: rawDestination.messageGroupId ? String(rawDestination.messageGroupId) : undefined,
       messageDeduplicationId: rawDestination.messageDeduplicationId
@@ -33,25 +39,37 @@ function normalizeDestinationInput(
   }
 
   if (destinationType === "pubsub") {
+    const existing = existingDestination?.type === "pubsub" ? existingDestination : undefined;
+
     return {
       type: "pubsub",
-      topicName: String(rawDestination.topicName ?? ""),
-      serviceAccountJson: String(rawDestination.serviceAccountJson ?? ""),
+      topicName: String(rawDestination.topicName ?? existing?.topicName ?? ""),
+      serviceAccountJson:
+        typeof rawDestination.serviceAccountJson === "string" && rawDestination.serviceAccountJson.trim()
+          ? rawDestination.serviceAccountJson
+          : (existing?.serviceAccountJson ?? ""),
       attributes: (rawDestination.attributes as Record<string, string> | undefined) ?? {},
       orderingKey: rawDestination.orderingKey ? String(rawDestination.orderingKey) : undefined,
     };
   }
 
+  const existing = existingDestination?.type === "webhook" ? existingDestination : undefined;
+
   return {
     type: "webhook",
-    url: String(rawDestination.url ?? ""),
-    timeoutMs: rawDestination.timeoutMs != null ? Number(rawDestination.timeoutMs) : 30000,
-    customHeaders: (rawDestination.customHeaders as Record<string, string> | undefined) ?? {},
+    url: String(rawDestination.url ?? existing?.url ?? ""),
+    timeoutMs: rawDestination.timeoutMs != null ? Number(rawDestination.timeoutMs) : (existing?.timeoutMs ?? 30000),
+    customHeaders:
+      rawDestination.customHeaders !== undefined
+        ? ((rawDestination.customHeaders as Record<string, string> | undefined) ?? {})
+        : (existing?.customHeaders ?? {}),
     proxyGroupId: (rawDestination.proxyGroupId as string | null | undefined) ?? null,
   };
 }
 
-export function formatEndpoint(endpoint: typeof endpoints.$inferSelect) {
+export async function formatEndpoint(endpoint: typeof endpoints.$inferSelect, env?: CloudflareEnv) {
+  const destination = await resolveDestinationConfig(endpoint, env);
+
   return {
     id: endpoint.id,
     environmentId: endpoint.environmentId,
@@ -62,7 +80,30 @@ export function formatEndpoint(endpoint: typeof endpoints.$inferSelect) {
       endpoint.destinationType === "sqs" || endpoint.destinationType === "pubsub"
         ? endpoint.destinationType
         : "webhook",
-    destination: resolveDestinationConfig(endpoint),
+    destination:
+      destination.type === "webhook"
+        ? {
+            url: destination.url,
+            timeoutMs: destination.timeoutMs,
+            hasCustomHeaders: Object.keys(destination.customHeaders ?? {}).length > 0,
+            proxyGroupId: destination.proxyGroupId ?? null,
+          }
+        : destination.type === "sqs"
+          ? {
+              queueUrl: destination.queueUrl,
+              region: destination.region,
+              accessKeyId: destination.accessKeyId,
+              hasSecretAccessKey: Boolean(destination.secretAccessKey),
+              delaySeconds: destination.delaySeconds,
+              messageGroupId: destination.messageGroupId,
+              messageDeduplicationId: destination.messageDeduplicationId,
+            }
+          : {
+              topicName: destination.topicName,
+              hasServiceAccountJson: Boolean(destination.serviceAccountJson),
+              attributes: destination.attributes ?? {},
+              orderingKey: destination.orderingKey,
+            },
     enabled: endpoint.isActive,
     retry: resolveRetryConfig(endpoint),
     autoDisable: parseAutoDisableConfig(endpoint.autoDisableConfig),
@@ -86,7 +127,7 @@ export function formatEndpointGroup(group: typeof endpointGroups.$inferSelect) {
   };
 }
 
-export function buildEndpointInsertValues(input: {
+export async function buildEndpointInsertValues(input: {
   environmentId: string;
   name: string;
   description?: string;
@@ -98,6 +139,7 @@ export function buildEndpointInsertValues(input: {
   autoDisable?: Partial<AutoDisableConfig>;
   id?: string;
   now?: Date;
+  env?: CloudflareEnv;
 }) {
   const now = input.now ?? new Date();
   const retry = input.retry;
@@ -132,16 +174,16 @@ export function buildEndpointInsertValues(input: {
     maxRetries: retry?.maxAttempts ?? 3,
     autoDisableConfig,
     timeoutMs: destination.type === "webhook" ? destination.timeoutMs : 30000,
-    headers: destination.type === "webhook" ? JSON.stringify(destination.customHeaders ?? {}) : null,
+    headers: null,
     proxyGroupId: destination.type === "webhook" ? (destination.proxyGroupId ?? null) : null,
     destinationType: input.destinationType ?? destination.type,
-    destinationConfig: serializeDestinationConfig(destination),
+    destinationConfig: await serializeDestinationConfig(destination, input.env),
     createdAt: now,
     updatedAt: now,
   };
 }
 
-export function buildEndpointUpdateValues(input: {
+export async function buildEndpointUpdateValues(input: {
   name?: string;
   description?: string;
   eventTypes?: string[];
@@ -151,6 +193,8 @@ export function buildEndpointUpdateValues(input: {
   retry?: Partial<RetryConfig>;
   autoDisable?: Partial<AutoDisableConfig>;
   existingAutoDisable?: AutoDisableConfig;
+  existingDestination?: DestinationConfig;
+  env?: CloudflareEnv;
 }) {
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
@@ -164,7 +208,7 @@ export function buildEndpointUpdateValues(input: {
   }
 
   if (input.destination) {
-    const destination = normalizeDestinationInput(input.destinationType, input.destination);
+    const destination = normalizeDestinationInput(input.destinationType, input.destination, input.existingDestination);
     updateData.url =
       destination.type === "webhook"
         ? destination.url
@@ -172,9 +216,9 @@ export function buildEndpointUpdateValues(input: {
           ? destination.queueUrl
           : destination.topicName;
     updateData.timeoutMs = destination.type === "webhook" ? destination.timeoutMs : 30000;
-    updateData.headers = destination.type === "webhook" ? JSON.stringify(destination.customHeaders ?? {}) : null;
+    updateData.headers = null;
     updateData.proxyGroupId = destination.type === "webhook" ? (destination.proxyGroupId ?? null) : null;
-    updateData.destinationConfig = serializeDestinationConfig(destination);
+    updateData.destinationConfig = await serializeDestinationConfig(destination, input.env);
     updateData.destinationType = destination.type;
   }
 

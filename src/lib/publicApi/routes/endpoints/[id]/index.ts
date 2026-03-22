@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { endpoints } from "@/db/webhooks.schema";
 import { invalidateEndpointCache } from "@/lib/cacheUtils";
-import { parseAutoDisableConfig } from "@/lib/destinations/config";
+import { parseAutoDisableConfig, resolveDestinationConfig } from "@/lib/destinations/config";
 import { buildEndpointUpdateValues, formatEndpoint } from "@/lib/publicApi/serializers";
 import {
   deleteResponseSchema,
@@ -89,7 +89,7 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
     const db = await getDb(c.env);
     const endpoint = await db.select().from(endpoints).where(eq(endpoints.id, id)).limit(1);
     if (endpoint.length === 0) return jsonError("Endpoint not found", 404);
-    return c.json({ endpoint: formatEndpoint(endpoint[0]) }, 200);
+    return c.json({ endpoint: await formatEndpoint(endpoint[0], c.env) }, 200);
   }) as never);
 
   app.openapi(deleteEndpointRoute, (async (c: any) => {
@@ -119,7 +119,7 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
     const db = await getDb(c.env);
     const existing = await db.select().from(endpoints).where(eq(endpoints.id, id)).limit(1);
     if (existing.length === 0) return jsonError("Endpoint not found", 404);
-    const updateData = buildEndpointUpdateValues({
+    const updateData = await buildEndpointUpdateValues({
       name: body.name,
       description: body.description,
       eventTypes: body.eventTypes,
@@ -129,6 +129,8 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
       retry: body.retry,
       autoDisable: body.autoDisable,
       existingAutoDisable: parseAutoDisableConfig(existing[0].autoDisableConfig),
+      existingDestination: body.destination ? await resolveDestinationConfig(existing[0], c.env) : undefined,
+      env: c.env,
     });
     await db
       .update(endpoints)
@@ -136,6 +138,6 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
       .where(eq(endpoints.id, id));
     await invalidateEndpointCache(id);
     const updated = await db.select().from(endpoints).where(eq(endpoints.id, id)).limit(1);
-    return c.json({ message: "Endpoint updated successfully", endpoint: formatEndpoint(updated[0]) }, 200);
+    return c.json({ message: "Endpoint updated successfully", endpoint: await formatEndpoint(updated[0], c.env) }, 200);
   }) as never);
 }

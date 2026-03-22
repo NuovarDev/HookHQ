@@ -1,7 +1,9 @@
 import { initAuth } from "@/auth";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardOverview } from "@/components/DashboardOverview";
+import { isApiDocsEnabled } from "@/lib/publicApi/docs";
 
 export default async function DashboardPage() {
   const authInstance = await initAuth();
@@ -12,9 +14,11 @@ export default async function DashboardPage() {
     redirect("/"); // Redirect to home if no session
   }
 
+  const { env } = await getCloudflareContext({ async: true });
+
   return (
     <div className="flex flex-col min-h-screen font-[family-name:var(--font-geist-sans)]">
-      <DashboardOverview />
+      <DashboardOverview apiDocsEnabled={isApiDocsEnabled(env.NEXT_PUBLIC_API_DOCS_ENABLED)} />
     </div>
   );
 }

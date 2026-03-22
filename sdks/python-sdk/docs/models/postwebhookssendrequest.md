@@ -1,9 +1,0 @@
-# PostWebhooksSendRequest
-
-
-## Fields
-
-| Field                                                                                    | Type                                                                                     | Required                                                                                 | Description                                                                              | Example                                                                                  |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `idempotency_key`                                                                        | *Optional[str]*                                                                          | :heavy_minus_sign:                                                                       | Optional idempotency key                                                                 | 1234567890                                                                               |
-| `request_body`                                                                           | [Optional[models.PostWebhooksSendRequestBody]](../models/postwebhookssendrequestbody.md) | :heavy_minus_sign:                                                                       | N/A                                                                                      |                                                                                          |

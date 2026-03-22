@@ -152,7 +152,7 @@ export async function handleSendEventRequest({
     }
 
     const retryConfig = await createRetryConfig(resolveRetryConfig(endpoint), env);
-    const destination = resolveDestinationConfig(endpoint);
+    const destination = await resolveDestinationConfig(endpoint, env);
 
     if (shouldUseKV) {
       maxRetryPeriodDays = Math.max(

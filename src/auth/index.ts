@@ -2,7 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { betterAuth } from "better-auth";
 import { withCloudflare } from "better-auth-cloudflare";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { openAPI, apiKey, admin, twoFactor } from "better-auth/plugins";
+import { apiKey, admin, twoFactor } from "better-auth/plugins";
 import { getDb } from "../db";
 
 type AuthBuilderOptions = {
@@ -39,7 +39,6 @@ async function authBuilder({ cf, env }: AuthBuilderOptions = {}, useEnv = false)
           enabled: true,
         },
         plugins: [
-          ...(process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true" ? [openAPI()] : []),
           apiKey({
             enableMetadata: true,
             defaultPrefix: "wh_",
@@ -60,6 +59,10 @@ async function authBuilder({ cf, env }: AuthBuilderOptions = {}, useEnv = false)
           },
           additionalFields: {
             lastEnvironment: {
+              type: "string",
+              required: false,
+            },
+            role: {
               type: "string",
               required: false,
             },
@@ -121,13 +124,17 @@ export const auth = betterAuth({
     {
       secret: process.env.AUTH_SECRET,
       // Include only configurations that influence the Drizzle schema
-      plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: "wh_" }), admin(), twoFactor()],
+      plugins: [apiKey({ enableMetadata: true, defaultPrefix: "wh_" }), admin(), twoFactor()],
       emailAndPassword: {
         enabled: true,
       },
       user: {
         additionalFields: {
           lastEnvironment: {
+            type: "string",
+            required: false,
+          },
+          role: {
             type: "string",
             required: false,
           },

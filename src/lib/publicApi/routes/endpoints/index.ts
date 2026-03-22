@@ -5,12 +5,7 @@ import { serverConfig } from "@/db/environments.schema";
 import { endpoints } from "@/db/webhooks.schema";
 import { parseAutoDisableConfig } from "@/lib/destinations/config";
 import { buildEndpointInsertValues, formatEndpoint } from "@/lib/publicApi/serializers";
-import {
-  enabledQuerySchema,
-  endpointCreateSchema,
-  endpointSchema,
-  errorResponseSchema,
-} from "@/lib/publicApi/schemas";
+import { enabledQuerySchema, endpointCreateSchema, endpointSchema, errorResponseSchema } from "@/lib/publicApi/schemas";
 import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
 const listEndpointsRoute = createRoute({
@@ -82,7 +77,7 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
       .from(endpoints)
       .where(and(...conditions))
       .orderBy(endpoints.createdAt);
-    return c.json({ endpoints: endpointList.map(formatEndpoint) }, 200);
+    return c.json({ endpoints: await Promise.all(endpointList.map(endpoint => formatEndpoint(endpoint, c.env))) }, 200);
   }) as never);
 
   app.openapi(createEndpointRoute, (async (c: any) => {
@@ -97,7 +92,7 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
 
     const db = await getDb(c.env);
     const [globalConfig] = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
-    const values = buildEndpointInsertValues({
+    const values = await buildEndpointInsertValues({
       id: endpointId,
       environmentId: auth.environmentId,
       name: body.name,
@@ -109,9 +104,10 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
       retry: body.retry,
       autoDisable: body.autoDisable ?? parseAutoDisableConfig(globalConfig?.defaultAutoDisableConfig),
       now,
+      env: c.env,
     });
     await db.insert(endpoints).values(values);
 
-    return c.json(formatEndpoint(values as typeof endpoints.$inferSelect), 200);
+    return c.json(await formatEndpoint(values as typeof endpoints.$inferSelect, c.env), 200);
   }) as never);
 }

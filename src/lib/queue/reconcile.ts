@@ -120,7 +120,7 @@ export async function reconcileStalePendingMessages(env: CloudflareEnv): Promise
           timestamp: (message.queuedAt ?? message.createdAt).toISOString(),
           idempotencyKey: message.idempotencyKey ?? undefined,
           retryConfig,
-          destination: resolveDestinationConfig(endpoint),
+          destination: await resolveDestinationConfig(endpoint, env),
         });
       }
 

@@ -6,6 +6,7 @@ import type {
   RetryConfig,
   RetryStrategy,
 } from "@/lib/destinations/types";
+import { decryptValue, encryptValue } from "@/lib/destinations/secrets";
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
   strategy: "exponential",
@@ -69,10 +70,14 @@ export function resolveRetryConfig(record: EndpointRecordShape): RetryConfig {
   };
 }
 
-export function resolveDestinationConfig(record: EndpointRecordShape): DestinationConfig {
+export async function resolveDestinationConfig(
+  record: EndpointRecordShape,
+  env?: CloudflareEnv
+): Promise<DestinationConfig> {
   const destinationType =
     record.destinationType === "sqs" || record.destinationType === "pubsub" ? record.destinationType : "webhook";
-  const config = parseJson<Record<string, unknown>>(record.destinationConfig, {});
+  const decryptedConfig = await decryptValue(record.destinationConfig, env);
+  const config = parseJson<Record<string, unknown>>(decryptedConfig, {});
 
   if (destinationType === "sqs") {
     return {
@@ -104,38 +109,51 @@ export function resolveDestinationConfig(record: EndpointRecordShape): Destinati
     type: "webhook",
     url: String(config.url ?? record.url),
     timeoutMs: Math.max(1000, Number(config.timeoutMs ?? record.timeoutMs ?? 30000)),
-    customHeaders: parseJson<Record<string, string>>(record.headers, {}),
+    customHeaders:
+      typeof config.customHeaders === "object" && config.customHeaders !== null
+        ? (config.customHeaders as Record<string, string>)
+        : parseJson<Record<string, string>>(record.headers, {}),
     proxyGroupId: (config.proxyGroupId as string | null | undefined) ?? record.proxyGroupId,
   };
 }
 
-export function serializeDestinationConfig(config: DestinationConfig): string {
+export async function serializeDestinationConfig(config: DestinationConfig, env?: CloudflareEnv): Promise<string> {
   if (config.type === "sqs") {
-    return JSON.stringify({
-      queueUrl: config.queueUrl,
-      region: config.region,
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-      delaySeconds: config.delaySeconds,
-      messageGroupId: config.messageGroupId,
-      messageDeduplicationId: config.messageDeduplicationId,
-    });
+    return encryptValue(
+      JSON.stringify({
+        queueUrl: config.queueUrl,
+        region: config.region,
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+        delaySeconds: config.delaySeconds,
+        messageGroupId: config.messageGroupId,
+        messageDeduplicationId: config.messageDeduplicationId,
+      }),
+      env
+    );
   }
 
   if (config.type === "pubsub") {
-    return JSON.stringify({
-      topicName: config.topicName,
-      serviceAccountJson: config.serviceAccountJson,
-      attributes: config.attributes ?? {},
-      orderingKey: config.orderingKey,
-    });
+    return encryptValue(
+      JSON.stringify({
+        topicName: config.topicName,
+        serviceAccountJson: config.serviceAccountJson,
+        attributes: config.attributes ?? {},
+        orderingKey: config.orderingKey,
+      }),
+      env
+    );
   }
 
-  return JSON.stringify({
-    url: config.url,
-    timeoutMs: config.timeoutMs,
-    proxyGroupId: config.proxyGroupId ?? null,
-  });
+  return encryptValue(
+    JSON.stringify({
+      url: config.url,
+      timeoutMs: config.timeoutMs,
+      customHeaders: config.customHeaders ?? {},
+      proxyGroupId: config.proxyGroupId ?? null,
+    }),
+    env
+  );
 }
 
 export function parseFailureAlertConfig(value: string | null | undefined): FailureAlertConfig {

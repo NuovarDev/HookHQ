@@ -23,7 +23,7 @@ export async function enqueueDeliveryMessages(
   await env.WEBHOOKS.sendBatch(
     messages.map(message => ({
       body: message,
-    })) as Iterable<MessageSendRequest<Body>>
+    }))
   );
 }
 
@@ -38,5 +38,5 @@ export async function enqueueDeliveryMessage(
     return;
   }
 
-  await env.WEBHOOKS.send(message as Body);
+  await env.WEBHOOKS.send(message);
 }

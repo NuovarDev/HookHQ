@@ -46,12 +46,14 @@ interface DashboardMetricsData {
   }>;
 }
 
-const quickLinks = [
-  { label: "Create Endpoint", href: "/dashboard/endpoints" },
-  { label: "View Metrics", href: "/dashboard/metrics" },
-  { label: "Event Logs", href: "/dashboard/log" },
-  ...(process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true" ? [{ label: "API Documentation", href: getPublicApiUrl() }] : []),
-];
+function getQuickLinks(apiDocsEnabled: boolean) {
+  return [
+    { label: "Create Endpoint", href: "/dashboard/endpoints" },
+    { label: "View Metrics", href: "/dashboard/metrics" },
+    { label: "Event Logs", href: "/dashboard/log" },
+    ...(apiDocsEnabled ? [{ label: "API Documentation", href: getPublicApiUrl() }] : []),
+  ];
+}
 
 function formatDuration(ms: number) {
   if (ms < 1000) return `${Math.round(ms)}ms`;
@@ -131,7 +133,7 @@ function buildRecentEvents(data?: DashboardMetricsData): RecentEvent[] {
   );
 }
 
-export function DashboardOverview() {
+export function DashboardOverview({ apiDocsEnabled }: { apiDocsEnabled: boolean }) {
   const [data, setData] = useState<DashboardMetricsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +175,7 @@ export function DashboardOverview() {
 
   const metrics = buildMetrics(data ?? undefined);
   const recentEvents = buildRecentEvents(data ?? undefined);
+  const quickLinks = getQuickLinks(apiDocsEnabled);
 
   return (
     <div className="space-y-6">

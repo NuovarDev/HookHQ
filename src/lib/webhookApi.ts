@@ -27,7 +27,7 @@ export type WebhookEndpoint = EndpointBase & {
   destination: {
     url: string;
     timeoutMs?: number;
-    customHeaders?: Record<string, string>;
+    hasCustomHeaders: boolean;
     proxyGroupId?: string | null;
   };
 };
@@ -38,7 +38,7 @@ export type SqsEndpoint = EndpointBase & {
     queueUrl: string;
     region: string;
     accessKeyId: string;
-    secretAccessKey: string;
+    hasSecretAccessKey: boolean;
     delaySeconds?: number;
     messageGroupId?: string;
     messageDeduplicationId?: string;
@@ -49,13 +49,58 @@ export type PubSubEndpoint = EndpointBase & {
   destinationType: "pubsub";
   destination: {
     topicName: string;
-    serviceAccountJson: string;
+    hasServiceAccountJson: boolean;
     attributes?: Record<string, string>;
     orderingKey?: string;
   };
 };
 
 export type Endpoint = WebhookEndpoint | SqsEndpoint | PubSubEndpoint;
+
+export type EndpointWriteDestination =
+  | {
+      url: string;
+      timeoutMs?: number;
+      customHeaders?: Record<string, string>;
+      proxyGroupId?: string | null;
+    }
+  | {
+      queueUrl: string;
+      region: string;
+      accessKeyId: string;
+      secretAccessKey?: string;
+      delaySeconds?: number;
+      messageGroupId?: string;
+      messageDeduplicationId?: string;
+    }
+  | {
+      topicName: string;
+      serviceAccountJson?: string;
+      attributes?: Record<string, string>;
+      orderingKey?: string;
+    };
+
+export type EndpointWritePayload = {
+  name: string;
+  description?: string;
+  eventTypes?: string[];
+  destinationType: "webhook" | "sqs" | "pubsub";
+  destination: EndpointWriteDestination;
+  enabled: boolean;
+  retry: Partial<Endpoint["retry"]>;
+  autoDisable?: Partial<Endpoint["autoDisable"]>;
+};
+
+export type EndpointUpdatePayload = Partial<{
+  name: string;
+  description: string;
+  eventTypes: string[];
+  destinationType: "webhook" | "sqs" | "pubsub";
+  destination: EndpointWriteDestination;
+  enabled: boolean;
+  retry: Partial<Endpoint["retry"]>;
+  autoDisable: Partial<Endpoint["autoDisable"]>;
+}>;
 
 export interface EndpointGroup {
   id: string;
@@ -126,16 +171,7 @@ export async function fetchEndpoints() {
   return data.endpoints;
 }
 
-export async function createEndpoint(payload: {
-  name: string;
-  description?: string;
-  eventTypes?: string[];
-  destinationType: "webhook" | "sqs" | "pubsub";
-  destination: Endpoint["destination"];
-  enabled: boolean;
-  retry: Partial<Endpoint["retry"]>;
-  autoDisable?: Partial<Endpoint["autoDisable"]>;
-}) {
+export async function createEndpoint(payload: EndpointWritePayload) {
   return requestJson<Endpoint>("/endpoints", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -143,10 +179,7 @@ export async function createEndpoint(payload: {
   });
 }
 
-export async function updateEndpoint(
-  id: string,
-  payload: Partial<Omit<Endpoint, "id" | "environmentId" | "createdAt" | "updatedAt">>
-) {
+export async function updateEndpoint(id: string, payload: EndpointUpdatePayload) {
   const data = await requestJson<{ message: string; endpoint: Endpoint }>(`/endpoints/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
