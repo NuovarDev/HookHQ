@@ -44,6 +44,9 @@ importers:
       '@radix-ui/react-tabs':
         specifier: ^1.1.12
         version: 1.1.13(@types/react-dom@19.2.0(@types/react@19.2.0))(@types/react@19.2.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@sagi.io/workers-jwt':
+        specifier: ^0.0.26
+        version: 0.0.26
       '@scalar/hono-api-reference':
         specifier: ^0.10.4
         version: 0.10.4(hono@4.12.8)
@@ -2362,6 +2365,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@sagi.io/globalthis@0.0.2':
+    resolution: {integrity: sha512-sazB1BcX8IK5UxDgEEd0J1bPB0rwH0k725nYva6ofBhvNX8lMytuRf3mlkTkytNHKTi4EGxBOY+YAD3PkeEtlA==}
+
+  '@sagi.io/workers-jwt@0.0.26':
+    resolution: {integrity: sha512-4qZq5mln4TEMrOhhh9emajVImrflfI/2C1UN1CTgl1R3sReYimQl7dc7/gmVfSHvoCQE529qMohBUMTNnxS5AA==}
+
   '@scalar/core@0.4.4':
     resolution: {integrity: sha512-eXIG0opyQn45FzpTp0dAWFP1Vjcx+helgUAsa0uN36tyUR7DSmz2kRwHqqedzvPWryeRCKPz7/vwzKpETZp5lg==}
     engines: {node: '>=22'}
@@ -3970,6 +3979,9 @@ packages:
 
   jose@6.2.1:
     resolution: {integrity: sha512-jUaKr1yrbfaImV7R2TN/b3IcZzsw38/chqMpo2XJ7i2F8AfM/lA4G1goC3JVEwg0H7UldTmSt3P68nt31W7/mw==}
+
+  js-base64@3.7.8:
+    resolution: {integrity: sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -7624,6 +7636,13 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.52.4':
     optional: true
 
+  '@sagi.io/globalthis@0.0.2': {}
+
+  '@sagi.io/workers-jwt@0.0.26':
+    dependencies:
+      '@sagi.io/globalthis': 0.0.2
+      js-base64: 3.7.8
+
   '@scalar/core@0.4.4':
     dependencies:
       '@scalar/types': 0.7.4
@@ -9411,6 +9430,8 @@ snapshots:
   jiti@1.21.7: {}
 
   jose@6.2.1: {}
+
+  js-base64@3.7.8: {}
 
   js-tokens@4.0.0: {}
 

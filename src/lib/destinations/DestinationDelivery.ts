@@ -2,6 +2,7 @@ import { webhookAttempts, endpoints, proxyServers, proxyGroups } from "@/db/webh
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { schema } from "@/db/schema";
+import { sendToPubSub } from "@/lib/destinations/pubsub";
 import { sendToSqs } from "@/lib/destinations/sqs";
 import type { DeliveryMessage } from "@/lib/queue/types";
 import type { DestinationConfig, WebhookDestinationConfig } from "@/lib/destinations/types";
@@ -102,6 +103,10 @@ export class DestinationDelivery {
 
       if (this.message.destination.type === "sqs") {
         return await this.sendToSqs(endpointData.id);
+      }
+
+      if (this.message.destination.type === "pubsub") {
+        return await this.sendToPubSub(endpointData.id);
       }
 
       return this.message.destination.proxyGroupId
@@ -253,6 +258,36 @@ export class DestinationDelivery {
     return result;
   }
 
+  private async sendToPubSub(endpointId: string): Promise<DeliveryResult> {
+    const destination = this.message.destination;
+    if (destination.type !== "pubsub") {
+      throw new Error("Invalid destination type for Pub/Sub delivery");
+    }
+
+    const payload = await this.getPayload();
+    const response = await sendToPubSub(destination, payload, this.env, this.message.idempotencyKey);
+    const responseTime = Date.now() - this.startTime;
+    const result: DeliveryResult = {
+      endpointId,
+      success: response.ok,
+      responseTime,
+      error: response.ok ? undefined : `HTTP ${response.status}: ${response.body}`,
+    };
+
+    await this.logAttempt(endpointId, result, {
+      requestUrl: response.requestUrl,
+      requestMethod: "POST",
+      requestHeaders: JSON.stringify({ "Content-Type": "application/json" }),
+      requestBody: JSON.stringify(payload),
+      responseStatus: response.status,
+      responseBody: response.body,
+      status: response.ok ? "delivered" : "failed",
+      errorMessage: result.error,
+    });
+
+    return result;
+  }
+
   private buildHeaders(destination: WebhookDestinationConfig): HeadersInit {
     return {
       "Content-Type": "application/json",
@@ -312,7 +347,9 @@ export class DestinationDelivery {
         details?.requestUrl ??
         (this.message.destination.type === "webhook"
           ? this.message.destination.url
-          : this.message.destination.queueUrl),
+          : this.message.destination.type === "sqs"
+            ? this.message.destination.queueUrl
+            : this.message.destination.topicName),
       requestMethod: details?.requestMethod ?? "POST",
       requestHeaders: details?.requestHeaders ?? null,
       requestBody: details?.requestBody ?? null,

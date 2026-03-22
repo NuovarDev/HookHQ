@@ -45,7 +45,17 @@ export type SqsEndpoint = EndpointBase & {
   };
 };
 
-export type Endpoint = WebhookEndpoint | SqsEndpoint;
+export type PubSubEndpoint = EndpointBase & {
+  destinationType: "pubsub";
+  destination: {
+    topicName: string;
+    serviceAccountJson: string;
+    attributes?: Record<string, string>;
+    orderingKey?: string;
+  };
+};
+
+export type Endpoint = WebhookEndpoint | SqsEndpoint | PubSubEndpoint;
 
 export interface EndpointGroup {
   id: string;
@@ -120,7 +130,7 @@ export async function createEndpoint(payload: {
   name: string;
   description?: string;
   eventTypes?: string[];
-  destinationType: "webhook" | "sqs";
+  destinationType: "webhook" | "sqs" | "pubsub";
   destination: Endpoint["destination"];
   enabled: boolean;
   retry: Partial<Endpoint["retry"]>;

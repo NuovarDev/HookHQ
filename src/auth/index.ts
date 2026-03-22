@@ -65,6 +65,9 @@ async function authBuilder({ cf, env }: AuthBuilderOptions = {}, useEnv = false)
             },
           },
         },
+        advanced: {
+          cookiePrefix: "hookhq",
+        }
       }
     )
   );
@@ -129,6 +132,9 @@ export const auth = betterAuth({
             required: false,
           },
         },
+      },
+      advanced: {
+        cookiePrefix: "hookhq",
       },
     }
   ),

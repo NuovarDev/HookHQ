@@ -70,7 +70,8 @@ export function resolveRetryConfig(record: EndpointRecordShape): RetryConfig {
 }
 
 export function resolveDestinationConfig(record: EndpointRecordShape): DestinationConfig {
-  const destinationType = record.destinationType === "sqs" ? "sqs" : "webhook";
+  const destinationType =
+    record.destinationType === "sqs" || record.destinationType === "pubsub" ? record.destinationType : "webhook";
   const config = parseJson<Record<string, unknown>>(record.destinationConfig, {});
 
   if (destinationType === "sqs") {
@@ -83,6 +84,19 @@ export function resolveDestinationConfig(record: EndpointRecordShape): Destinati
       delaySeconds: config.delaySeconds ? Number(config.delaySeconds) : undefined,
       messageGroupId: config.messageGroupId ? String(config.messageGroupId) : undefined,
       messageDeduplicationId: config.messageDeduplicationId ? String(config.messageDeduplicationId) : undefined,
+    };
+  }
+
+  if (destinationType === "pubsub") {
+    return {
+      type: "pubsub",
+      topicName: String(config.topicName ?? record.url),
+      serviceAccountJson: String(config.serviceAccountJson ?? ""),
+      attributes:
+        typeof config.attributes === "object" && config.attributes !== null
+          ? (config.attributes as Record<string, string>)
+          : {},
+      orderingKey: config.orderingKey ? String(config.orderingKey) : undefined,
     };
   }
 
@@ -105,6 +119,15 @@ export function serializeDestinationConfig(config: DestinationConfig): string {
       delaySeconds: config.delaySeconds,
       messageGroupId: config.messageGroupId,
       messageDeduplicationId: config.messageDeduplicationId,
+    });
+  }
+
+  if (config.type === "pubsub") {
+    return JSON.stringify({
+      topicName: config.topicName,
+      serviceAccountJson: config.serviceAccountJson,
+      attributes: config.attributes ?? {},
+      orderingKey: config.orderingKey,
     });
   }
 

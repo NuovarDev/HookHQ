@@ -2,7 +2,6 @@ import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import {
   errorResponseSchema,
   messageRetryParamSchema,
-  optionalAuthHeaderSchema,
   retryResponseSchema,
 } from "@/lib/publicApi/schemas";
 import { enqueueDeliveryMessage } from "@/lib/queue/enqueue";
@@ -15,7 +14,7 @@ const retryMessageRoute = createRoute({
   summary: "Retry Failed Message",
   description:
     "Retry a permanently failed delivery for a specific endpoint. This only works while the failed delivery record is still retained in failure storage.",
-  request: { headers: optionalAuthHeaderSchema, params: messageRetryParamSchema },
+  request: { params: messageRetryParamSchema },
   responses: {
     200: { description: "Success", content: { "application/json": { schema: retryResponseSchema } } },
     401: { description: "Unauthorized", content: { "application/json": { schema: errorResponseSchema } } },

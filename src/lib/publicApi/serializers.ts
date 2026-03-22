@@ -12,30 +12,42 @@ import { parseEventSubscriptions, serializeEventSubscriptions } from "@/lib/subs
 import type { AutoDisableConfig, DestinationConfig, FailureAlertConfig, RetryConfig } from "@/lib/destinations/types";
 
 function normalizeDestinationInput(
-  destinationType: "webhook" | "sqs" | undefined,
+  destinationType: "webhook" | "sqs" | "pubsub" | undefined,
   destination: Record<string, unknown> | DestinationConfig
 ): DestinationConfig {
+  const rawDestination = destination as Record<string, unknown>;
+
   if (destinationType === "sqs") {
     return {
       type: "sqs",
-      queueUrl: String(destination.queueUrl ?? ""),
-      region: String(destination.region ?? ""),
-      accessKeyId: String(destination.accessKeyId ?? ""),
-      secretAccessKey: String(destination.secretAccessKey ?? ""),
-      delaySeconds: destination.delaySeconds != null ? Number(destination.delaySeconds) : undefined,
-      messageGroupId: destination.messageGroupId ? String(destination.messageGroupId) : undefined,
-      messageDeduplicationId: destination.messageDeduplicationId
-        ? String(destination.messageDeduplicationId)
+      queueUrl: String(rawDestination.queueUrl ?? ""),
+      region: String(rawDestination.region ?? ""),
+      accessKeyId: String(rawDestination.accessKeyId ?? ""),
+      secretAccessKey: String(rawDestination.secretAccessKey ?? ""),
+      delaySeconds: rawDestination.delaySeconds != null ? Number(rawDestination.delaySeconds) : undefined,
+      messageGroupId: rawDestination.messageGroupId ? String(rawDestination.messageGroupId) : undefined,
+      messageDeduplicationId: rawDestination.messageDeduplicationId
+        ? String(rawDestination.messageDeduplicationId)
         : undefined,
+    };
+  }
+
+  if (destinationType === "pubsub") {
+    return {
+      type: "pubsub",
+      topicName: String(rawDestination.topicName ?? ""),
+      serviceAccountJson: String(rawDestination.serviceAccountJson ?? ""),
+      attributes: (rawDestination.attributes as Record<string, string> | undefined) ?? {},
+      orderingKey: rawDestination.orderingKey ? String(rawDestination.orderingKey) : undefined,
     };
   }
 
   return {
     type: "webhook",
-    url: String(destination.url ?? ""),
-    timeoutMs: destination.timeoutMs != null ? Number(destination.timeoutMs) : 30000,
-    customHeaders: (destination.customHeaders as Record<string, string> | undefined) ?? {},
-    proxyGroupId: (destination.proxyGroupId as string | null | undefined) ?? null,
+    url: String(rawDestination.url ?? ""),
+    timeoutMs: rawDestination.timeoutMs != null ? Number(rawDestination.timeoutMs) : 30000,
+    customHeaders: (rawDestination.customHeaders as Record<string, string> | undefined) ?? {},
+    proxyGroupId: (rawDestination.proxyGroupId as string | null | undefined) ?? null,
   };
 }
 
@@ -46,7 +58,10 @@ export function formatEndpoint(endpoint: typeof endpoints.$inferSelect) {
     name: endpoint.name,
     description: endpoint.description,
     eventTypes: parseEventSubscriptions(endpoint.topics),
-    destinationType: (endpoint.destinationType === "sqs" ? "sqs" : "webhook") as "webhook" | "sqs",
+    destinationType:
+      endpoint.destinationType === "sqs" || endpoint.destinationType === "pubsub"
+        ? endpoint.destinationType
+        : "webhook",
     destination: resolveDestinationConfig(endpoint),
     enabled: endpoint.isActive,
     retry: resolveRetryConfig(endpoint),
@@ -77,7 +92,7 @@ export function buildEndpointInsertValues(input: {
   description?: string;
   eventTypes?: string[];
   enabled?: boolean;
-  destinationType?: "webhook" | "sqs";
+  destinationType?: "webhook" | "sqs" | "pubsub";
   destination: Record<string, unknown> | DestinationConfig;
   retry?: Partial<RetryConfig>;
   autoDisable?: Partial<AutoDisableConfig>;
@@ -101,7 +116,12 @@ export function buildEndpointInsertValues(input: {
     name: input.name,
     description: input.description,
     topics: serializeEventSubscriptions(input.eventTypes),
-    url: destination.type === "webhook" ? destination.url : destination.queueUrl,
+    url:
+      destination.type === "webhook"
+        ? destination.url
+        : destination.type === "sqs"
+          ? destination.queueUrl
+          : destination.topicName,
     isActive: input.enabled ?? true,
     retryPolicy: retry?.strategy ?? "exponential",
     backoffStrategy: retry?.strategy ?? "exponential",
@@ -126,7 +146,7 @@ export function buildEndpointUpdateValues(input: {
   description?: string;
   eventTypes?: string[];
   enabled?: boolean;
-  destinationType?: "webhook" | "sqs";
+  destinationType?: "webhook" | "sqs" | "pubsub";
   destination?: Record<string, unknown> | DestinationConfig;
   retry?: Partial<RetryConfig>;
   autoDisable?: Partial<AutoDisableConfig>;
@@ -145,7 +165,12 @@ export function buildEndpointUpdateValues(input: {
 
   if (input.destination) {
     const destination = normalizeDestinationInput(input.destinationType, input.destination);
-    updateData.url = destination.type === "webhook" ? destination.url : destination.queueUrl;
+    updateData.url =
+      destination.type === "webhook"
+        ? destination.url
+        : destination.type === "sqs"
+          ? destination.queueUrl
+          : destination.topicName;
     updateData.timeoutMs = destination.type === "webhook" ? destination.timeoutMs : 30000;
     updateData.headers = destination.type === "webhook" ? JSON.stringify(destination.customHeaders ?? {}) : null;
     updateData.proxyGroupId = destination.type === "webhook" ? (destination.proxyGroupId ?? null) : null;

@@ -92,7 +92,11 @@ export class DestinationConsumer {
     }
 
     const destinationLabel =
-      message.destination.type === "webhook" ? message.destination.url : `SQS ${message.destination.queueUrl}`;
+      message.destination.type === "webhook"
+        ? message.destination.url
+        : message.destination.type === "sqs"
+          ? `SQS ${message.destination.queueUrl}`
+          : `Pub/Sub ${message.destination.topicName}`;
 
     await triggerFailureAlerts({
       env: this.env,

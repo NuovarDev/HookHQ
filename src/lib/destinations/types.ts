@@ -1,4 +1,4 @@
-export const DESTINATION_TYPES = ["webhook", "sqs"] as const;
+export const DESTINATION_TYPES = ["webhook", "sqs", "pubsub"] as const;
 export type DestinationType = (typeof DESTINATION_TYPES)[number];
 
 export const RETRY_STRATEGIES = ["none", "fixed", "linear", "exponential"] as const;
@@ -34,7 +34,15 @@ export interface SqsDestinationConfig {
   messageDeduplicationId?: string;
 }
 
-export type DestinationConfig = WebhookDestinationConfig | SqsDestinationConfig;
+export interface PubSubDestinationConfig {
+  type: "pubsub";
+  topicName: string;
+  serviceAccountJson: string;
+  attributes?: Record<string, string>;
+  orderingKey?: string;
+}
+
+export type DestinationConfig = WebhookDestinationConfig | SqsDestinationConfig | PubSubDestinationConfig;
 
 export interface FailureAlertConfig {
   enabled: boolean;

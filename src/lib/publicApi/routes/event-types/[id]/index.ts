@@ -8,8 +8,7 @@ import {
   errorResponseSchema,
   eventTypeSchema,
   eventTypeUpdateSchema,
-  idParamSchema,
-  optionalAuthHeaderSchema,
+  eventTypeIdParamSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -31,7 +30,7 @@ const getEventTypeRoute = createRoute({
   path: "/event-types/{id}",
   tags: ["Event Types"],
   summary: "Get Event Type",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: eventTypeIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -48,7 +47,7 @@ const deleteEventTypeRoute = createRoute({
   path: "/event-types/{id}",
   tags: ["Event Types"],
   summary: "Delete Event Type",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: eventTypeIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -72,8 +71,7 @@ const updateEventTypeRoute = createRoute({
   tags: ["Event Types"],
   summary: "Update Event Type",
   request: {
-    headers: optionalAuthHeaderSchema,
-    params: idParamSchema,
+    params: eventTypeIdParamSchema,
     body: { required: true, content: { "application/json": { schema: eventTypeUpdateSchema } } },
   },
   responses: {

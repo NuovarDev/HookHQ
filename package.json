@@ -41,6 +41,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.12",
+    "@sagi.io/workers-jwt": "^0.0.26",
     "@scalar/hono-api-reference": "^0.10.4",
     "@smithy/signature-v4": "^5.3.12",
     "@types/jsonwebtoken": "^9.0.10",

@@ -61,7 +61,11 @@ const initialFormState: EndpointGroupFormState = {
 };
 
 function getEndpointTarget(endpoint: Endpoint) {
-  return endpoint.destinationType === "webhook" ? endpoint.destination.url : endpoint.destination.queueUrl;
+  return endpoint.destinationType === "webhook"
+    ? endpoint.destination.url
+    : endpoint.destinationType === "sqs"
+      ? endpoint.destination.queueUrl
+      : endpoint.destination.topicName;
 }
 
 export default function EndpointGroupsTab() {

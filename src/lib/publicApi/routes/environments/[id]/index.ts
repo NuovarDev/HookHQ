@@ -12,7 +12,7 @@ import {
   webhookMessages,
 } from "@/db/webhooks.schema";
 import { authenticateSessionRequest } from "@/lib/publicApi/auth";
-import { deleteResponseSchema, errorResponseSchema, idParamSchema } from "@/lib/publicApi/schemas";
+import { deleteResponseSchema, errorResponseSchema, environmentIdParamSchema } from "@/lib/publicApi/schemas";
 import { jsonError } from "@/lib/publicApi/utils";
 import { eq } from "drizzle-orm";
 
@@ -21,7 +21,7 @@ const deleteEnvironmentRoute = createRoute({
   path: "/environments/{id}",
   tags: ["Environments"],
   summary: "Delete Environment",
-  request: { params: idParamSchema },
+  request: { params: environmentIdParamSchema },
   responses: {
     200: {
       description: "Success",

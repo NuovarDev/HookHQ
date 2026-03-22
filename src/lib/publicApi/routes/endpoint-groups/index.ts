@@ -8,7 +8,6 @@ import {
   endpointGroupCreateSchema,
   endpointGroupSchema,
   errorResponseSchema,
-  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -17,7 +16,7 @@ const listGroupsRoute = createRoute({
   path: "/endpoint-groups",
   tags: ["Endpoint Groups"],
   summary: "List Endpoint Groups",
-  request: { headers: optionalAuthHeaderSchema, query: enabledQuerySchema },
+  request: { query: enabledQuerySchema },
   responses: {
     200: {
       description: "Success",
@@ -35,7 +34,6 @@ const createGroupRoute = createRoute({
   tags: ["Endpoint Groups"],
   summary: "Create Endpoint Group",
   request: {
-    headers: optionalAuthHeaderSchema,
     body: { required: true, content: { "application/json": { schema: endpointGroupCreateSchema } } },
   },
   responses: {

@@ -10,8 +10,7 @@ import {
   endpointGroupSchema,
   endpointGroupUpdateSchema,
   errorResponseSchema,
-  idParamSchema,
-  optionalAuthHeaderSchema,
+  endpointGroupIdParamSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -20,7 +19,7 @@ const getGroupRoute = createRoute({
   path: "/endpoint-groups/{id}",
   tags: ["Endpoint Groups"],
   summary: "Get Endpoint Group",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: endpointGroupIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -37,7 +36,7 @@ const deleteGroupRoute = createRoute({
   path: "/endpoint-groups/{id}",
   tags: ["Endpoint Groups"],
   summary: "Delete Endpoint Group",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: endpointGroupIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -61,8 +60,7 @@ const updateGroupRoute = createRoute({
   tags: ["Endpoint Groups"],
   summary: "Update Endpoint Group",
   request: {
-    headers: optionalAuthHeaderSchema,
-    params: idParamSchema,
+    params: endpointGroupIdParamSchema,
     body: { required: true, content: { "application/json": { schema: endpointGroupUpdateSchema } } },
   },
   responses: {

@@ -36,13 +36,16 @@ type EndpointFormState = {
   name: string;
   description: string;
   eventTypes: string[];
-  destinationType: "webhook" | "sqs";
+  destinationType: "webhook" | "sqs" | "pubsub";
   target: string;
   sqsRegion: string;
   sqsAccessKeyId: string;
   sqsSecretAccessKey: string;
   sqsDelaySeconds: number;
   sqsMessageGroupId: string;
+  pubsubServiceAccountJson: string;
+  pubsubAttributes: string;
+  pubsubOrderingKey: string;
   enabled: boolean;
   retryStrategy: "none" | "fixed" | "linear" | "exponential";
   maxAttempts: number;
@@ -65,7 +68,11 @@ interface ProxyGroup {
 }
 
 function getEndpointTarget(endpoint: Endpoint) {
-  return endpoint.destinationType === "webhook" ? endpoint.destination.url : endpoint.destination.queueUrl;
+  return endpoint.destinationType === "webhook"
+    ? endpoint.destination.url
+    : endpoint.destinationType === "sqs"
+      ? endpoint.destination.queueUrl
+      : endpoint.destination.topicName;
 }
 
 const initialFormState: EndpointFormState = {
@@ -79,6 +86,9 @@ const initialFormState: EndpointFormState = {
   sqsSecretAccessKey: "",
   sqsDelaySeconds: 0,
   sqsMessageGroupId: "",
+  pubsubServiceAccountJson: "",
+  pubsubAttributes: "",
+  pubsubOrderingKey: "",
   enabled: true,
   retryStrategy: "exponential",
   maxAttempts: 3,
@@ -127,14 +137,23 @@ function getEndpointPayload(formData: EndpointFormState) {
             customHeaders,
             proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
           }
-        : {
-            queueUrl: formData.target.trim(),
-            region: formData.sqsRegion.trim(),
-            accessKeyId: formData.sqsAccessKeyId.trim(),
-            secretAccessKey: formData.sqsSecretAccessKey.trim(),
-            delaySeconds: formData.sqsDelaySeconds || undefined,
-            messageGroupId: formData.sqsMessageGroupId.trim() || undefined,
-          },
+        : formData.destinationType === "sqs"
+          ? {
+              queueUrl: formData.target.trim(),
+              region: formData.sqsRegion.trim(),
+              accessKeyId: formData.sqsAccessKeyId.trim(),
+              secretAccessKey: formData.sqsSecretAccessKey.trim(),
+              delaySeconds: formData.sqsDelaySeconds || undefined,
+              messageGroupId: formData.sqsMessageGroupId.trim() || undefined,
+            }
+          : {
+              topicName: formData.target.trim(),
+              serviceAccountJson: formData.pubsubServiceAccountJson,
+              attributes: formData.pubsubAttributes.trim()
+                ? (JSON.parse(formData.pubsubAttributes) as Record<string, string>)
+                : undefined,
+              orderingKey: formData.pubsubOrderingKey.trim() || undefined,
+            },
     enabled: formData.enabled,
     retry: {
       strategy: formData.retryStrategy,
@@ -214,6 +233,12 @@ export default function EndpointsTab() {
       sqsSecretAccessKey: endpoint.destinationType === "sqs" ? endpoint.destination.secretAccessKey : "",
       sqsDelaySeconds: endpoint.destinationType === "sqs" ? (endpoint.destination.delaySeconds ?? 0) : 0,
       sqsMessageGroupId: endpoint.destinationType === "sqs" ? (endpoint.destination.messageGroupId ?? "") : "",
+      pubsubServiceAccountJson: endpoint.destinationType === "pubsub" ? endpoint.destination.serviceAccountJson : "",
+      pubsubAttributes:
+        endpoint.destinationType === "pubsub" && endpoint.destination.attributes
+          ? JSON.stringify(endpoint.destination.attributes, null, 2)
+          : "",
+      pubsubOrderingKey: endpoint.destinationType === "pubsub" ? (endpoint.destination.orderingKey ?? "") : "",
       enabled: endpoint.enabled,
       retryStrategy: endpoint.retry.strategy,
       maxAttempts: endpoint.retry.maxAttempts,
@@ -328,7 +353,11 @@ export default function EndpointsTab() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-target">
-                    {formData.destinationType === "webhook" ? "URL *" : "Queue URL *"}
+                    {formData.destinationType === "webhook"
+                      ? "URL *"
+                      : formData.destinationType === "sqs"
+                        ? "Queue URL *"
+                        : "Topic Name *"}
                   </Label>
                   <Input
                     id="endpoint-target"
@@ -337,7 +366,9 @@ export default function EndpointsTab() {
                     placeholder={
                       formData.destinationType === "webhook"
                         ? "https://example.com/webhook"
-                        : "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
+                        : formData.destinationType === "sqs"
+                          ? "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
+                          : "my-topic"
                     }
                   />
                 </div>
@@ -357,6 +388,7 @@ export default function EndpointsTab() {
                   <SelectContent>
                     <SelectItem value="webhook">Webhook</SelectItem>
                     <SelectItem value="sqs">Amazon SQS</SelectItem>
+                    <SelectItem value="pubsub">Google Pub/Sub</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -437,6 +469,46 @@ export default function EndpointsTab() {
                   />
                 </div>
               </div>
+
+              {formData.destinationType === "pubsub" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="endpoint-pubsub-ordering-key">Ordering Key</Label>
+                    <Input
+                      id="endpoint-pubsub-ordering-key"
+                      value={formData.pubsubOrderingKey}
+                      onChange={event =>
+                        setFormData(current => ({ ...current, pubsubOrderingKey: event.target.value }))
+                      }
+                      placeholder="Optional ordering key"
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="endpoint-pubsub-service-account-json">Service Account JSON</Label>
+                    <Textarea
+                      id="endpoint-pubsub-service-account-json"
+                      value={formData.pubsubServiceAccountJson}
+                      onChange={event =>
+                        setFormData(current => ({ ...current, pubsubServiceAccountJson: event.target.value }))
+                      }
+                      placeholder={`{"type":"service_account","project_id":"my-project",...}`}
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="col-span-2 space-y-2">
+                    <Label htmlFor="endpoint-pubsub-attributes">Attributes (JSON)</Label>
+                    <Textarea
+                      id="endpoint-pubsub-attributes"
+                      value={formData.pubsubAttributes}
+                      onChange={event => setFormData(current => ({ ...current, pubsubAttributes: event.target.value }))}
+                      placeholder={'{"source":"hookhq"}'}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -526,7 +598,7 @@ export default function EndpointsTab() {
                       }
                     />
                   </div>
-                ) : (
+                ) : formData.destinationType === "sqs" ? (
                   <div className="space-y-2">
                     <Label htmlFor="endpoint-sqs-delay">SQS Delay (s)</Label>
                     <Input
@@ -543,7 +615,7 @@ export default function EndpointsTab() {
                       }
                     />
                   </div>
-                )}
+                ) : null}
               </div>
 
               {formData.destinationType === "webhook" ? (
@@ -579,7 +651,7 @@ export default function EndpointsTab() {
                     </Select>
                   </div>
                 </>
-              ) : (
+              ) : formData.destinationType === "sqs" ? (
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="endpoint-sqs-region">AWS Region</Label>
@@ -621,7 +693,7 @@ export default function EndpointsTab() {
                     />
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -682,7 +754,11 @@ export default function EndpointsTab() {
                 <div className="space-y-3">
                   <div>
                     <h4 className="mb-1 text-sm font-medium">
-                      {endpoint.destinationType === "webhook" ? "URL" : "Queue"}
+                      {endpoint.destinationType === "webhook"
+                        ? "URL"
+                        : endpoint.destinationType === "sqs"
+                          ? "Queue"
+                          : "Topic"}
                     </h4>
                     <div className="break-all text-sm text-muted-foreground">{getEndpointTarget(endpoint)}</div>
                   </div>

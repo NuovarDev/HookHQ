@@ -10,8 +10,7 @@ import {
   endpointSchema,
   endpointUpdateSchema,
   errorResponseSchema,
-  idParamSchema,
-  optionalAuthHeaderSchema,
+  endpointIdParamSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -20,7 +19,7 @@ const getEndpointRoute = createRoute({
   path: "/endpoints/{id}",
   tags: ["Endpoints"],
   summary: "Get Endpoint",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: endpointIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -37,7 +36,7 @@ const deleteEndpointRoute = createRoute({
   path: "/endpoints/{id}",
   tags: ["Endpoints"],
   summary: "Delete Endpoint",
-  request: { headers: optionalAuthHeaderSchema, params: idParamSchema },
+  request: { params: endpointIdParamSchema },
   responses: {
     200: {
       description: "Success",
@@ -61,8 +60,7 @@ const updateEndpointRoute = createRoute({
   tags: ["Endpoints"],
   summary: "Update Endpoint",
   request: {
-    headers: optionalAuthHeaderSchema,
-    params: idParamSchema,
+    params: endpointIdParamSchema,
     body: { required: true, content: { "application/json": { schema: endpointUpdateSchema } } },
   },
   responses: {

@@ -10,7 +10,6 @@ import {
   endpointCreateSchema,
   endpointSchema,
   errorResponseSchema,
-  optionalAuthHeaderSchema,
 } from "@/lib/publicApi/schemas";
 import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
@@ -20,7 +19,6 @@ const listEndpointsRoute = createRoute({
   tags: ["Endpoints"],
   summary: "List Endpoints",
   request: {
-    headers: optionalAuthHeaderSchema,
     query: enabledQuerySchema,
   },
   responses: {
@@ -44,7 +42,6 @@ const createEndpointRoute = createRoute({
   tags: ["Endpoints"],
   summary: "Create Endpoint",
   request: {
-    headers: optionalAuthHeaderSchema,
     body: {
       required: true,
       content: {
