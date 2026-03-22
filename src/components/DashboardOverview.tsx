@@ -1,18 +1,38 @@
-"use client"
+"use client";
 
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Send, CheckCircle2, Clock, XCircle, TrendingUp, ArrowRight } from "lucide-react"
-import Link from "next/link"
-import { useEffect, useState } from "react"
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ArrowRight, CheckCircle2, Clock, Send, TrendingUp, XCircle, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
+import { cn } from "@/lib/utils";
+import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { ErrorBody } from "@/lib/webhookApi";
 
-interface MetricsData {
+type MetricCard = {
+  label: string;
+  value: string;
+  change: string;
+  icon: LucideIcon;
+  color: string;
+};
+
+type RecentEvent = {
+  id: string;
+  type: string;
+  endpoint: string;
+  status: string;
+  timestamp: string;
+};
+
+interface DashboardMetricsData {
   summary: {
-      totalMessages: number;
-      deliveredMessages: number;
-      failedMessages: number;
-      successRate: number;
-      avgQueueTime: number;
+    totalMessages: number;
+    deliveredMessages: number;
+    failedMessages: number;
+    successRate: number;
+    avgQueueTime: number;
   };
   recentMessages: Array<{
     id: string;
@@ -26,145 +46,143 @@ interface MetricsData {
   }>;
 }
 
-interface Metric {
-  label: string;
-  value: string;
-  change: string;
-  icon: React.ElementType;
-  color: string;
-}
-
-interface RecentEvent {
-  id: string;
-  type: string;
-  endpoint: string;
-  status: string;
-  timestamp: string;
-}
-
-const formatDuration = (ms: number) => {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-  return `${Math.round(ms / 60000)}m`;
-};
-
-const displayMetrics = [
-  {
-    label: "Total Messages",
-    value: "0",
-    change: "0 delivered",
-    icon: Send,
-    color: "text-sky-500 dark:text-sky-700",
-  },
-  {
-    label: "Success Rate",
-    value: "0%",
-    change: "0 failed",
-    icon: CheckCircle2,
-    color: "text-green-500 dark:text-green-700",
-  },
-  {
-    label: "Avg Queue Time",
-    value: formatDuration(0),
-    change: "Time to processing",
-    icon: Clock,
-    color: "text-amber-500 dark:text-amber-700",
-  },
-  {
-    label: "Failed Messages",
-    value: "0",
-    change: "0% of total",
-    icon: XCircle,
-    color: "text-red-500 dark:text-red-700",
-  },
-];
-
 const quickLinks = [
   { label: "Create Endpoint", href: "/dashboard/webhooks" },
   { label: "View Metrics", href: "/dashboard/metrics" },
   { label: "Webhook Logs", href: "/dashboard/log" },
-]
+  ...(process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true" ? [{ label: "API Documentation", href: getPublicApiUrl() }] : []),
+];
 
-if (process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true") {
-  quickLinks.push({ label: "API Documentation", href: "/api" });
+function formatDuration(ms: number) {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  return `${Math.round(ms / 60_000)}m`;
+}
+
+async function fetchDashboardMetrics() {
+  const response = await fetch("/api/webhooks/metrics?timeRange=7d");
+
+  if (!response.ok) {
+    let message = "Request failed";
+
+    try {
+      const errorBody = (await response.json()) as ErrorBody;
+      message = errorBody.message || errorBody.error || message;
+    } catch {
+      message = response.statusText || message;
+    }
+
+    throw new Error(message);
+  }
+
+  return (await response.json()) as DashboardMetricsData;
+}
+
+function buildMetrics(data?: DashboardMetricsData): MetricCard[] {
+  const summary = data?.summary;
+  const totalMessages = summary?.totalMessages ?? 0;
+  const deliveredMessages = summary?.deliveredMessages ?? 0;
+  const failedMessages = summary?.failedMessages ?? 0;
+  const successRate = summary?.successRate ?? 0;
+  const avgQueueTime = summary?.avgQueueTime ?? 0;
+  const failedRate = totalMessages > 0 ? ((failedMessages / totalMessages) * 100).toFixed(1) : "0";
+
+  return [
+    {
+      label: "Total Messages",
+      value: totalMessages.toLocaleString(),
+      change: `${deliveredMessages} delivered`,
+      icon: Send,
+      color: "text-sky-500 dark:text-sky-700",
+    },
+    {
+      label: "Success Rate",
+      value: `${successRate}%`,
+      change: `${failedMessages} failed`,
+      icon: CheckCircle2,
+      color: "text-green-500 dark:text-green-700",
+    },
+    {
+      label: "Avg Queue Time",
+      value: formatDuration(avgQueueTime),
+      change: "Time to processing",
+      icon: Clock,
+      color: "text-amber-500 dark:text-amber-700",
+    },
+    {
+      label: "Failed Messages",
+      value: failedMessages.toLocaleString(),
+      change: `${failedRate}% of total`,
+      icon: XCircle,
+      color: "text-red-500 dark:text-red-700",
+    },
+  ];
+}
+
+function buildRecentEvents(data?: DashboardMetricsData): RecentEvent[] {
+  return (
+    data?.recentMessages.map(event => ({
+      id: event.id,
+      type: event.eventType || "No event type",
+      endpoint: event.destinations.join(", "),
+      status: event.status,
+      timestamp: event.createdAt,
+    })) ?? []
+  );
 }
 
 export function DashboardOverview() {
-  const [metrics, setMetrics] = useState<Metric[] | null>(displayMetrics);
-  const [recentEvents, setRecentEvents] = useState<RecentEvent[] | null>(null);
+  const [data, setData] = useState<DashboardMetricsData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
-        try {
-            const response = await fetch('/api/webhooks/metrics?timeRange=7d');
-            if (!response.ok) {
-                throw new Error('Failed to fetch metrics');
-            }
-            const data = await response.json() as MetricsData;
+    let isMounted = true;
 
-            const displayMetrics = [
-              {
-                label: "Total Messages",
-                value: data.summary.totalMessages.toLocaleString(),
-                change: `${data.summary.deliveredMessages} delivered`,
-                icon: Send,
-                color: "text-sky-500 dark:text-sky-700",
-              },
-              {
-                label: "Success Rate",
-                value: `${data.summary.successRate}%`,
-                change: `${data.summary.failedMessages} failed`,
-                icon: CheckCircle2,
-                color: "text-green-500 dark:text-green-700",
-              },
-              {
-                label: "Avg Queue Time",
-                value: formatDuration(data.summary.avgQueueTime),
-                change: "Time to processing",
-                icon: Clock,
-                color: "text-amber-500 dark:text-amber-700",
-              },
-              {
-                label: "Failed Messages",
-                value: data.summary.failedMessages.toLocaleString(),
-                change: `${data.summary.totalMessages > 0 ? ((data.summary.failedMessages / data.summary.totalMessages) * 100).toFixed(1) : '0'}% of total`,
-                icon: XCircle,
-                color: "text-red-500 dark:text-red-700",
-              },
-            ];
-
-            setMetrics(displayMetrics);
-
-            const recentEvents = data.recentMessages.map((event) => ({
-              id: event.id,
-              type: event.eventType || "No event type",
-              endpoint: event.destinations.join(", "),
-              status: event.status,
-              timestamp: event.createdAt,
-            }));
-
-            setRecentEvents(recentEvents);
-        } catch (error) {
-            console.error('Error fetching metrics:', error);
-        } finally {
-            setLoading(false);
+    async function loadDashboardMetrics() {
+      try {
+        const nextData = await fetchDashboardMetrics();
+        if (isMounted) {
+          setData(nextData);
         }
-    };
+      } catch (nextError) {
+        if (isMounted) {
+          setError(nextError instanceof Error ? nextError.message : "Failed to fetch dashboard metrics");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
 
-    fetchMetrics();
-}, []);
+    loadDashboardMetrics();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return <LoadingStateCard title="Loading dashboard..." />;
+  }
+
+  if (error) {
+    return <ErrorStateCard message={error} />;
+  }
+
+  const metrics = buildMetrics(data ?? undefined);
+  const recentEvents = buildRecentEvents(data ?? undefined);
 
   return (
     <div className="space-y-6">
       <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Monitor your webhook performance and recent activity</p>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Monitor your webhook performance and recent activity</p>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {metrics?.map((metric) => (
+        {metrics.map(metric => (
           <Card key={metric.label} className="border-border p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -184,8 +202,7 @@ export function DashboardOverview() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Events */}
-        <Card className="border-border lg:col-span-2 gap-0">
+        <Card className="gap-0 border-border lg:col-span-2">
           <div className="border-b border-border px-6 pb-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Recent Events</h2>
@@ -198,10 +215,13 @@ export function DashboardOverview() {
             </div>
           </div>
           <div className="divide-y divide-border">
-            {recentEvents?.map((event) => (
+            {recentEvents.map(event => (
               <div key={event.id} className="flex items-center gap-4 py-4 pl-6 pr-10">
                 <div
-                  className={cn("h-2 w-2 rounded-full", event.status === "delivered" ? "bg-green-500 dark:bg-green-700" : "bg-red-500 dark:bg-red-700")}
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    event.status === "delivered" ? "bg-green-500 dark:bg-green-700" : "bg-red-500 dark:bg-red-700"
+                  )}
                 />
                 <div className="flex-1 space-y-1">
                   <p className="font-mono text-sm font-medium">{event.type}</p>
@@ -212,7 +232,9 @@ export function DashboardOverview() {
                   <p
                     className={cn(
                       "text-sm font-medium",
-                      event.status === "delivered" ? "text-green-600 dark:text-green-700" : "text-red-500 dark:text-red-700",
+                      event.status === "delivered"
+                        ? "text-green-600 dark:text-green-700"
+                        : "text-red-500 dark:text-red-700"
                     )}
                   >
                     {event.status}
@@ -222,21 +244,20 @@ export function DashboardOverview() {
               </div>
             ))}
 
-            {recentEvents?.length === 0 && (
-              <div className="flex items-center justify-center py-4 mt-8">
+            {recentEvents.length === 0 && (
+              <div className="mt-8 flex items-center justify-center py-4">
                 <p className="text-muted-foreground">No recent events</p>
               </div>
             )}
           </div>
         </Card>
 
-        {/* Quick Links */}
         <Card className="border-border">
           <div className="border-b border-border px-6 pb-4">
             <h2 className="text-lg font-semibold">Quick Actions</h2>
           </div>
-          <div className="space-y-2 px-6 flex flex-col gap-1">
-            {quickLinks.map((link) => (
+          <div className="flex flex-col gap-1 space-y-2 px-6">
+            {quickLinks.map(link => (
               <Link key={link.label} href={link.href}>
                 <Button variant="outline" className="w-full justify-between bg-transparent p-6" size="sm">
                   {link.label}
@@ -248,9 +269,5 @@ export function DashboardOverview() {
         </Card>
       </div>
     </div>
-  )
-}
-
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(" ")
+  );
 }

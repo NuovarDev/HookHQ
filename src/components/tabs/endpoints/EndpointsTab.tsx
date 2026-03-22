@@ -1,10 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
+import EditableTemplate from "@/components/EditableTemplate";
+import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,40 +16,31 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Plus,
-  Globe,
-  Edit,
-  Trash2,
-  Power,
-  PowerOff,
-  Hash,
-  Users,
-  Copy,
-  Check,
-  LoaderCircle,
-  CircleX,
-} from "lucide-react";
-import EditableTemplate from "@/components/EditableTemplate";
-import { useState, useEffect } from "react";
+  createEndpoint,
+  deleteEndpoint,
+  fetchEndpoints,
+  type Endpoint,
+  updateEndpoint,
+} from "@/lib/webhookApi";
+import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { ErrorBody } from "@/lib/webhookApi";
 
-interface Endpoint {
-  id: string;
-  environmentId: string;
+type EndpointFormState = {
   name: string;
-  description?: string;
+  description: string;
   url: string;
-  secret?: string;
   enabled: boolean;
-  retryPolicy: string;
+  retryPolicy: "exponential" | "linear" | "fixed";
   maxAttempts: number;
   timeoutMs: number;
-  customHeaders?: Record<string, string>;
-  proxyGroupId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+  customHeaders: string;
+  proxyGroupId: string;
+};
 
 interface ProxyGroup {
   id: string;
@@ -55,6 +48,53 @@ interface ProxyGroup {
   description?: string;
   loadBalancingStrategy: string;
   isActive: boolean;
+}
+
+const initialFormState: EndpointFormState = {
+  name: "",
+  description: "",
+  url: "",
+  enabled: true,
+  retryPolicy: "exponential",
+  maxAttempts: 3,
+  timeoutMs: 10_000,
+  customHeaders: "",
+  proxyGroupId: "none",
+};
+
+async function fetchProxyGroups() {
+  const response = await fetch("/api/proxy-groups?active=true");
+
+  if (!response.ok) {
+    console.error("Failed to fetch proxy groups", response);
+    return [];
+  }
+
+  try {
+    const data = (await response.json()) as { proxyGroups: ProxyGroup[] };
+    return data.proxyGroups;
+  } catch {
+    console.error("Failed to parse proxy groups", response);
+    return [];
+  }
+}
+
+function getEndpointPayload(formData: EndpointFormState) {
+  const customHeaders = formData.customHeaders.trim()
+    ? (JSON.parse(formData.customHeaders) as Record<string, string>)
+    : undefined;
+
+  return {
+    name: formData.name.trim(),
+    description: formData.description.trim() || undefined,
+    url: formData.url.trim(),
+    enabled: formData.enabled,
+    retryPolicy: formData.retryPolicy,
+    maxAttempts: formData.maxAttempts,
+    timeoutMs: formData.timeoutMs,
+    customHeaders,
+    proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
+  };
 }
 
 export default function EndpointsTab() {
@@ -65,150 +105,51 @@ export default function EndpointsTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    url: "",
-    secret: "",
-    enabled: true,
-    retryPolicy: "exponential_backoff",
-    maxAttempts: 3,
-    timeoutMs: 10000,
-    customHeaders: "",
-    proxyGroupId: "none",
-  });
-
-  const fetchEndpoints = async () => {
-    try {
-      const response = await fetch("/api/endpoints");
-      if (!response.ok) {
-        throw new Error("Failed to fetch endpoints");
-      }
-      const data = (await response.json()) as { endpoints: Endpoint[] };
-      setEndpoints(data.endpoints);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProxyGroups = async () => {
-    try {
-      const response = await fetch("/api/proxy-groups?active=true");
-      if (!response.ok) {
-        throw new Error("Failed to fetch proxy groups");
-      }
-      const data = (await response.json()) as { proxyGroups: ProxyGroup[] };
-      setProxyGroups(data.proxyGroups || []);
-    } catch (err) {
-      console.error("Error fetching proxy groups:", err);
-    }
-  };
+  const [formData, setFormData] = useState<EndpointFormState>(initialFormState);
 
   useEffect(() => {
-    fetchEndpoints();
-    fetchProxyGroups();
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const [nextEndpoints, nextProxyGroups] = await Promise.all([fetchEndpoints(), fetchProxyGroups()]);
+        if (!isMounted) return;
+        setEndpoints(nextEndpoints);
+        setProxyGroups(nextProxyGroups);
+      } catch (nextError) {
+        if (!isMounted) return;
+        setError(nextError instanceof Error ? nextError.message : "Failed to load endpoints");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleCreateEndpoint = async () => {
-    try {
-      const customHeaders = formData.customHeaders ? JSON.parse(formData.customHeaders) : {};
+  function resetForm() {
+    setFormData(initialFormState);
+    setEditingEndpoint(null);
+  }
 
-      const response = await fetch("/api/endpoints", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          customHeaders,
-          proxyGroupId: formData.proxyGroupId === "none" ? "" : formData.proxyGroupId,
-        }),
-      });
+  function openCreateDialog() {
+    resetForm();
+    setCreateDialogOpen(true);
+  }
 
-      if (!response.ok) {
-        throw new Error("Failed to create endpoint");
-      }
-
-      const newEndpoint = (await response.json()) as Endpoint;
-      setEndpoints(prev => [...prev, newEndpoint]);
-      setCreateDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create endpoint");
-    }
-  };
-
-  const handleToggleEndpoint = async (id: string, enabled: boolean) => {
-    try {
-      const response = await fetch(`/api/endpoints/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update endpoint");
-      }
-
-      setEndpoints(prev => prev.map(endpoint => (endpoint.id === id ? { ...endpoint, enabled } : endpoint)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update endpoint");
-    }
-  };
-
-  const handleDeleteEndpoint = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this endpoint?")) return;
-
-    try {
-      const response = await fetch(`/api/endpoints/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete endpoint");
-      }
-
-      setEndpoints(prev => prev.filter(endpoint => endpoint.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete endpoint");
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      url: "",
-      secret: "",
-      enabled: true,
-      retryPolicy: "exponential_backoff",
-      maxAttempts: 3,
-      timeoutMs: 10000,
-      customHeaders: "",
-      proxyGroupId: "none",
-    });
-  };
-
-  const copyToClipboard = async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy to clipboard:", err);
-    }
-  };
-
-  const openEditDialog = (endpoint: Endpoint) => {
+  function openEditDialog(endpoint: Endpoint) {
     setFormData({
       name: endpoint.name,
       description: endpoint.description || "",
       url: endpoint.url,
-      secret: endpoint.secret || "",
       enabled: endpoint.enabled,
-      retryPolicy: endpoint.retryPolicy,
+      retryPolicy: (endpoint.retryPolicy as EndpointFormState["retryPolicy"]) || "exponential",
       maxAttempts: endpoint.maxAttempts,
       timeoutMs: endpoint.timeoutMs,
       customHeaders: endpoint.customHeaders ? JSON.stringify(endpoint.customHeaders, null, 2) : "",
@@ -216,49 +157,78 @@ export default function EndpointsTab() {
     });
     setEditingEndpoint(endpoint);
     setCreateDialogOpen(true);
-  };
+  }
 
-  const handleUpdateEndpoint = async () => {
-    if (!editingEndpoint) return;
-
+  async function handleSubmit() {
     try {
-      const customHeaders = formData.customHeaders ? JSON.parse(formData.customHeaders) : {};
+      setError(null);
+      const payload = getEndpointPayload(formData);
 
-      const response = await fetch(`/api/endpoints/${editingEndpoint.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          customHeaders,
-          proxyGroupId: formData.proxyGroupId === "none" ? "" : formData.proxyGroupId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update endpoint");
+      if (editingEndpoint) {
+        const updatedEndpoint = await updateEndpoint(editingEndpoint.id, payload);
+        setEndpoints(current =>
+          current.map(endpoint => (endpoint.id === editingEndpoint.id ? updatedEndpoint : endpoint))
+        );
+      } else {
+        const createdEndpoint = await createEndpoint(payload);
+        setEndpoints(current => [...current, createdEndpoint]);
       }
 
-      const updatedEndpoint = (await response.json()) as Endpoint;
-      setEndpoints(prev => prev.map(endpoint => (endpoint.id === editingEndpoint.id ? updatedEndpoint : endpoint)));
       setCreateDialogOpen(false);
-      setEditingEndpoint(null);
       resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update endpoint");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to save endpoint");
     }
-  };
+  }
+
+  async function handleToggleEndpoint(endpoint: Endpoint) {
+    try {
+      setError(null);
+      const updatedEndpoint = await updateEndpoint(endpoint.id, { enabled: !endpoint.enabled });
+      setEndpoints(current => current.map(item => (item.id === endpoint.id ? updatedEndpoint : item)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to update endpoint");
+    }
+  }
+
+  async function handleDeleteEndpoint(id: string) {
+    if (!confirm("Are you sure you want to delete this endpoint?")) return;
+
+    try {
+      setError(null);
+      await deleteEndpoint(id);
+      setEndpoints(current => current.filter(endpoint => endpoint.id !== id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to delete endpoint");
+    }
+  }
+
+  async function copyToClipboard(text: string, id: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to copy value");
+    }
+  }
+
+  if (loading) {
+    return <LoadingStateCard />;
+  }
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex justify-between items-center">
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Endpoints</h2>
           <p className="text-muted-foreground">Manage your webhook endpoints</p>
         </div>
+
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
               Create Endpoint
             </Button>
           </DialogTrigger>
@@ -274,110 +244,115 @@ export default function EndpointsTab() {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="endpoint-name">Name *</Label>
                   <Input
-                    id="name"
+                    id="endpoint-name"
                     value={formData.name}
-                    onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
                     placeholder="My Webhook Endpoint"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="url">URL *</Label>
+                  <Label htmlFor="endpoint-url">URL *</Label>
                   <Input
-                    id="url"
+                    id="endpoint-url"
                     value={formData.url}
-                    onChange={e => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                    onChange={event => setFormData(current => ({ ...current, url: event.target.value }))}
                     placeholder="https://example.com/webhook"
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="endpoint-description">Description</Label>
                 <Input
-                  id="description"
+                  id="endpoint-description"
                   value={formData.description}
-                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
                   placeholder="Optional description"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="secret">Secret</Label>
-                <Input
-                  id="secret"
-                  value={formData.secret}
-                  onChange={e => setFormData(prev => ({ ...prev, secret: e.target.value }))}
-                  placeholder="Optional webhook secret for verification"
-                />
-              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="retryPolicy">Retry Policy</Label>
+                  <Label htmlFor="endpoint-retry-policy">Retry Policy</Label>
                   <Select
                     value={formData.retryPolicy}
-                    onValueChange={value => setFormData(prev => ({ ...prev, retryPolicy: value }))}
+                    onValueChange={(value: EndpointFormState["retryPolicy"]) =>
+                      setFormData(current => ({ ...current, retryPolicy: value }))
+                    }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="endpoint-retry-policy">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="exponential">Exponential</SelectItem>
                       <SelectItem value="linear">Linear</SelectItem>
-                      <SelectItem value="exponential_backoff">Exponential Backoff</SelectItem>
+                      <SelectItem value="fixed">Fixed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="maxAttempts">Max Attempts</Label>
+                  <Label htmlFor="endpoint-max-attempts">Max Attempts</Label>
                   <Input
-                    id="maxAttempts"
+                    id="endpoint-max-attempts"
                     type="number"
+                    min={1}
                     value={formData.maxAttempts}
-                    onChange={e => setFormData(prev => ({ ...prev, maxAttempts: parseInt(e.target.value) }))}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        maxAttempts: Number.parseInt(event.target.value || "1", 10),
+                      }))
+                    }
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="timeoutMs">Timeout (ms)</Label>
+                  <Label htmlFor="endpoint-timeout">Timeout (ms)</Label>
                   <Input
-                    id="timeoutMs"
+                    id="endpoint-timeout"
                     type="number"
+                    min={100}
                     value={formData.timeoutMs}
-                    onChange={e => setFormData(prev => ({ ...prev, timeoutMs: parseInt(e.target.value) }))}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        timeoutMs: Number.parseInt(event.target.value || "100", 10),
+                      }))
+                    }
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="customHeaders">Custom Headers (JSON)</Label>
-                <textarea
-                  id="customHeaders"
-                  className="w-full min-h-[100px] p-2 border rounded-md"
+                <Label htmlFor="endpoint-custom-headers">Custom Headers (JSON)</Label>
+                <Textarea
+                  id="endpoint-custom-headers"
+                  className="min-h-[100px] font-mono text-sm"
                   value={formData.customHeaders}
-                  onChange={e => setFormData(prev => ({ ...prev, customHeaders: e.target.value }))}
-                  placeholder='{"Authorization": "Bearer token", "X-Custom": "value"}'
+                  onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
+                  placeholder='{"Authorization":"Bearer token","X-Custom":"value"}'
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="proxyGroupId">Proxy Group (Optional)</Label>
+                <Label htmlFor="endpoint-proxy-group">Proxy Group (Optional)</Label>
                 <Select
                   value={formData.proxyGroupId}
-                  onValueChange={value => setFormData(prev => ({ ...prev, proxyGroupId: value }))}
+                  onValueChange={value => setFormData(current => ({ ...current, proxyGroupId: value }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="endpoint-proxy-group">
                     <SelectValue placeholder="Select proxy group for static IP delivery" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Direct Delivery (No Proxy)</SelectItem>
-                    {proxyGroups.length > 0 ? (
-                      proxyGroups.map(group => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name} ({group.loadBalancingStrategy})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-groups" disabled>
-                        No proxy groups available
+                    {proxyGroups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.name} ({group.loadBalancingStrategy})
                       </SelectItem>
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
@@ -389,100 +364,97 @@ export default function EndpointsTab() {
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={editingEndpoint ? handleUpdateEndpoint : handleCreateEndpoint}>
-                {editingEndpoint ? "Update" : "Create"} Endpoint
-              </Button>
+              <Button onClick={handleSubmit}>{editingEndpoint ? "Update" : "Create"} Endpoint</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {loading && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Loading...</h3>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorStateCard message={error} />}
 
-      {error && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <CircleX className="h-12 w-12 text-red-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error</h3>
-            <p className="text-red-600 text-center">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {!loading &&
-        !error &&
-        (endpoints.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <Globe className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Endpoints</h3>
-              <p className="text-muted-foreground text-center">
-                Create your first webhook endpoint to start receiving notifications.
-              </p>
-              <code className="text-sm m-4 p-4 bg-neutral-600 dark:bg-neutral-800 rounded-md text-white min-w-[500px]">
-                <EditableTemplate
-                  template={`curl {{baseUrl}}/api/endpoints \\
+      {endpoints.length === 0 ? (
+        <EmptyStateCard
+          icon={Globe}
+          title="No Endpoints"
+          description="Create your first webhook endpoint to start receiving notifications."
+        >
+          <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
+            <EditableTemplate
+              template={`curl ${getPublicApiUrl()}/endpoints \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
-    "name": "My First Endpoint",
-    "url": "https://example.com/webhook" 
+  "name": "My First Endpoint",
+  "url": "https://example.com/webhook"
 }'`}
-                  className="whitespace-pre"
-                />
-              </code>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {endpoints.map(endpoint => (
-              <Card key={endpoint.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        {endpoint.name}
-                      </CardTitle>
-                      <CardDescription>{endpoint.description || "No description"}</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(endpoint)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteEndpoint(endpoint.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              className="whitespace-pre"
+            />
+          </code>
+        </EmptyStateCard>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {endpoints.map(endpoint => (
+            <Card key={endpoint.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Globe className="h-4 w-4" />
+                      {endpoint.name}
+                    </CardTitle>
+                    <CardDescription>{endpoint.description || "No description"}</CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <h4 className="text-sm font-medium mb-1">URL</h4>
-                      <div className="text-sm text-muted-foreground break-all">{endpoint.url}</div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(endpoint)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteEndpoint(endpoint.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="mb-1 text-sm font-medium">URL</h4>
+                    <div className="break-all text-sm text-muted-foreground">{endpoint.url}</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-3 w-3 text-gray-400" />
+                      <span className="text-muted-foreground">Endpoint ID:</span>
+                      <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
+                        {endpoint.id}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-gray-200"
+                          onClick={() => copyToClipboard(endpoint.id, `endpoint-${endpoint.id}`)}
+                        >
+                          {copiedId === `endpoint-${endpoint.id}` ? (
+                            <Check className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 text-sm">
+                    {endpoint.proxyGroupId && (
                       <div className="flex items-center gap-2">
-                        <Hash className="h-3 w-3 text-gray-400" />
-                        <span className="text-muted-foreground">Endpoint ID:</span>
-                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
-                          {endpoint.id}
+                        <Users className="h-3 w-3 text-gray-400" />
+                        <span className="text-muted-foreground">Proxy Group ID:</span>
+                        <span className="flex items-center gap-1 rounded bg-blue-100 px-2 py-1 font-mono text-xs dark:bg-blue-900">
+                          {endpoint.proxyGroupId}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-4 w-4 p-0 hover:bg-gray-200"
-                            onClick={() => copyToClipboard(endpoint.id, `endpoint-${endpoint.id}`)}
+                            className="h-4 w-4 p-0 hover:bg-blue-200"
+                            onClick={() => copyToClipboard(endpoint.proxyGroupId!, `proxy-${endpoint.proxyGroupId}`)}
                           >
-                            {copiedId === `endpoint-${endpoint.id}` ? (
+                            {copiedId === `proxy-${endpoint.proxyGroupId}` ? (
                               <Check className="h-3 w-3 text-green-600" />
                             ) : (
                               <Copy className="h-3 w-3" />
@@ -490,68 +462,26 @@ export default function EndpointsTab() {
                           </Button>
                         </span>
                       </div>
-                      {endpoint.proxyGroupId && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-3 w-3 text-gray-400" />
-                          <span className="text-muted-foreground">Proxy Group ID:</span>
-                          <span className="font-mono text-xs bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded flex items-center gap-1">
-                            {endpoint.proxyGroupId}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-4 w-4 p-0 hover:bg-blue-200"
-                              onClick={() => copyToClipboard(endpoint.proxyGroupId!, `proxy-${endpoint.proxyGroupId}`)}
-                            >
-                              {copiedId === `proxy-${endpoint.proxyGroupId}` ? (
-                                <Check className="h-3 w-3 text-green-600" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={endpoint.enabled ? "default" : "secondary"}>
-                          {endpoint.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                        <Badge variant="outline">{endpoint.retryPolicy}</Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleEndpoint(endpoint.id, !endpoint.enabled)}
-                      >
-                        {endpoint.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Max Attempts:</span>
-                        <span className="ml-1">{endpoint.maxAttempts}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Timeout:</span>
-                        <span className="ml-1">{endpoint.timeoutMs}ms</span>
-                      </div>
-                    </div>
-
-                    {endpoint.secret && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Secret</h4>
-                        <div className="text-sm text-gray-600 font-mono">{endpoint.secret.substring(0, 8)}...</div>
-                      </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ))}
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={endpoint.enabled ? "default" : "secondary"}>
+                        {endpoint.enabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                      <Badge variant="outline">{endpoint.retryPolicy}</Badge>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleToggleEndpoint(endpoint)}>
+                      {endpoint.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

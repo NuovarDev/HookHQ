@@ -1,10 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Code, Edit, Plus, Power, PowerOff, Trash2, Zap } from "lucide-react";
+import EditableTemplate from "@/components/EditableTemplate";
+import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,19 +16,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Edit, Trash2, Power, PowerOff, Code, LoaderCircle, CircleX } from "lucide-react";
-import { useState, useEffect } from "react";
-import EditableTemplate from "@/components/EditableTemplate";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { createEventType, deleteEventType, fetchEventTypes, type EventType, updateEventType } from "@/lib/webhookApi";
+import { getPublicApiUrl } from "@/lib/publicApi/utils";
 
-interface EventType {
-  id: string;
-  environmentId: string;
+type EventTypeFormState = {
   name: string;
-  description?: string;
-  schema?: any;
+  description: string;
+  schema: string;
   enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+};
+
+const initialFormState: EventTypeFormState = {
+  name: "",
+  description: "",
+  schema: "",
+  enabled: true,
+};
+
+function parseSchema(schema: string) {
+  if (!schema.trim()) {
+    return null;
+  }
+
+  return JSON.parse(schema) as Record<string, unknown>;
 }
 
 export default function EventTypesTab() {
@@ -35,113 +50,46 @@ export default function EventTypesTab() {
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingEventType, setEditingEventType] = useState<EventType | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    schema: "",
-    enabled: true,
-  });
-
-  const fetchEventTypes = async () => {
-    try {
-      const response = await fetch("/api/event-types");
-      if (!response.ok) {
-        throw new Error("Failed to fetch event types");
-      }
-      const data = (await response.json()) as { eventTypes: EventType[] };
-      setEventTypes(data.eventTypes);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [formData, setFormData] = useState<EventTypeFormState>(initialFormState);
 
   useEffect(() => {
-    fetchEventTypes();
-  }, []);
+    let isMounted = true;
 
-  const handleCreateEventType = async () => {
-    try {
-      let schema = null;
-      if (formData.schema.trim()) {
-        try {
-          schema = JSON.parse(formData.schema);
-        } catch (e) {
-          throw new Error("Invalid JSON schema");
+    async function loadEventTypes() {
+      try {
+        const nextEventTypes = await fetchEventTypes();
+        if (isMounted) {
+          setEventTypes(nextEventTypes);
+        }
+      } catch (nextError) {
+        if (isMounted) {
+          setError(nextError instanceof Error ? nextError.message : "Failed to load event types");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
-
-      const response = await fetch("/api/event-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          schema,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create event type");
-      }
-
-      const newEventType = (await response.json()) as EventType;
-      setEventTypes(prev => [...prev, newEventType]);
-      setCreateDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create event type");
     }
-  };
 
-  const handleToggleEventType = async (id: string, enabled: boolean) => {
-    try {
-      const response = await fetch(`/api/event-types/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
+    loadEventTypes();
 
-      if (!response.ok) {
-        throw new Error("Failed to update event type");
-      }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-      setEventTypes(prev => prev.map(eventType => (eventType.id === id ? { ...eventType, enabled } : eventType)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update event type");
-    }
-  };
+  function resetForm() {
+    setFormData(initialFormState);
+    setEditingEventType(null);
+  }
 
-  const handleDeleteEventType = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this event type?")) return;
+  function openCreateDialog() {
+    resetForm();
+    setCreateDialogOpen(true);
+  }
 
-    try {
-      const response = await fetch(`/api/event-types/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete event type");
-      }
-
-      setEventTypes(prev => prev.filter(eventType => eventType.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete event type");
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      schema: "",
-      enabled: true,
-    });
-  };
-
-  const openEditDialog = (eventType: EventType) => {
+  function openEditDialog(eventType: EventType) {
     setFormData({
       name: eventType.name,
       description: eventType.description || "",
@@ -150,57 +98,73 @@ export default function EventTypesTab() {
     });
     setEditingEventType(eventType);
     setCreateDialogOpen(true);
-  };
+  }
 
-  const handleUpdateEventType = async () => {
-    if (!editingEventType) return;
+  async function handleSubmit() {
+    try {
+      setError(null);
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        schema: parseSchema(formData.schema),
+        enabled: formData.enabled,
+      };
+
+      if (editingEventType) {
+        const updatedEventType = await updateEventType(editingEventType.id, payload);
+        setEventTypes(current =>
+          current.map(eventType => (eventType.id === editingEventType.id ? updatedEventType : eventType))
+        );
+      } else {
+        const createdEventType = await createEventType(payload);
+        setEventTypes(current => [...current, createdEventType]);
+      }
+
+      setCreateDialogOpen(false);
+      resetForm();
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to save event type");
+    }
+  }
+
+  async function handleToggleEventType(eventType: EventType) {
+    try {
+      setError(null);
+      const updatedEventType = await updateEventType(eventType.id, { enabled: !eventType.enabled });
+      setEventTypes(current => current.map(item => (item.id === eventType.id ? updatedEventType : item)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to update event type");
+    }
+  }
+
+  async function handleDeleteEventType(id: string) {
+    if (!confirm("Are you sure you want to delete this event type?")) return;
 
     try {
-      let schema = null;
-      if (formData.schema.trim()) {
-        try {
-          schema = JSON.parse(formData.schema);
-        } catch (e) {
-          throw new Error("Invalid JSON schema");
-        }
-      }
-
-      const response = await fetch(`/api/event-types/${editingEventType.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          schema,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update event type");
-      }
-
-      const updatedEventType = (await response.json()) as EventType;
-      setEventTypes(prev =>
-        prev.map(eventType => (eventType.id === editingEventType.id ? updatedEventType : eventType))
-      );
-      setCreateDialogOpen(false);
-      setEditingEventType(null);
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update event type");
+      setError(null);
+      await deleteEventType(id);
+      setEventTypes(current => current.filter(eventType => eventType.id !== id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to delete event type");
     }
-  };
+  }
+
+  if (loading) {
+    return <LoadingStateCard />;
+  }
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex justify-between items-center">
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Event Types</h2>
           <p className="text-muted-foreground">Define event schemas for structured webhook notifications</p>
         </div>
+
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
               Create Event Type
             </Button>
           </DialogTrigger>
@@ -215,171 +179,138 @@ export default function EventTypesTab() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="event-type-name">Name *</Label>
                 <Input
-                  id="name"
+                  id="event-type-name"
                   value={formData.name}
-                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
                   placeholder="user.created"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="event-type-description">Description</Label>
                 <Input
-                  id="description"
+                  id="event-type-description"
                   value={formData.description}
-                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
                   placeholder="Triggered when a new user is created"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="schema">JSON Schema (Optional)</Label>
-                <textarea
-                  id="schema"
-                  className="w-full min-h-[200px] p-2 border rounded-md font-mono text-sm dark:bg-muted dark:text-white"
+                <Label htmlFor="event-type-schema">JSON Schema (Optional)</Label>
+                <Textarea
+                  id="event-type-schema"
+                  className="min-h-[200px] font-mono text-sm"
                   value={formData.schema}
-                  onChange={e => setFormData(prev => ({ ...prev, schema: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, schema: event.target.value }))}
                   placeholder={`{
   "type": "object",
   "properties": {
     "userId": {
-      "type": "string",
-      "description": "The unique identifier of the user"
-    },
-    "email": {
-      "type": "string",
-      "format": "email"
-    },
-    "createdAt": {
-      "type": "string",
-      "format": "date-time"
+      "type": "string"
     }
   },
-  "required": ["userId", "email"]
+  "required": ["userId"]
 }`}
                 />
-                <p className="text-xs text-gray-500">Define the structure of the event payload using JSON Schema</p>
+                <p className="text-xs text-muted-foreground">
+                  Define the structure of the event payload using JSON Schema.
+                </p>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={editingEventType ? handleUpdateEventType : handleCreateEventType}>
-                {editingEventType ? "Update" : "Create"} Event Type
-              </Button>
+              <Button onClick={handleSubmit}>{editingEventType ? "Update" : "Create"} Event Type</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {loading && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Loading...</h3>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorStateCard message={error} />}
 
-      {error && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <CircleX className="h-12 w-12 text-red-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error</h3>
-            <p className="text-red-600 text-center">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {!loading &&
-        !error &&
-        (eventTypes.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <Zap className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Event Types</h3>
-              <p className="text-muted-foreground text-center">
-                Create your first event type to define structured webhook notifications.
-              </p>
-              <code className="text-sm m-4 p-4 bg-neutral-600 dark:bg-neutral-800 rounded-md text-white min-w-[500px]">
-                <EditableTemplate
-                  template={`curl {{baseUrl}}/api/event-types \\
+      {eventTypes.length === 0 ? (
+        <EmptyStateCard
+          icon={Zap}
+          title="No Event Types"
+          description="Create your first event type to define structured webhook notifications."
+        >
+          <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
+            <EditableTemplate
+              template={`curl ${getPublicApiUrl()}/event-types \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
-    "name": "My First Event Type"
+  "name": "My First Event Type"
 }'`}
-                  className="whitespace-pre"
-                />
-              </code>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {eventTypes.map(eventType => (
-              <Card key={eventType.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Zap className="h-4 w-4" />
-                        {eventType.name}
-                      </CardTitle>
-                      <CardDescription>{eventType.description || "No description"}</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(eventType)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteEventType(eventType.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              className="whitespace-pre"
+            />
+          </code>
+        </EmptyStateCard>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {eventTypes.map(eventType => (
+            <Card key={eventType.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="h-4 w-4" />
+                      {eventType.name}
+                    </CardTitle>
+                    <CardDescription>{eventType.description || "No description"}</CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={eventType.enabled ? "default" : "secondary"}>
-                          {eventType.enabled ? "Enabled" : "Disabled"}
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(eventType)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteEventType(eventType.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={eventType.enabled ? "default" : "secondary"}>
+                        {eventType.enabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                      {eventType.schema && (
+                        <Badge variant="outline">
+                          <Code className="mr-1 h-3 w-3" />
+                          Schema
                         </Badge>
-                        {eventType.schema && (
-                          <Badge variant="outline">
-                            <Code className="h-3 w-3 mr-1" />
-                            Schema
-                          </Badge>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleEventType(eventType.id, !eventType.enabled)}
-                      >
-                        {eventType.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                      </Button>
+                      )}
                     </div>
-
-                    {eventType.schema && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-1">Schema Preview</h4>
-                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded font-mono max-h-20 overflow-y-auto">
-                          {JSON.stringify(eventType.schema, null, 2).substring(0, 100)}
-                          {JSON.stringify(eventType.schema, null, 2).length > 100 && "..."}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="text-xs text-gray-500">
-                      Created {new Date(eventType.createdAt).toLocaleDateString()}
-                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleToggleEventType(eventType)}>
+                      {eventType.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ))}
+
+                  {eventType.schema && (
+                    <div>
+                      <h4 className="mb-1 text-sm font-medium">Schema Preview</h4>
+                      <div className="max-h-20 overflow-y-auto rounded bg-gray-50 p-2 font-mono text-xs text-gray-600">
+                        {JSON.stringify(eventType.schema, null, 2).slice(0, 180)}
+                        {JSON.stringify(eventType.schema, null, 2).length > 180 && "..."}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">
+                    Created {new Date(eventType.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

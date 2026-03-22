@@ -35,27 +35,27 @@ To deploy `workers-webhooks` manually, follow the steps below.
 
 1. Clone the repository
 2. Install dependencies
-    - `npm install`
+   - `pnpm install`
 3. Copy the `.env.example` file to `.env`
-    - `cp .env.example .env`
+   - `cp .env.example .env`
 4. Set the `AUTH_SECRET` environment variable
-    - `AUTH_SECRET=YOUR_AUTH_SECRET`
+   - `AUTH_SECRET=YOUR_AUTH_SECRET`
 5. Create the D1 database
-    - `npx wrangler d1 create webhooks-db`
+   - `npx wrangler d1 create webhooks-db`
 6. Create the KV namespace
-    - `npx wrangler kv namespace create webhooks-kv`
+   - `npx wrangler kv namespace create webhooks-kv`
 7. Create the Queues
-    - `npx wrangler queues create webhooks-queue`
-    - `npx wrangler queues create webhooks-dlq`
+   - `npx wrangler queues create webhooks-queue`
+   - `npx wrangler queues create webhooks-dlq`
 8. Build the project
-    - `npm run build`
+   - `pnpm build`
 9. Deploy the project
-    - `npm run deploy`
+   - `pnpm deploy`
 
 ## API Documentation
 
-The API documentation is available at `/api` and has tabs for both the webhooks and auth APIs.
+The API documentation is available at `/api/v1/ui`.
 
 To disable the API documentation, set the `NEXT_PUBLIC_API_DOCS_ENABLED` environment variable to `false`.
 
-The webhooks docs are generated based on the JSDoc comments in the `src/app/api` folder. To update the docs, run `npm run docs:generate`.
+The public API reference is served directly by Hono at `/api/v1`, with the OpenAPI document available at `/api/v1/spec`.

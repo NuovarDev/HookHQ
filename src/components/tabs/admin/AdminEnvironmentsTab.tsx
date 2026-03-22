@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { publicApiFetch } from "@/lib/publicApi/utils";
 
 export default function AdminEnvironmentsTab() {
   const { environments, loading, refreshEnvironments } = useEnvironment();
@@ -32,7 +33,7 @@ export default function AdminEnvironmentsTab() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/environments/${environmentToDelete.id}`, {
+      const response = await publicApiFetch(`/environments/${environmentToDelete.id}`, {
         method: "DELETE",
       });
 

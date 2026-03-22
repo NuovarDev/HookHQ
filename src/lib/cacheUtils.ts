@@ -15,7 +15,7 @@ export async function cacheEndpointData(
     return [];
   }
 
-  const db = await getDb();
+  const db = await getDb(env);
   
   // Cache individual endpoints
   const endpointData = await db

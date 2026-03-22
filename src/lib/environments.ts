@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { publicApiFetch } from "@/lib/publicApi/utils";
 
 const ENVIRONMENT_COOKIE_NAME = "hookhq_environment";
 
@@ -81,7 +82,7 @@ export async function getUserLastEnvironment(): Promise<string | null> {
       throw new Error("Failed to fetch last environment");
     }
 
-    const data = await response.json() as { environmentId: string | null };
+    const data = (await response.json()) as { environmentId: string | null };
     return data.environmentId;
   } catch (error) {
     console.error("Error fetching last environment:", error);
@@ -109,9 +110,9 @@ export async function getCurrentEnvironment(): Promise<string | null> {
 
   // Finally, try to get default environment
   try {
-    const response = await fetch("/api/environments");
+    const response = await publicApiFetch("/environments");
     if (response.ok) {
-      const data = await response.json() as { environments: Array<{ id: string; isDefault: boolean }> };
+      const data = (await response.json()) as { environments: Array<{ id: string; isDefault: boolean }> };
       const defaultEnv = data.environments.find(env => env.isDefault);
       if (defaultEnv) {
         setEnvironmentCookie(defaultEnv.id);

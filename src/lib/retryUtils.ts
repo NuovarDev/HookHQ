@@ -71,20 +71,20 @@ export function calculateBackoffDelay(
 /**
  * Get global retry configuration from database with KV caching
  */
-export async function getGlobalRetryConfig(): Promise<GlobalRetryConfig> {
+export async function getGlobalRetryConfig(env?: CloudflareEnv): Promise<GlobalRetryConfig> {
   try {
-    const { env } = await getCloudflareContext({ async: true });
+    const resolvedEnv = env ?? (await getCloudflareContext({ async: true })).env;
     
     // Try to get from cache first
     const cacheKey = "global:retry:config";
-    const cachedConfig = await env.KV.get(cacheKey);
+    const cachedConfig = await resolvedEnv.KV.get(cacheKey);
     
     if (cachedConfig) {
       return JSON.parse(cachedConfig) as GlobalRetryConfig;
     }
 
     // Cache miss - get from database
-    const db = await getDb();
+    const db = await getDb(resolvedEnv);
     
     // For now, return default config since we don't have a config table yet
     // TODO: Implement actual database table for global config
@@ -96,7 +96,7 @@ export async function getGlobalRetryConfig(): Promise<GlobalRetryConfig> {
     };
 
     // Cache the result
-    await env.KV.put(cacheKey, JSON.stringify(defaultConfig), { 
+    await resolvedEnv.KV.put(cacheKey, JSON.stringify(defaultConfig), { 
       expirationTtl: 60 * 60 * 24 // 24 hours
     });
 
@@ -133,9 +133,10 @@ export async function createRetryConfig(
   endpointRetryPolicy?: string,
   endpointMaxRetries?: number,
   endpointBackoffStrategy?: string,
-  endpointBaseDelaySeconds?: number
+  endpointBaseDelaySeconds?: number,
+  env?: CloudflareEnv
 ): Promise<RetryConfig> {
-  const globalConfig = await getGlobalRetryConfig();
+  const globalConfig = await getGlobalRetryConfig(env);
 
   return {
     maxAttempts: endpointMaxRetries ?? globalConfig.defaultMaxRetries,

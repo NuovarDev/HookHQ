@@ -1,5 +1,4 @@
-import { initAuth } from "@/auth";
-import { headers } from "next/headers";
+import { createCloudflareAuth } from "@/auth";
 import { getDb } from "@/db";
 import { serverConfig } from "@/db/environments.schema";
 import { eq } from "drizzle-orm";
@@ -10,28 +9,21 @@ export interface CloudflareConfig {
   cloudflareQueueId: string;
 }
 
-/**
- * Get Cloudflare configuration from database
- */
-export async function getCloudflareConfig(): Promise<CloudflareConfig | null> {
+export async function getCloudflareConfig(env?: CloudflareEnv): Promise<CloudflareConfig | null> {
   try {
-    const db = await getDb();
-    
-    const config = await db
-      .select()
-      .from(serverConfig)
-      .where(eq(serverConfig.id, "default"))
-      .limit(1);
+    const db = await getDb(env);
+    const config = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
 
     if (config.length === 0) {
       return null;
     }
 
     const serverConfigData = config[0];
-    
-    if (!serverConfigData.cloudflareApiKey || 
-        !serverConfigData.cloudflareAccountId || 
-        !serverConfigData.cloudflareQueueId) {
+    if (
+      !serverConfigData.cloudflareApiKey ||
+      !serverConfigData.cloudflareAccountId ||
+      !serverConfigData.cloudflareQueueId
+    ) {
       return null;
     }
 
@@ -46,13 +38,10 @@ export async function getCloudflareConfig(): Promise<CloudflareConfig | null> {
   }
 }
 
-/**
- * Validate that the current user has admin permissions
- */
-export async function validateAdminAccess(): Promise<boolean> {
+export async function validateAdminAccess(request: Request, env: CloudflareEnv): Promise<boolean> {
   try {
-    const authInstance = await initAuth();
-    const session = await authInstance.api.getSession({ headers: await headers() });
+    const authInstance = await createCloudflareAuth(env, request);
+    const session = await authInstance.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
       return false;

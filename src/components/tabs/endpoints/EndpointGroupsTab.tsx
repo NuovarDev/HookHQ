@@ -1,10 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
+import EditableTemplate from "@/components/EditableTemplate";
+import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -14,40 +16,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Plus,
-  Users,
-  Globe,
-  Edit,
-  Trash2,
-  Power,
-  PowerOff,
-  Hash,
-  Copy,
-  Check,
-  LoaderCircle,
-  CircleX,
-} from "lucide-react";
-import { useState, useEffect } from "react";
-import EditableTemplate from "@/components/EditableTemplate";
+  createEndpointGroup,
+  deleteEndpointGroup,
+  fetchEndpointGroups,
+  fetchEndpoints,
+  type Endpoint,
+  type EndpointGroup,
+  updateEndpointGroup,
+} from "@/lib/webhookApi";
+import { getPublicApiUrl } from "@/lib/publicApi/utils";
 
-interface Endpoint {
-  id: string;
+type EndpointGroupFormState = {
   name: string;
-  url: string;
-  enabled: boolean;
-}
-
-interface EndpointGroup {
-  id: string;
-  environmentId: string;
-  name: string;
-  description?: string;
+  description: string;
   endpointIds: string[];
   enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+};
+
+const initialFormState: EndpointGroupFormState = {
+  name: "",
+  description: "",
+  endpointIds: [],
+  enabled: true,
+};
 
 export default function EndpointGroupsTab() {
   const [endpointGroups, setEndpointGroups] = useState<EndpointGroup[]>([]);
@@ -57,109 +51,45 @@ export default function EndpointGroupsTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<EndpointGroup | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    endpointIds: [] as string[],
-    enabled: true,
-  });
-
-  const fetchData = async () => {
-    try {
-      const [groupsResponse, endpointsResponse] = await Promise.all([
-        fetch("/api/endpoint-groups"),
-        fetch("/api/endpoints"),
-      ]);
-
-      if (!groupsResponse.ok || !endpointsResponse.ok) {
-        throw new Error("Failed to fetch data");
-      }
-
-      const groupsData = (await groupsResponse.json()) as { endpointGroups: EndpointGroup[] };
-      const endpointsData = (await endpointsResponse.json()) as { endpoints: Endpoint[] };
-
-      setEndpointGroups(groupsData.endpointGroups);
-      setEndpoints(endpointsData.endpoints);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [formData, setFormData] = useState<EndpointGroupFormState>(initialFormState);
 
   useEffect(() => {
-    fetchData();
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const [nextEndpointGroups, nextEndpoints] = await Promise.all([fetchEndpointGroups(), fetchEndpoints()]);
+        if (!isMounted) return;
+        setEndpointGroups(nextEndpointGroups);
+        setEndpoints(nextEndpoints);
+      } catch (nextError) {
+        if (!isMounted) return;
+        setError(nextError instanceof Error ? nextError.message : "Failed to load endpoint groups");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleCreateGroup = async () => {
-    try {
-      const response = await fetch("/api/endpoint-groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+  function resetForm() {
+    setFormData(initialFormState);
+    setEditingGroup(null);
+  }
 
-      if (!response.ok) {
-        throw new Error("Failed to create endpoint group");
-      }
+  function openCreateDialog() {
+    resetForm();
+    setCreateDialogOpen(true);
+  }
 
-      const newGroup = (await response.json()) as EndpointGroup;
-      setEndpointGroups(prev => [...prev, newGroup]);
-      setCreateDialogOpen(false);
-      resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create endpoint group");
-    }
-  };
-
-  const handleToggleGroup = async (id: string, enabled: boolean) => {
-    try {
-      const response = await fetch(`/api/endpoint-groups/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update endpoint group");
-      }
-
-      setEndpointGroups(prev => prev.map(group => (group.id === id ? { ...group, enabled } : group)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update endpoint group");
-    }
-  };
-
-  const handleDeleteGroup = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this endpoint group?")) return;
-
-    try {
-      const response = await fetch(`/api/endpoint-groups/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete endpoint group");
-      }
-
-      setEndpointGroups(prev => prev.filter(group => group.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete endpoint group");
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      endpointIds: [],
-      enabled: true,
-    });
-  };
-
-  const openEditDialog = (group: EndpointGroup) => {
+  function openEditDialog(group: EndpointGroup) {
     setFormData({
       name: group.name,
       description: group.description || "",
@@ -168,67 +98,94 @@ export default function EndpointGroupsTab() {
     });
     setEditingGroup(group);
     setCreateDialogOpen(true);
-  };
+  }
 
-  const handleUpdateGroup = async () => {
-    if (!editingGroup) return;
-
+  async function handleSubmit() {
     try {
-      const response = await fetch(`/api/endpoint-groups/${editingGroup.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      setError(null);
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        endpointIds: formData.endpointIds,
+        enabled: formData.enabled,
+      };
 
-      if (!response.ok) {
-        throw new Error("Failed to update endpoint group");
+      if (editingGroup) {
+        const updatedGroup = await updateEndpointGroup(editingGroup.id, payload);
+        setEndpointGroups(current => current.map(group => (group.id === editingGroup.id ? updatedGroup : group)));
+      } else {
+        const createdGroup = await createEndpointGroup(payload);
+        setEndpointGroups(current => [...current, createdGroup]);
       }
 
-      const updatedGroup = (await response.json()) as EndpointGroup;
-      setEndpointGroups(prev => prev.map(group => (group.id === editingGroup.id ? updatedGroup : group)));
       setCreateDialogOpen(false);
-      setEditingGroup(null);
       resetForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update endpoint group");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to save endpoint group");
     }
-  };
+  }
 
-  const toggleEndpointSelection = (endpointId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      endpointIds: prev.endpointIds.includes(endpointId)
-        ? prev.endpointIds.filter(id => id !== endpointId)
-        : [...prev.endpointIds, endpointId],
+  async function handleToggleGroup(group: EndpointGroup) {
+    try {
+      setError(null);
+      const updatedGroup = await updateEndpointGroup(group.id, { enabled: !group.enabled });
+      setEndpointGroups(current => current.map(item => (item.id === group.id ? updatedGroup : item)));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to update endpoint group");
+    }
+  }
+
+  async function handleDeleteGroup(id: string) {
+    if (!confirm("Are you sure you want to delete this endpoint group?")) return;
+
+    try {
+      setError(null);
+      await deleteEndpointGroup(id);
+      setEndpointGroups(current => current.filter(group => group.id !== id));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to delete endpoint group");
+    }
+  }
+
+  function toggleEndpointSelection(endpointId: string) {
+    setFormData(current => ({
+      ...current,
+      endpointIds: current.endpointIds.includes(endpointId)
+        ? current.endpointIds.filter(id => id !== endpointId)
+        : [...current.endpointIds, endpointId],
     }));
-  };
+  }
 
-  const getEndpointName = (endpointId: string) => {
-    const endpoint = endpoints.find(e => e.id === endpointId);
-    return endpoint ? endpoint.name : endpointId;
-  };
+  function getEndpointName(endpointId: string) {
+    return endpoints.find(endpoint => endpoint.id === endpointId)?.name || endpointId;
+  }
 
-  const copyToClipboard = async (text: string, id: string) => {
+  async function copyToClipboard(text: string, id: string) {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy to clipboard:", err);
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to copy value");
     }
-  };
+  }
+
+  if (loading) {
+    return <LoadingStateCard />;
+  }
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex justify-between items-center">
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Endpoint Groups</h2>
           <p className="text-muted-foreground">Group endpoints together for batch notifications</p>
         </div>
+
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={openCreateDialog}>
+              <Plus className="mr-2 h-4 w-4" />
               Create Group
             </Button>
           </DialogTrigger>
@@ -241,30 +198,33 @@ export default function EndpointGroupsTab() {
                   : "Create a group of endpoints to receive notifications together"}
               </DialogDescription>
             </DialogHeader>
+
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="endpoint-group-name">Name *</Label>
                 <Input
-                  id="name"
+                  id="endpoint-group-name"
                   value={formData.name}
-                  onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
                   placeholder="My Endpoint Group"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="endpoint-group-description">Description</Label>
                 <Input
-                  id="description"
+                  id="endpoint-group-description"
                   value={formData.description}
-                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
                   placeholder="Optional description"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label>Select Endpoints</Label>
-                <div className="max-h-48 overflow-y-auto border rounded-md p-2">
+                <div className="max-h-48 overflow-y-auto rounded-md border p-2">
                   {endpoints.length === 0 ? (
-                    <div className="text-sm text-gray-500 text-center py-4">
+                    <div className="py-4 text-center text-sm text-gray-500">
                       No endpoints available. Create endpoints first.
                     </div>
                   ) : (
@@ -291,141 +251,118 @@ export default function EndpointGroupsTab() {
                 </div>
               </div>
             </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={editingGroup ? handleUpdateGroup : handleCreateGroup}>
-                {editingGroup ? "Update" : "Create"} Group
-              </Button>
+              <Button onClick={handleSubmit}>{editingGroup ? "Update" : "Create"} Group</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {loading && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <LoaderCircle className="h-12 w-12 mb-4 animate-spin text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">Loading...</h3>
-          </CardContent>
-        </Card>
-      )}
+      {error && <ErrorStateCard message={error} />}
 
-      {error && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <CircleX className="h-12 w-12 text-red-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error</h3>
-            <p className="text-red-600 text-center">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {!loading &&
-        !error &&
-        (endpointGroups?.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Endpoint Groups</h3>
-              <p className="text-muted-foreground text-center">
-                Create your first endpoint group to send notifications to multiple endpoints at once.
-              </p>
-              <code className="text-sm m-4 p-4 bg-neutral-600 dark:bg-neutral-800 rounded-md text-white min-w-[500px]">
-                <EditableTemplate
-                  template={`curl {{baseUrl}}/api/endpoint-groups \\
+      {endpointGroups.length === 0 ? (
+        <EmptyStateCard
+          icon={Users}
+          title="No Endpoint Groups"
+          description="Create your first endpoint group to send notifications to multiple endpoints at once."
+        >
+          <code className="m-4 min-w-[500px] rounded-md bg-neutral-600 p-4 text-sm text-white dark:bg-neutral-800">
+            <EditableTemplate
+              template={`curl ${getPublicApiUrl()}/endpoint-groups \\
 -H 'Content-Type: application/json' \\
 -H 'Authorization: Bearer {{apiKey="API KEY"}}' \\
 -d '{
-    "name": "My First Endpoint Group"
+  "name": "My First Endpoint Group"
 }'`}
-                  className="whitespace-pre"
-                />
-              </code>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {endpointGroups.map(group => (
-              <Card key={group.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        {group.name}
-                      </CardTitle>
-                      <CardDescription>{group.description || "No description"}</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(group)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              className="whitespace-pre"
+            />
+          </code>
+        </EmptyStateCard>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {endpointGroups.map(group => (
+            <Card key={group.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Users className="h-4 w-4" />
+                      {group.name}
+                    </CardTitle>
+                    <CardDescription>{group.description || "No description"}</CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Hash className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-500">Group ID:</span>
-                      <span className="font-mono text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
-                        {group.id}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-4 w-4 p-0 hover:bg-gray-200"
-                          onClick={() => copyToClipboard(group.id, `group-${group.id}`)}
-                        >
-                          {copiedId === `group-${group.id}` ? (
-                            <Check className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={group.enabled ? "default" : "secondary"}>
-                          {group.enabled ? "Enabled" : "Disabled"}
-                        </Badge>
-                        <Badge variant="outline">
-                          {group.endpointIds?.length ?? 0} endpoint{group.endpointIds?.length !== 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => handleToggleGroup(group.id, !group.enabled)}>
-                        {group.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                      </Button>
-                    </div>
-
-                    {group.endpointIds?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">Endpoints</h4>
-                        <div className="space-y-1">
-                          {group.endpointIds.slice(0, 3).map(endpointId => (
-                            <div key={endpointId} className="flex items-center gap-2 text-sm">
-                              <Globe className="h-3 w-3 text-gray-400" />
-                              <span className="truncate">{getEndpointName(endpointId)}</span>
-                            </div>
-                          ))}
-                          {group.endpointIds?.length > 3 && (
-                            <div className="text-xs text-gray-500">+{group.endpointIds?.length - 3} more</div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(group)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Hash className="h-3 w-3 text-gray-400" />
+                    <span className="text-gray-500">Group ID:</span>
+                    <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
+                      {group.id}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-gray-200"
+                        onClick={() => copyToClipboard(group.id, `group-${group.id}`)}
+                      >
+                        {copiedId === `group-${group.id}` ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={group.enabled ? "default" : "secondary"}>
+                        {group.enabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                      <Badge variant="outline">
+                        {group.endpointIds.length} endpoint{group.endpointIds.length !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleToggleGroup(group)}>
+                      {group.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </Button>
+                  </div>
+
+                  {group.endpointIds.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium">Endpoints</h4>
+                      <div className="space-y-1">
+                        {group.endpointIds.slice(0, 3).map(endpointId => (
+                          <div key={endpointId} className="flex items-center gap-2 text-sm">
+                            <Globe className="h-3 w-3 text-gray-400" />
+                            <span className="truncate">{getEndpointName(endpointId)}</span>
+                          </div>
+                        ))}
+                        {group.endpointIds.length > 3 && (
+                          <div className="text-xs text-gray-500">+{group.endpointIds.length - 3} more</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

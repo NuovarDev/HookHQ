@@ -5,38 +5,50 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, apiKey, admin, twoFactor } from "better-auth/plugins";
 import { getDb } from "../db";
 
-// Define an asynchronous function to build your auth configuration
-async function authBuilder() {
-  const dbInstance = await getDb();
+type AuthBuilderOptions = {
+  cf?: Record<string, unknown>;
+  env?: CloudflareEnv;
+};
+
+function getAuthSecret(env?: CloudflareEnv) {
+  return env?.AUTH_SECRET || process.env.AUTH_SECRET;
+}
+
+async function authBuilder({ cf, env }: AuthBuilderOptions = {}, useEnv = false) {
+  const resolvedEnv = env ?? (await getCloudflareContext({ async: true })).env;
+  const dbInstance = useEnv ? await getDb(resolvedEnv) : await getDb();
+  const authSecret = getAuthSecret(env);
+
   return betterAuth(
     withCloudflare(
       {
         autoDetectIpAddress: true,
         geolocationTracking: true,
-        cf: getCloudflareContext().cf,
+        cf: cf ?? getCloudflareContext().cf ?? {},
         d1: {
           db: dbInstance as any,
           options: {
             usePlural: true,
           },
         },
-        kv: process.env.KV as any,
+        kv: useEnv ? (resolvedEnv.KV as any) : (process.env.KV as any),
       },
       {
+        secret: authSecret,
         rateLimit: {
           enabled: true,
         },
         plugins: [
-          ...process.env.NEXT_PUBLIC_API_DOCS_ENABLED === 'true' ? [openAPI()] : [],
+          ...(process.env.NEXT_PUBLIC_API_DOCS_ENABLED === "true" ? [openAPI()] : []),
           apiKey({
             enableMetadata: true,
-            defaultPrefix: 'wh_',
+            defaultPrefix: "wh_",
             rateLimit: {
               enabled: false,
             },
           }),
           admin(),
-          twoFactor()
+          twoFactor(),
         ],
         emailAndPassword: {
           enabled: true,
@@ -44,14 +56,14 @@ async function authBuilder() {
         },
         user: {
           deleteUser: {
-            enabled: true
+            enabled: true,
           },
           additionalFields: {
             lastEnvironment: {
               type: "string",
               required: false,
-            }
-          }
+            },
+          },
         },
       }
     )
@@ -67,6 +79,24 @@ export async function initAuth() {
     authInstance = await authBuilder();
   }
   return authInstance;
+}
+
+export async function createCloudflareAuth(env: CloudflareEnv, request?: Request) {
+  return authBuilder(
+    {
+      env,
+      cf: getRequestCf(request),
+    },
+    true
+  );
+}
+
+function getRequestCf(request?: Request): Record<string, unknown> {
+  if (!request) {
+    return {};
+  }
+
+  return (request as Request & { cf?: Record<string, unknown> }).cf ?? {};
 }
 
 /* ======================================================================= */
@@ -86,8 +116,9 @@ export const auth = betterAuth({
       cf: {},
     },
     {
+      secret: process.env.AUTH_SECRET,
       // Include only configurations that influence the Drizzle schema
-      plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: 'wh_' }), admin(), twoFactor()],
+      plugins: [openAPI(), apiKey({ enableMetadata: true, defaultPrefix: "wh_" }), admin(), twoFactor()],
       emailAndPassword: {
         enabled: true,
       },
@@ -96,9 +127,9 @@ export const auth = betterAuth({
           lastEnvironment: {
             type: "string",
             required: false,
-          }
-        }
-      }
+          },
+        },
+      },
     }
   ),
 

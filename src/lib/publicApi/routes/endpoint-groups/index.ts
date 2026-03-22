@@ -1,0 +1,112 @@
+import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { endpointGroups } from "@/db/webhooks.schema";
+import {
+  authHeaderSchema,
+  enabledQuerySchema,
+  endpointGroupCreateSchema,
+  endpointGroupSchema,
+  errorResponseSchema,
+} from "@/lib/publicApi/schemas";
+import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
+
+function formatGroup(group: typeof endpointGroups.$inferSelect) {
+  return {
+    id: group.id,
+    environmentId: group.environmentId,
+    name: group.name,
+    description: group.description,
+    endpointIds: group.endpointIds ? JSON.parse(group.endpointIds) : [],
+    enabled: group.isActive,
+    createdAt: group.createdAt.toISOString(),
+    updatedAt: group.updatedAt.toISOString(),
+  };
+}
+
+const listGroupsRoute = createRoute({
+  method: "get",
+  path: "/endpoint-groups",
+  tags: ["Endpoint Groups"],
+  summary: "List Endpoint Groups",
+  request: { headers: authHeaderSchema, query: enabledQuerySchema },
+  responses: {
+    200: {
+      description: "Success",
+      content: { "application/json": { schema: z.object({ endpointGroups: z.array(endpointGroupSchema) }) } },
+    },
+    401: { description: "Unauthorized", content: { "application/json": { schema: errorResponseSchema } } },
+    403: { description: "Forbidden", content: { "application/json": { schema: errorResponseSchema } } },
+    429: { description: "Rate limited", content: { "application/json": { schema: errorResponseSchema } } },
+  },
+});
+
+const createGroupRoute = createRoute({
+  method: "post",
+  path: "/endpoint-groups",
+  tags: ["Endpoint Groups"],
+  summary: "Create Endpoint Group",
+  request: {
+    headers: authHeaderSchema,
+    body: { required: true, content: { "application/json": { schema: endpointGroupCreateSchema } } },
+  },
+  responses: {
+    200: { description: "Success", content: { "application/json": { schema: endpointGroupSchema } } },
+    400: { description: "Bad Request", content: { "application/json": { schema: errorResponseSchema } } },
+    401: { description: "Unauthorized", content: { "application/json": { schema: errorResponseSchema } } },
+    403: { description: "Forbidden", content: { "application/json": { schema: errorResponseSchema } } },
+  },
+});
+
+export function registerEndpointGroupCollectionRoutes(app: OpenAPIHono<{ Bindings: CloudflareEnv }>) {
+  app.openapi(listGroupsRoute, (async (c: any) => {
+    const auth = await requireEnvironmentAccess(c.req.raw, c.env, {
+      permissions: { endpointGroups: ["read"] },
+    });
+    if (auth instanceof Response) return auth;
+    const enabled = parseEnabledFilter(c.req.valid("query").enabled);
+    const conditions = [eq(endpointGroups.environmentId, auth.environmentId)];
+    if (enabled !== undefined) conditions.push(eq(endpointGroups.isActive, enabled));
+    const db = await getDb(c.env);
+    const groups = await db
+      .select()
+      .from(endpointGroups)
+      .where(and(...conditions))
+      .orderBy(endpointGroups.createdAt);
+    return c.json({ endpointGroups: groups.map(formatGroup) }, 200);
+  }) as never);
+
+  app.openapi(createGroupRoute, (async (c: any) => {
+    const auth = await requireEnvironmentAccess(c.req.raw, c.env, {
+      permissions: { endpointGroups: ["create"] },
+    });
+    if (auth instanceof Response) return auth;
+    const body = c.req.valid("json");
+    const now = new Date();
+    const id = `grp_${auth.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+    const db = await getDb(c.env);
+    await db.insert(endpointGroups).values({
+      id,
+      environmentId: auth.environmentId,
+      name: body.name,
+      description: body.description,
+      endpointIds: JSON.stringify(body.endpointIds ?? []),
+      isActive: body.enabled ?? true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return c.json(
+      formatGroup({
+        id,
+        environmentId: auth.environmentId,
+        name: body.name,
+        description: body.description ?? null,
+        endpointIds: JSON.stringify(body.endpointIds ?? []),
+        isActive: body.enabled ?? true,
+        createdAt: now,
+        updatedAt: now,
+      } as typeof endpointGroups.$inferSelect),
+      200
+    );
+  }) as never);
+}
