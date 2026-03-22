@@ -10,11 +10,12 @@ CREATE TABLE `accounts` (
 	`refresh_token_expires_at` integer,
 	`scope` text,
 	`password` text,
-	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `accounts_userId_idx` ON `accounts` (`user_id`);--> statement-breakpoint
 CREATE TABLE `apikeys` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text,
@@ -44,7 +45,7 @@ CREATE TABLE `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
 	`token` text NOT NULL,
-	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`updated_at` integer NOT NULL,
 	`ip_address` text,
 	`user_agent` text,
@@ -62,18 +63,28 @@ CREATE TABLE `sessions` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `sessions_token_unique` ON `sessions` (`token`);--> statement-breakpoint
+CREATE INDEX `sessions_userId_idx` ON `sessions` (`user_id`);--> statement-breakpoint
+CREATE TABLE `two_factors` (
+	`id` text PRIMARY KEY NOT NULL,
+	`secret` text NOT NULL,
+	`backup_codes` text NOT NULL,
+	`user_id` text NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`email` text NOT NULL,
 	`email_verified` integer DEFAULT false NOT NULL,
 	`image` text,
-	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`role` text,
 	`banned` integer DEFAULT false,
 	`ban_reason` text,
 	`ban_expires` integer,
+	`two_factor_enabled` integer DEFAULT false,
 	`last_environment` text
 );
 --> statement-breakpoint
@@ -83,10 +94,11 @@ CREATE TABLE `verifications` (
 	`identifier` text NOT NULL,
 	`value` text NOT NULL,
 	`expires_at` integer NOT NULL,
-	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
-	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `verifications_identifier_idx` ON `verifications` (`identifier`);--> statement-breakpoint
 CREATE TABLE `environments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -108,6 +120,12 @@ CREATE TABLE `server_config` (
 	`default_timeout_ms` integer DEFAULT 30000 NOT NULL,
 	`default_retry_policy` text DEFAULT 'retry' NOT NULL,
 	`default_backoff_strategy` text DEFAULT 'exponential' NOT NULL,
+	`default_retry_strategy` text DEFAULT 'exponential' NOT NULL,
+	`default_base_delay_seconds` integer DEFAULT 5 NOT NULL,
+	`default_max_retry_delay_seconds` integer DEFAULT 300 NOT NULL,
+	`default_retry_jitter_factor` integer DEFAULT 20 NOT NULL,
+	`default_failure_alert_config` text DEFAULT '{}' NOT NULL,
+	`default_auto_disable_config` text DEFAULT '{}' NOT NULL,
 	`queue_management_enabled` integer DEFAULT false NOT NULL,
 	`jwt_expiration` text DEFAULT '1day' NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
@@ -120,7 +138,9 @@ CREATE TABLE `endpoint_groups` (
 	`name` text NOT NULL,
 	`description` text,
 	`endpoint_ids` text NOT NULL,
+	`event_types` text DEFAULT '["*"]' NOT NULL,
 	`is_active` integer DEFAULT true NOT NULL,
+	`failure_alert_config` text DEFAULT '{}' NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL
 );
@@ -134,14 +154,20 @@ CREATE TABLE `endpoints` (
 	`is_active` integer DEFAULT true NOT NULL,
 	`retry_policy` text DEFAULT 'retry',
 	`backoff_strategy` text DEFAULT 'exponential',
+	`retry_strategy` text DEFAULT 'exponential',
 	`base_delay_seconds` integer DEFAULT 5,
+	`max_retry_delay_seconds` integer DEFAULT 300 NOT NULL,
+	`retry_jitter_factor` real DEFAULT 0.2 NOT NULL,
 	`max_retries` integer DEFAULT 3 NOT NULL,
 	`timeout_ms` integer DEFAULT 30000 NOT NULL,
 	`headers` text,
 	`proxy_group_id` text,
+	`destination_type` text DEFAULT 'webhook',
+	`destination_config` text DEFAULT '{}' NOT NULL,
+	`auto_disable_config` text DEFAULT '{}' NOT NULL,
 	`created_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer)) NOT NULL,
-	`topics` text DEFAULT '[]'
+	`topics` text DEFAULT '["*"]'
 );
 --> statement-breakpoint
 CREATE TABLE `event_types` (

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "01c90dc5-0397-4703-a867-03f7102b9302",
+  "id": "fc626c2c-937c-4e25-a632-44703ae75103",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -90,7 +90,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
@@ -100,7 +100,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "accounts_userId_idx": {
+          "name": "accounts_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "accounts_user_id_users_id_fk": {
           "name": "accounts_user_id_users_id_fk",
@@ -326,7 +334,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
@@ -427,12 +435,71 @@
             "token"
           ],
           "isUnique": true
+        },
+        "sessions_userId_idx": {
+          "name": "sessions_userId_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "two_factors": {
+      "name": "two_factors",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "backup_codes": {
+          "name": "backup_codes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "two_factors_user_id_users_id_fk": {
+          "name": "two_factors_user_id_users_id_fk",
+          "tableFrom": "two_factors",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -493,7 +560,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
@@ -501,7 +568,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "role": {
           "name": "role",
@@ -531,6 +598,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "two_factor_enabled": {
+          "name": "two_factor_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
         },
         "last_environment": {
           "name": "last_environment",
@@ -591,7 +666,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         },
         "updated_at": {
           "name": "updated_at",
@@ -599,10 +674,18 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(cast((julianday('now') - 2440587.5)*86400000 as integer))"
+          "default": "(cast(unixepoch('subsecond') * 1000 as integer))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "verifications_identifier_idx": {
+          "name": "verifications_identifier_idx",
+          "columns": [
+            "identifier"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -751,6 +834,54 @@
           "autoincrement": false,
           "default": "'exponential'"
         },
+        "default_retry_strategy": {
+          "name": "default_retry_strategy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'exponential'"
+        },
+        "default_base_delay_seconds": {
+          "name": "default_base_delay_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 5
+        },
+        "default_max_retry_delay_seconds": {
+          "name": "default_max_retry_delay_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 300
+        },
+        "default_retry_jitter_factor": {
+          "name": "default_retry_jitter_factor",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 20
+        },
+        "default_failure_alert_config": {
+          "name": "default_failure_alert_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "default_auto_disable_config": {
+          "name": "default_auto_disable_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
         "queue_management_enabled": {
           "name": "queue_management_enabled",
           "type": "integer",
@@ -828,6 +959,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "event_types": {
+          "name": "event_types",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[\"*\"]'"
+        },
         "is_active": {
           "name": "is_active",
           "type": "integer",
@@ -835,6 +974,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": true
+        },
+        "failure_alert_config": {
+          "name": "failure_alert_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
         },
         "created_at": {
           "name": "created_at",
@@ -921,6 +1068,14 @@
           "autoincrement": false,
           "default": "'exponential'"
         },
+        "retry_strategy": {
+          "name": "retry_strategy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'exponential'"
+        },
         "base_delay_seconds": {
           "name": "base_delay_seconds",
           "type": "integer",
@@ -928,6 +1083,22 @@
           "notNull": false,
           "autoincrement": false,
           "default": 5
+        },
+        "max_retry_delay_seconds": {
+          "name": "max_retry_delay_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 300
+        },
+        "retry_jitter_factor": {
+          "name": "retry_jitter_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0.2
         },
         "max_retries": {
           "name": "max_retries",
@@ -959,6 +1130,30 @@
           "notNull": false,
           "autoincrement": false
         },
+        "destination_type": {
+          "name": "destination_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'webhook'"
+        },
+        "destination_config": {
+          "name": "destination_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "auto_disable_config": {
+          "name": "auto_disable_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -981,7 +1176,7 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": "'[]'"
+          "default": "'[\"*\"]'"
         }
       },
       "indexes": {},
