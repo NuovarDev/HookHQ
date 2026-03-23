@@ -76,7 +76,23 @@ export async function resolveDestinationConfig(
 ): Promise<DestinationConfig> {
   const destinationType =
     record.destinationType === "sqs" || record.destinationType === "pubsub" ? record.destinationType : "webhook";
-  const decryptedConfig = await decryptValue(record.destinationConfig, env);
+  let decryptedConfig: string | null;
+
+  try {
+    decryptedConfig = await decryptValue(record.destinationConfig, env);
+  } catch (error) {
+    console.error("Failed to decrypt destination configuration", {
+      destinationType,
+      endpointUrl: record.url,
+      hasDestinationConfig: Boolean(record.destinationConfig),
+      error: error instanceof Error ? error.message : "Unknown decryption error",
+    });
+
+    throw new Error(
+      "Failed to decrypt destination configuration. Verify that this deployment is using the correct DESTINATION_ENCRYPTION_KEY."
+    );
+  }
+
   const config = parseJson<Record<string, unknown>>(decryptedConfig, {});
 
   if (destinationType === "sqs") {

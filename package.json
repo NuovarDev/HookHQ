@@ -19,7 +19,7 @@
     "test:ui": "vitest --ui",
     "deploy": "opennextjs-cloudflare build && npx wrangler d1 migrations apply DATABASE --remote; opennextjs-cloudflare deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "auth:generate": "npx --yes @better-auth/cli@latest generate --config src/auth/index.ts --output src/db/auth.schema.ts -y",
+    "auth:generate": "npx --yes @better-auth/cli@latest generate --config src/auth/schema.ts --output src/db/auth.schema.ts -y",
     "auth:format": "npx --yes prettier --write src/db/auth.schema.ts",
     "auth:update": "npm run auth:generate && npm run auth:format",
     "db:generate": "drizzle-kit generate",

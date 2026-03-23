@@ -22,7 +22,6 @@ import { Label } from "@/components/ui/label";
 import {
   createEndpointGroup,
   deleteEndpointGroup,
-  fetchProxyGroups,
   fetchEndpointGroups,
   fetchEndpoints,
   fetchEventTypes,
@@ -70,6 +69,23 @@ function getEndpointTarget(endpoint: Endpoint) {
     : endpoint.destinationType === "sqs"
       ? endpoint.destination.queueUrl
       : endpoint.destination.topicName;
+}
+
+async function fetchProxyGroups() {
+  const response = await fetch("/api/proxy-groups?active=true");
+
+  if (!response.ok) {
+    console.error("Failed to fetch proxy groups", response);
+    return [];
+  }
+
+  try {
+    const data = (await response.json()) as { proxyGroups: ProxyGroup[] };
+    return data.proxyGroups;
+  } catch {
+    console.error("Failed to parse proxy groups", response);
+    return [];
+  }
 }
 
 export default function EndpointGroupsTab() {

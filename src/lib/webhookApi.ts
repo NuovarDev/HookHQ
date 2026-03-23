@@ -268,8 +268,3 @@ export async function updateEventType(
 export async function deleteEventType(id: string) {
   await requestJson(`/event-types/${id}`, { method: "DELETE" });
 }
-
-export async function fetchProxyGroups() {
-  const data = await requestJson<{ proxyGroups: ProxyGroup[] }>("/proxy-groups?active=true");
-  return data.proxyGroups ?? [];
-}
