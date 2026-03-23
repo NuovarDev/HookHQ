@@ -37,6 +37,7 @@ export const endpointGroups = sqliteTable("endpoint_groups", {
   description: text("description"),
   endpointIds: text("endpoint_ids").notNull(), // JSON array of endpoint IDs
   eventTypes: text("event_types").default('["*"]').notNull(), // JSON array of event type subscriptions
+  proxyGroupId: text("proxy_group_id"),
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
   failureAlertConfig: text("failure_alert_config").default("{}").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),

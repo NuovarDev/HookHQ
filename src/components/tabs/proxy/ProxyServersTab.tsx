@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Plus, Server, Globe, Shield, Clock, Users, LoaderCircle, Computer } from "lucide-react";
+import { Copy, Edit, Hash, Plus, Server, Globe, Shield, Clock, Trash2, LoaderCircle, Computer } from "lucide-react";
 import CopyableCode from "@/components/CopyableCode";
 
 interface ProxyServer {
@@ -29,9 +29,13 @@ interface ProxyServer {
   region?: string;
   provider?: string;
   staticIp?: string;
-  healthCheckUrl?: string;
   timeoutMs: number;
-  maxConcurrentRequests: number;
+  hasSecret: boolean;
+  health: {
+    state: "healthy" | "unhealthy" | "unknown";
+    checkedAt: string;
+    error?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -45,9 +49,7 @@ interface ProxyServerCreateResponse {
   region?: string;
   provider?: string;
   staticIp?: string;
-  healthCheckUrl?: string;
   timeoutMs: number;
-  maxConcurrentRequests: number;
   secret: string;
   configInstructions: {
     docker: { command: string; env: string };
@@ -64,6 +66,7 @@ export default function ProxyServersTab() {
   const [creating, setCreating] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showSecretDialog, setShowSecretDialog] = useState(false);
+  const [editingProxy, setEditingProxy] = useState<ProxyServer | null>(null);
   const [newProxySecret, setNewProxySecret] = useState("");
   const [newProxyConfig, setNewProxyConfig] = useState<any>(null);
 
@@ -75,9 +78,7 @@ export default function ProxyServersTab() {
     region: "",
     provider: "",
     staticIp: "",
-    healthCheckUrl: "",
     timeoutMs: 30000,
-    maxConcurrentRequests: 100,
   });
 
   useEffect(() => {
@@ -99,25 +100,25 @@ export default function ProxyServersTab() {
     }
   };
 
-  const handleCreateProxy = async () => {
+  const handleSaveProxy = async () => {
     try {
       setCreating(true);
-      const response = await fetch("/api/proxy-servers", {
-        method: "POST",
+      const response = await fetch(editingProxy ? `/api/proxy-servers/${editingProxy.id}` : "/api/proxy-servers", {
+        method: editingProxy ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error("Failed to create proxy server");
+      if (!response.ok) throw new Error(`Failed to ${editingProxy ? "update" : "create"} proxy server`);
 
-      const newProxy: ProxyServerCreateResponse = await response.json();
+      if (!editingProxy) {
+        const newProxy: ProxyServerCreateResponse = await response.json();
 
-      // Show secret and config instructions
-      setNewProxySecret(newProxy.secret);
-      setNewProxyConfig(newProxy.configInstructions);
-      setShowSecretDialog(true);
+        setNewProxySecret(newProxy.secret);
+        setNewProxyConfig(newProxy.configInstructions);
+        setShowSecretDialog(true);
+      }
 
-      // Reset form and refresh list
       setFormData({
         name: "",
         description: "",
@@ -125,16 +126,55 @@ export default function ProxyServersTab() {
         region: "",
         provider: "",
         staticIp: "",
-        healthCheckUrl: "",
         timeoutMs: 30000,
-        maxConcurrentRequests: 100,
       });
+      setEditingProxy(null);
       setShowCreateDialog(false);
       fetchProxyServers();
     } catch (error) {
-      console.error("Error creating proxy server:", error);
+      console.error("Error saving proxy server:", error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openCreateDialog = () => {
+    setEditingProxy(null);
+    setFormData({
+      name: "",
+      description: "",
+      url: "",
+      region: "",
+      provider: "",
+      staticIp: "",
+      timeoutMs: 30000,
+    });
+    setShowCreateDialog(true);
+  };
+
+  const openEditDialog = (proxy: ProxyServer) => {
+    setEditingProxy(proxy);
+    setFormData({
+      name: proxy.name,
+      description: proxy.description || "",
+      url: proxy.url,
+      region: proxy.region || "",
+      provider: proxy.provider || "",
+      staticIp: proxy.staticIp || "",
+      timeoutMs: proxy.timeoutMs,
+    });
+    setShowCreateDialog(true);
+  };
+
+  const handleDeleteProxy = async (proxy: ProxyServer) => {
+    if (!confirm(`Delete proxy server "${proxy.name}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/proxy-servers/${proxy.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete proxy server");
+      fetchProxyServers();
+    } catch (error) {
+      console.error("Error deleting proxy server:", error);
     }
   };
 
@@ -170,10 +210,12 @@ export default function ProxyServersTab() {
               Add Proxy Server
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Proxy Server</DialogTitle>
-              <DialogDescription>Add a new proxy server for webhook delivery with static IP support.</DialogDescription>
+              <DialogTitle>{editingProxy ? "Edit Proxy Server" : "Create Proxy Server"}</DialogTitle>
+              <DialogDescription>
+                Add or update a proxy relay for webhook delivery with static IP support.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -245,17 +287,7 @@ export default function ProxyServersTab() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="healthCheckUrl">Health Check URL</Label>
-                <Input
-                  id="healthCheckUrl"
-                  value={formData.healthCheckUrl}
-                  onChange={e => setFormData({ ...formData, healthCheckUrl: e.target.value })}
-                  placeholder="https://proxy-us-east.example.com/health"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <Label htmlFor="timeoutMs">Timeout (ms)</Label>
                   <Input
@@ -265,23 +297,20 @@ export default function ProxyServersTab() {
                     onChange={e => setFormData({ ...formData, timeoutMs: parseInt(e.target.value) })}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="maxConcurrentRequests">Max Concurrent Requests</Label>
-                  <Input
-                    id="maxConcurrentRequests"
-                    type="number"
-                    value={formData.maxConcurrentRequests}
-                    onChange={e => setFormData({ ...formData, maxConcurrentRequests: parseInt(e.target.value) })}
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateProxy} disabled={creating || !formData.name || !formData.url}>
-                  {creating ? "Creating..." : "Create Proxy Server"}
+                <Button onClick={handleSaveProxy} disabled={creating || !formData.name || !formData.url}>
+                  {creating
+                    ? editingProxy
+                      ? "Saving..."
+                      : "Creating..."
+                    : editingProxy
+                      ? "Save Changes"
+                      : "Create Proxy Server"}
                 </Button>
               </div>
             </div>
@@ -306,7 +335,7 @@ export default function ProxyServersTab() {
             <p className="text-muted-foreground text-center mb-4">
               Create your first proxy server to enable static IP webhook delivery.
             </p>
-            <Button onClick={() => setShowCreateDialog(true)}>
+            <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Add Proxy Server
             </Button>
@@ -325,11 +354,25 @@ export default function ProxyServersTab() {
                       <CardDescription>{proxy.description}</CardDescription>
                     </div>
                   </div>
-                  {getStatusBadge(proxy.isActive)}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{proxy.health.state}</Badge>
+                    {getStatusBadge(proxy.isActive)}
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(proxy)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteProxy(proxy)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="mb-4 flex items-center gap-2 text-sm">
+                  <Hash className="h-4 w-4 text-muted-foreground" />
+                  <span className="rounded bg-muted px-2 py-1 font-mono text-xs">{proxy.id}</span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                   <div className="flex items-center space-x-2">
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -349,13 +392,6 @@ export default function ProxyServersTab() {
                     <div>
                       <div className="font-medium">Timeout</div>
                       <div className="text-muted-foreground">{proxy.timeoutMs}ms</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">Max Concurrent</div>
-                      <div className="text-muted-foreground">{proxy.maxConcurrentRequests}</div>
                     </div>
                   </div>
                 </div>
@@ -380,7 +416,7 @@ export default function ProxyServersTab() {
 
       {/* Secret Display Dialog */}
       <Dialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Proxy Server Created Successfully!</DialogTitle>
             <DialogDescription>
@@ -388,16 +424,18 @@ export default function ProxyServersTab() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/40">
               <div className="flex items-center space-x-2 mb-2">
-                <Shield className="h-5 w-5 text-yellow-600" />
-                <span className="font-semibold text-yellow-800">Important: Save Your Secret</span>
+                <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold text-amber-900 dark:text-amber-200">Important: Save Your Secret</span>
               </div>
-              <p className="text-yellow-700 text-sm mb-3">
+              <p className="mb-3 text-sm text-amber-800 dark:text-amber-300">
                 This secret will only be shown once. Copy it now and store it securely.
               </p>
               <div className="flex items-center space-x-2">
-                <code className="flex-1 p-2 bg-white border rounded font-mono text-sm">{newProxySecret}</code>
+                <code className="flex-1 overflow-x-auto rounded border bg-background p-2 font-mono text-sm">
+                  {newProxySecret}
+                </code>
                 <Button variant="outline" size="sm" onClick={() => copyToClipboard(newProxySecret)}>
                   <Copy className="h-4 w-4" />
                 </Button>

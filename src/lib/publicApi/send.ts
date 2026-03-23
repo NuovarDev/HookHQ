@@ -1,4 +1,5 @@
 import { getDb } from "@/db";
+import { serverConfig } from "@/db/environments.schema";
 import { endpointGroups, endpoints, eventTypes, webhookMessages } from "@/db/webhooks.schema";
 import { cacheEndpointData } from "@/lib/cacheUtils";
 import { resolveDestinationConfig, resolveRetryConfig } from "@/lib/destinations/config";
@@ -22,6 +23,11 @@ type HandleSendEventRequestInput = {
   env: CloudflareEnv;
   request: Request;
   environmentId: string;
+};
+
+type ResolvedEndpointTarget = {
+  endpointId: string;
+  proxyGroupId?: string | null;
 };
 
 export async function handleSendEventRequest({
@@ -59,6 +65,8 @@ export async function handleSendEventRequest({
   }
 
   const db = await getDb(env);
+  const [globalConfig] = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
+  const defaultProxyGroupId = globalConfig?.defaultProxyGroupId ?? null;
 
   if (eventType) {
     const eventTypeRecord = await db
@@ -95,7 +103,19 @@ export async function handleSendEventRequest({
   });
   const directEndpoints =
     endpointIds.length > 0 ? await resolveDirectEndpoints({ endpointIds, eventType, environmentId, env }) : [];
-  const allEndpointIds = [...new Set([...directEndpoints, ...resolvedEndpoints])];
+  const endpointTargets = new Map<string, string | null>();
+
+  for (const endpointId of directEndpoints) {
+    endpointTargets.set(endpointId, null);
+  }
+
+  for (const target of resolvedEndpoints) {
+    if (!endpointTargets.has(target.endpointId) || target.proxyGroupId) {
+      endpointTargets.set(target.endpointId, target.proxyGroupId ?? null);
+    }
+  }
+
+  const allEndpointIds = [...endpointTargets.keys()];
 
   if (allEndpointIds.length === 0) {
     return Response.json({ error: "No endpoints found" }, { status: 400 });
@@ -153,6 +173,7 @@ export async function handleSendEventRequest({
 
     const retryConfig = await createRetryConfig(resolveRetryConfig(endpoint), env);
     const destination = await resolveDestinationConfig(endpoint, env);
+    const proxyOverride = endpointTargets.get(endpointId) ?? null;
 
     if (shouldUseKV) {
       maxRetryPeriodDays = Math.max(
@@ -165,7 +186,13 @@ export async function handleSendEventRequest({
       ...baseMessageBody,
       endpointId,
       retryConfig,
-      destination,
+      destination:
+        destination.type === "webhook"
+          ? {
+              ...destination,
+              proxyGroupId: destination.proxyGroupId ?? proxyOverride ?? defaultProxyGroupId,
+            }
+          : destination,
     });
   }
 
@@ -201,13 +228,13 @@ async function resolveEndpointGroups({
   eventType?: string;
   environmentId: string;
   env: CloudflareEnv;
-}): Promise<string[]> {
+}): Promise<ResolvedEndpointTarget[]> {
   if (endpointGroupIds.length === 0) {
     return [];
   }
 
   const db = await getDb(env);
-  const resolvedEndpoints: string[] = [];
+  const resolvedEndpoints: ResolvedEndpointTarget[] = [];
 
   for (const groupId of endpointGroupIds) {
     const cacheEventTypeKey = eventType && eventType.trim() ? eventType : "*";
@@ -215,7 +242,10 @@ async function resolveEndpointGroups({
     const cachedResult = await env.KV.get(cacheKey);
 
     if (cachedResult) {
-      resolvedEndpoints.push(...JSON.parse(cachedResult));
+      const parsed = JSON.parse(cachedResult) as Array<string | ResolvedEndpointTarget>;
+      resolvedEndpoints.push(
+        ...parsed.map(item => (typeof item === "string" ? { endpointId: item, proxyGroupId: null } : item))
+      );
       continue;
     }
 
@@ -257,7 +287,10 @@ async function resolveEndpointGroups({
 
     const groupResolvedEndpoints = subscribedEndpoints
       .filter(endpoint => matchesEventSubscription(parseEventSubscriptions(endpoint.topics), eventType))
-      .map(endpoint => endpoint.id);
+      .map(endpoint => ({
+        endpointId: endpoint.id,
+        proxyGroupId: group[0].proxyGroupId ?? null,
+      }));
 
     await env.KV.put(cacheKey, JSON.stringify(groupResolvedEndpoints), {
       expirationTtl: 60 * 60 * 24 * 30,

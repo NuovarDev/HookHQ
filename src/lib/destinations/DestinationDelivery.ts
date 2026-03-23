@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { schema } from "@/db/schema";
 import { sendToPubSub } from "@/lib/destinations/pubsub";
 import { sendToSqs } from "@/lib/destinations/sqs";
+import { chooseProxyServer, decryptProxySecret, getProxyRelayUrl } from "@/lib/proxy";
 import type { DeliveryMessage } from "@/lib/queue/types";
 import type { DestinationConfig, WebhookDestinationConfig } from "@/lib/destinations/types";
 
@@ -145,12 +146,17 @@ export class DestinationDelivery {
       body: payload,
     };
 
-    const response = await fetch(`${selectedProxy.url}/proxy`, {
+    const proxySecret = await decryptProxySecret(selectedProxy.secret, this.env);
+    if (!proxySecret) {
+      throw new Error("Proxy secret could not be decrypted");
+    }
+
+    const response = await fetch(getProxyRelayUrl(selectedProxy.url), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "HookHQ/1.0",
-        Authorization: `Bearer ${selectedProxy.secret}`,
+        Authorization: `Bearer ${proxySecret}`,
       },
       body: JSON.stringify(proxyRequest),
       signal: AbortSignal.timeout(destination.timeoutMs),
@@ -329,7 +335,7 @@ export class DestinationDelivery {
       return null;
     }
 
-    return availableServers[this.attempts % availableServers.length];
+    return chooseProxyServer(this.env, group[0], availableServers);
   }
 
   private async logAttempt(

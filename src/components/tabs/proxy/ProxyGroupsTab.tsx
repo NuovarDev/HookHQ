@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Settings, Server, LoaderCircle, Computer, Boxes } from "lucide-react";
+import { Edit, Hash, Plus, Settings, Server, LoaderCircle, Computer, Boxes, Trash2 } from "lucide-react";
 
 interface ProxyServer {
   id: string;
@@ -36,6 +36,7 @@ interface ProxyGroup {
   proxyIds: string[];
   proxies: ProxyServer[];
   loadBalancingStrategy: "random" | "round_robin";
+  isDefault?: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -47,6 +48,7 @@ export default function ProxyGroupsTab() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<ProxyGroup | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -54,6 +56,7 @@ export default function ProxyGroupsTab() {
     description: "",
     proxyIds: [] as string[],
     loadBalancingStrategy: "random" as "random" | "round_robin",
+    isDefault: false,
   });
 
   useEffect(() => {
@@ -88,30 +91,67 @@ export default function ProxyGroupsTab() {
     }
   };
 
-  const handleCreateGroup = async () => {
+  const handleSaveGroup = async () => {
     try {
       setCreating(true);
-      const response = await fetch("/api/proxy-groups", {
-        method: "POST",
+      const response = await fetch(editingGroup ? `/api/proxy-groups/${editingGroup.id}` : "/api/proxy-groups", {
+        method: editingGroup ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error("Failed to create proxy group");
+      if (!response.ok) throw new Error(`Failed to ${editingGroup ? "update" : "create"} proxy group`);
 
-      // Reset form and refresh list
       setFormData({
         name: "",
         description: "",
         proxyIds: [],
         loadBalancingStrategy: "random",
+        isDefault: false,
       });
+      setEditingGroup(null);
       setShowCreateDialog(false);
       fetchProxyGroups();
     } catch (error) {
-      console.error("Error creating proxy group:", error);
+      console.error("Error saving proxy group:", error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openCreateDialog = () => {
+    setEditingGroup(null);
+    setFormData({
+      name: "",
+      description: "",
+      proxyIds: [],
+      loadBalancingStrategy: "random",
+      isDefault: false,
+    });
+    setShowCreateDialog(true);
+  };
+
+  const openEditDialog = (group: ProxyGroup) => {
+    setEditingGroup(group);
+    setFormData({
+      name: group.name,
+      description: group.description || "",
+      proxyIds: group.proxyIds,
+      loadBalancingStrategy: group.loadBalancingStrategy,
+      isDefault: Boolean(group.isDefault),
+    });
+    setShowCreateDialog(true);
+  };
+
+  const handleDeleteGroup = async (group: ProxyGroup) => {
+    if (!confirm(`Delete proxy group "${group.name}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/proxy-groups/${group.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete proxy group");
+      fetchProxyGroups();
+    } catch (error) {
+      console.error("Error deleting proxy group:", error);
     }
   };
 
@@ -151,14 +191,14 @@ export default function ProxyGroupsTab() {
         </div>
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Create Proxy Group
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Proxy Group</DialogTitle>
+              <DialogTitle>{editingGroup ? "Edit Proxy Group" : "Create Proxy Group"}</DialogTitle>
               <DialogDescription>
                 Create a group of proxy servers for load balancing webhook delivery.
               </DialogDescription>
@@ -203,6 +243,14 @@ export default function ProxyGroupsTab() {
                 />
               </div>
 
+              <label className="flex items-center gap-3 rounded-lg border p-3 text-sm">
+                <Checkbox
+                  checked={formData.isDefault}
+                  onCheckedChange={checked => setFormData({ ...formData, isDefault: checked === true })}
+                />
+                Set this as the default proxy group for webhook deliveries without a more specific proxy assignment
+              </label>
+
               <div>
                 <Label>Select Proxy Servers</Label>
                 <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
@@ -241,10 +289,16 @@ export default function ProxyGroupsTab() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleCreateGroup}
+                  onClick={handleSaveGroup}
                   disabled={creating || !formData.name || formData.proxyIds.length === 0}
                 >
-                  {creating ? "Creating..." : "Create Proxy Group"}
+                  {creating
+                    ? editingGroup
+                      ? "Saving..."
+                      : "Creating..."
+                    : editingGroup
+                      ? "Save Changes"
+                      : "Create Proxy Group"}
                 </Button>
               </div>
             </div>
@@ -269,7 +323,7 @@ export default function ProxyGroupsTab() {
             <p className="text-muted-foreground text-center mb-4">
               Create proxy groups to organize and load balance your proxy servers.
             </p>
-            <Button onClick={() => setShowCreateDialog(true)}>
+            <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Create Proxy Group
             </Button>
@@ -289,13 +343,24 @@ export default function ProxyGroupsTab() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
+                    {group.isDefault && <Badge variant="outline">Default</Badge>}
                     {getStrategyBadge(group.loadBalancingStrategy)}
                     {getStatusBadge(group.isActive)}
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(group)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteGroup(group)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="rounded bg-muted px-2 py-1 font-mono text-xs">{group.id}</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Settings className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">

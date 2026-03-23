@@ -1,5 +1,6 @@
 import { initAuth } from "@/auth";
 import { getDb } from "@/db";
+import { serverConfig } from "@/db/environments.schema";
 import { proxyGroups, proxyServers } from "@/db/webhooks.schema";
 import { users } from "@/db/auth.schema";
 import { eq, and } from "drizzle-orm";
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const environmentId = user[0].lastEnvironment;
+    const [config] = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Format the response with proxy server details
     const formattedGroups = await Promise.all(
-      groupList.map(async (group) => {
+      groupList.map(async group => {
         const proxyIds = JSON.parse(group.proxyIds);
 
         // Get proxy server details
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
             url: proxyServers.url,
             region: proxyServers.region,
             provider: proxyServers.provider,
-            isActive: proxyServers.isActive
+            isActive: proxyServers.isActive,
           })
           .from(proxyServers)
           .where(eq(proxyServers.environmentId, environmentId));
@@ -77,9 +79,10 @@ export async function GET(request: NextRequest) {
           proxyIds: proxyIds,
           proxies: groupProxies,
           loadBalancingStrategy: group.loadBalancingStrategy,
+          isDefault: config?.defaultProxyGroupId === group.id,
           isActive: group.isActive,
           createdAt: group.createdAt.toISOString(),
-          updatedAt: group.updatedAt.toISOString()
+          updatedAt: group.updatedAt.toISOString(),
         };
       })
     );
@@ -121,12 +124,14 @@ export async function POST(request: NextRequest) {
       description,
       proxyIds = [],
       loadBalancingStrategy = "random",
-      isActive = true
+      isDefault = false,
+      isActive = true,
     } = body as {
       name: string;
       description?: string;
       proxyIds?: string[];
       loadBalancingStrategy?: "random" | "round_robin";
+      isDefault?: boolean;
       isActive?: boolean;
     };
 
@@ -143,20 +148,18 @@ export async function POST(request: NextRequest) {
       const existingProxies = await db
         .select({ id: proxyServers.id })
         .from(proxyServers)
-        .where(
-          and(
-            eq(proxyServers.environmentId, environmentId),
-            eq(proxyServers.isActive, true)
-          )
-        );
+        .where(and(eq(proxyServers.environmentId, environmentId), eq(proxyServers.isActive, true)));
 
       const existingProxyIds = existingProxies.map(p => p.id);
       const invalidProxyIds = proxyIds.filter(id => !existingProxyIds.includes(id));
 
       if (invalidProxyIds.length > 0) {
-        return NextResponse.json({
-          error: `Invalid proxy IDs: ${invalidProxyIds.join(', ')}`
-        }, { status: 400 });
+        return NextResponse.json(
+          {
+            error: `Invalid proxy IDs: ${invalidProxyIds.join(", ")}`,
+          },
+          { status: 400 }
+        );
       }
     }
 
@@ -176,6 +179,23 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
+    if (isDefault) {
+      const [existingConfig] = await db.select().from(serverConfig).where(eq(serverConfig.id, "default")).limit(1);
+      if (existingConfig) {
+        await db
+          .update(serverConfig)
+          .set({ defaultProxyGroupId: groupId, updatedAt: now })
+          .where(eq(serverConfig.id, "default"));
+      } else {
+        await db.insert(serverConfig).values({
+          id: "default",
+          defaultProxyGroupId: groupId,
+          updatedAt: now,
+          createdAt: now,
+        });
+      }
+    }
+
     return NextResponse.json({
       id: groupId,
       environmentId,
@@ -183,6 +203,7 @@ export async function POST(request: NextRequest) {
       description,
       proxyIds,
       loadBalancingStrategy,
+      isDefault,
       isActive,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),

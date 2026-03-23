@@ -22,12 +22,14 @@ import { Label } from "@/components/ui/label";
 import {
   createEndpointGroup,
   deleteEndpointGroup,
+  fetchProxyGroups,
   fetchEndpointGroups,
   fetchEndpoints,
   fetchEventTypes,
   type Endpoint,
   type EndpointGroup,
   type EventType,
+  type ProxyGroup,
   updateEndpointGroup,
 } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
@@ -37,6 +39,7 @@ type EndpointGroupFormState = {
   description: string;
   endpointIds: string[];
   eventTypes: string[];
+  proxyGroupId: string;
   enabled: boolean;
   failureAlertsEnabled: boolean;
   failureAlertThreshold: number;
@@ -51,6 +54,7 @@ const initialFormState: EndpointGroupFormState = {
   description: "",
   endpointIds: [],
   eventTypes: ["*"],
+  proxyGroupId: "none",
   enabled: true,
   failureAlertsEnabled: false,
   failureAlertThreshold: 5,
@@ -72,6 +76,7 @@ export default function EndpointGroupsTab() {
   const [endpointGroups, setEndpointGroups] = useState<EndpointGroup[]>([]);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
+  const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -84,15 +89,17 @@ export default function EndpointGroupsTab() {
 
     async function loadData() {
       try {
-        const [nextEndpointGroups, nextEndpoints, nextEventTypes] = await Promise.all([
+        const [nextEndpointGroups, nextEndpoints, nextEventTypes, nextProxyGroups] = await Promise.all([
           fetchEndpointGroups(),
           fetchEndpoints(),
           fetchEventTypes(),
+          fetchProxyGroups(),
         ]);
         if (!isMounted) return;
         setEndpointGroups(nextEndpointGroups);
         setEndpoints(nextEndpoints);
         setEventTypes(nextEventTypes);
+        setProxyGroups(nextProxyGroups);
       } catch (nextError) {
         if (!isMounted) return;
         setError(nextError instanceof Error ? nextError.message : "Failed to load endpoint groups");
@@ -126,6 +133,7 @@ export default function EndpointGroupsTab() {
       description: group.description || "",
       endpointIds: group.endpointIds,
       eventTypes: group.eventTypes,
+      proxyGroupId: group.proxyGroupId || "none",
       enabled: group.enabled,
       failureAlertsEnabled: group.failureAlerts.enabled,
       failureAlertThreshold: group.failureAlerts.threshold,
@@ -146,6 +154,7 @@ export default function EndpointGroupsTab() {
         description: formData.description.trim() || undefined,
         endpointIds: formData.endpointIds,
         eventTypes: formData.eventTypes,
+        proxyGroupId: formData.proxyGroupId === "none" ? null : formData.proxyGroupId,
         enabled: formData.enabled,
         failureAlerts: {
           enabled: formData.failureAlertsEnabled,
@@ -316,6 +325,27 @@ export default function EndpointGroupsTab() {
                 />
                 <p className="text-sm text-muted-foreground">
                   Choose which event types this group accepts. “All event types” includes events sent without a type.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-group-proxy-group">Proxy Group</Label>
+                <select
+                  id="endpoint-group-proxy-group"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={formData.proxyGroupId}
+                  onChange={event => setFormData(current => ({ ...current, proxyGroupId: event.target.value }))}
+                >
+                  <option value="none">No proxy override</option>
+                  {proxyGroups.map(group => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-sm text-muted-foreground">
+                  Webhook deliveries in this group will use this proxy group unless the individual endpoint already has
+                  a proxy group assigned.
                 </p>
               </div>
 
@@ -497,6 +527,7 @@ export default function EndpointGroupsTab() {
                       <Badge variant="outline">
                         {group.eventTypes.includes("*") ? "All event types" : group.eventTypes.join(", ")}
                       </Badge>
+                      {group.proxyGroupId && <Badge variant="outline">proxy</Badge>}
                       {group.failureAlerts.enabled && <Badge variant="outline">alerts</Badge>}
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => handleToggleGroup(group)}>
@@ -518,6 +549,14 @@ export default function EndpointGroupsTab() {
                           <div className="text-xs text-gray-500">+{group.endpointIds.length - 3} more</div>
                         )}
                       </div>
+                    </div>
+                  )}
+
+                  {group.proxyGroupId && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Hash className="h-3 w-3 text-gray-400" />
+                      <span className="text-gray-500">Proxy Group:</span>
+                      <span className="rounded bg-muted px-2 py-1 font-mono text-xs">{group.proxyGroupId}</span>
                     </div>
                   )}
                 </div>

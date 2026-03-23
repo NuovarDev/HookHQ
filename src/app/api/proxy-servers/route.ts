@@ -1,4 +1,5 @@
 import { initAuth } from "@/auth";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getDb } from "@/db";
 import { proxyServers } from "@/db/webhooks.schema";
 import { users } from "@/db/auth.schema";
@@ -6,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { checkProxyServerHealth, encryptProxySecret, readProxyHealth } from "@/lib/proxy";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +19,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current environment from user's last environment
-    const db = await getDb();
+    const { env } = await getCloudflareContext({ async: true });
+    const db = await getDb(env);
     const user = await db
       .select({ lastEnvironment: users.lastEnvironment })
       .from(users)
@@ -50,22 +53,24 @@ export async function GET(request: NextRequest) {
       .orderBy(proxyServers.createdAt);
 
     // Format the response (exclude secret for security)
-    const formattedProxies = proxyList.map(proxy => ({
-      id: proxy.id,
-      environmentId: proxy.environmentId,
-      name: proxy.name,
-      description: proxy.description,
-      url: proxy.url,
-      isActive: proxy.isActive,
-      region: proxy.region,
-      provider: proxy.provider,
-      staticIp: proxy.staticIp,
-      healthCheckUrl: proxy.healthCheckUrl,
-      timeoutMs: proxy.timeoutMs,
-      maxConcurrentRequests: proxy.maxConcurrentRequests,
-      createdAt: proxy.createdAt.toISOString(),
-      updatedAt: proxy.updatedAt.toISOString()
-    }));
+    const formattedProxies = await Promise.all(
+      proxyList.map(async proxy => ({
+        id: proxy.id,
+        environmentId: proxy.environmentId,
+        name: proxy.name,
+        description: proxy.description,
+        url: proxy.url,
+        isActive: proxy.isActive,
+        region: proxy.region,
+        provider: proxy.provider,
+        staticIp: proxy.staticIp,
+        timeoutMs: proxy.timeoutMs,
+        hasSecret: Boolean(proxy.secret),
+        health: await readProxyHealth(env, proxy.id),
+        createdAt: proxy.createdAt.toISOString(),
+        updatedAt: proxy.updatedAt.toISOString(),
+      }))
+    );
 
     return NextResponse.json({ proxyServers: formattedProxies });
   } catch (error) {
@@ -85,7 +90,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current environment from user's last environment
-    const db = await getDb();
+    const { env } = await getCloudflareContext({ async: true });
+    const db = await getDb(env);
     const user = await db
       .select({ lastEnvironment: users.lastEnvironment })
       .from(users)
@@ -106,10 +112,8 @@ export async function POST(request: NextRequest) {
       region,
       provider,
       staticIp,
-      healthCheckUrl,
       timeoutMs = 30000,
-      maxConcurrentRequests = 100,
-      isActive = true
+      isActive = true,
     } = body as {
       name: string;
       description?: string;
@@ -117,9 +121,7 @@ export async function POST(request: NextRequest) {
       region?: string;
       provider?: string;
       staticIp?: string;
-      healthCheckUrl?: string;
       timeoutMs?: number;
-      maxConcurrentRequests?: number;
       isActive?: boolean;
     };
 
@@ -136,7 +138,8 @@ export async function POST(request: NextRequest) {
 
     // Generate proxy server ID with prefix and secret
     const proxyId = `proxy_${environmentId}_${crypto.randomUUID().substring(0, 8)}`;
-    const secret = randomBytes(32).toString('hex');
+    const secret = randomBytes(32).toString("hex");
+    const encryptedSecret = await encryptProxySecret(secret, env);
     const now = new Date();
 
     await db.insert(proxyServers).values({
@@ -145,32 +148,51 @@ export async function POST(request: NextRequest) {
       name,
       description,
       url,
-      secret,
+      secret: encryptedSecret,
       region,
       provider,
       staticIp,
-      healthCheckUrl,
       timeoutMs,
-      maxConcurrentRequests,
       isActive,
       createdAt: now,
       updatedAt: now,
     });
 
+    await checkProxyServerHealth(
+      {
+        id: proxyId,
+        environmentId,
+        name,
+        description: description ?? null,
+        url,
+        secret: encryptedSecret,
+        isActive,
+        region: region ?? null,
+        provider: provider ?? null,
+        staticIp: staticIp ?? null,
+        healthCheckUrl: null,
+        timeoutMs,
+        maxConcurrentRequests: 100,
+        createdAt: now,
+        updatedAt: now,
+      },
+      env
+    );
+
     // Generate configuration instructions
     const configInstructions = {
       docker: {
-        command: `docker run -d -p 3000:3000 -e PROXY_SECRET=${secret} webhook-proxy`,
-        env: `PROXY_SECRET=${secret}`
+        command: `docker run -d -p 3000:3000 -e PROXY_SECRET=${secret} hookhq-proxy-relay`,
+        env: `PROXY_SECRET=${secret}`,
       },
       gcp: {
         env: `PROXY_SECRET=${secret}`,
-        command: `gcloud run deploy webhook-proxy --set-env-vars PROXY_SECRET=${secret}`
+        command: `gcloud run deploy hookhq-proxy-relay --set-env-vars PROXY_SECRET=${secret}`,
       },
       aws: {
         env: `PROXY_SECRET=${secret}`,
-        command: `aws ecs run-task --overrides '{"containerOverrides":[{"name":"webhook-proxy","environment":[{"name":"PROXY_SECRET","value":"${secret}"}]}]}'`
-      }
+        command: `aws ecs run-task --overrides '{"containerOverrides":[{"name":"hookhq-proxy-relay","environment":[{"name":"PROXY_SECRET","value":"${secret}"}]}]}'`,
+      },
     };
 
     return NextResponse.json({
@@ -182,9 +204,7 @@ export async function POST(request: NextRequest) {
       region,
       provider,
       staticIp,
-      healthCheckUrl,
       timeoutMs,
-      maxConcurrentRequests,
       isActive,
       secret, // Only returned on creation
       configInstructions,

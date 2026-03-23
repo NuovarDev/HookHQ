@@ -120,6 +120,7 @@ export function formatEndpointGroup(group: typeof endpointGroups.$inferSelect) {
     description: group.description,
     endpointIds: group.endpointIds ? JSON.parse(group.endpointIds) : [],
     eventTypes: parseEventSubscriptions(group.eventTypes),
+    proxyGroupId: group.proxyGroupId,
     enabled: group.isActive,
     failureAlerts: parseFailureAlertConfig(group.failureAlertConfig),
     createdAt: group.createdAt.toISOString(),
@@ -251,6 +252,7 @@ export function buildEndpointGroupInsertValues(input: {
   description?: string;
   endpointIds?: string[];
   eventTypes?: string[];
+  proxyGroupId?: string | null;
   enabled?: boolean;
   failureAlerts?: Partial<FailureAlertConfig>;
   now?: Date;
@@ -263,6 +265,7 @@ export function buildEndpointGroupInsertValues(input: {
     description: input.description,
     endpointIds: JSON.stringify(input.endpointIds ?? []),
     eventTypes: serializeEventSubscriptions(input.eventTypes),
+    proxyGroupId: input.proxyGroupId ?? null,
     isActive: input.enabled ?? true,
     failureAlertConfig: serializeFailureAlertConfig({
       enabled: input.failureAlerts?.enabled ?? false,
@@ -282,6 +285,7 @@ export function buildEndpointGroupUpdateValues(input: {
   description?: string;
   endpointIds?: string[];
   eventTypes?: string[];
+  proxyGroupId?: string | null;
   enabled?: boolean;
   failureAlerts?: Partial<FailureAlertConfig>;
   existingFailureAlerts: FailureAlertConfig;
@@ -291,6 +295,7 @@ export function buildEndpointGroupUpdateValues(input: {
   if (input.description !== undefined) updateData.description = input.description;
   if (input.endpointIds !== undefined) updateData.endpointIds = JSON.stringify(input.endpointIds);
   if (input.eventTypes !== undefined) updateData.eventTypes = serializeEventSubscriptions(input.eventTypes);
+  if (input.proxyGroupId !== undefined) updateData.proxyGroupId = input.proxyGroupId;
   if (input.enabled !== undefined) updateData.isActive = input.enabled;
   if (input.failureAlerts !== undefined) {
     updateData.failureAlertConfig = serializeFailureAlertConfig({

@@ -124,6 +124,7 @@ export function registerEndpointGroupItemRoutes(app: OpenAPIHono<{ Bindings: Clo
       description: body.description,
       endpointIds: body.endpointIds,
       eventTypes: body.eventTypes,
+      proxyGroupId: body.proxyGroupId,
       enabled: body.enabled,
       failureAlerts: body.failureAlerts,
       existingFailureAlerts: parseFailureAlertConfig(existing[0].failureAlertConfig),

@@ -97,7 +97,7 @@ const webhookDestinationResponseSchema = z
     proxyGroupId: z.string().nullable().optional(),
   })
   .describe("Webhook destination configuration");
-  
+
 const sqsDestinationConfigSchema = z
   .object({
     queueUrl: z.string().url(),
@@ -253,6 +253,7 @@ export const endpointGroupSchema = z
     description: z.string().nullable().optional(),
     endpointIds: z.array(z.string()),
     eventTypes: eventSubscriptionSchema,
+    proxyGroupId: z.string().nullable().optional(),
     enabled: z.boolean(),
     failureAlerts: failureAlertConfigSchema,
     createdAt: z.string(),
@@ -266,6 +267,11 @@ export const endpointGroupCreateSchema = z
     description: z.string().optional().describe("Optional description for the endpoint group."),
     endpointIds: z.array(z.string()).optional().describe("IDs of the endpoints to add to the group."),
     eventTypes: eventSubscriptionSchema.optional().describe("Event type subscriptions for the endpoint group."),
+    proxyGroupId: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Optional proxy group applied to webhook deliveries in this group."),
     enabled: z.boolean().optional().describe("Whether the endpoint group is enabled."),
     failureAlerts: failureAlertConfigSchema
       .partial()
@@ -280,6 +286,11 @@ export const endpointGroupUpdateSchema = z
     description: z.string().optional().describe("Optional description for the endpoint group."),
     endpointIds: z.array(z.string()).optional().describe("IDs of the endpoints to add to the group."),
     eventTypes: eventSubscriptionSchema.optional().describe("Event type subscriptions for the endpoint group."),
+    proxyGroupId: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("Optional proxy group applied to webhook deliveries in this group."),
     enabled: z.boolean().optional().describe("Whether the endpoint group is enabled."),
     failureAlerts: failureAlertConfigSchema
       .partial()

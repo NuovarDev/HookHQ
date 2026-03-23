@@ -109,6 +109,7 @@ export interface EndpointGroup {
   description?: string | null;
   endpointIds: string[];
   eventTypes: string[];
+  proxyGroupId?: string | null;
   enabled: boolean;
   failureAlerts: {
     enabled: boolean;
@@ -202,6 +203,7 @@ export async function createEndpointGroup(payload: {
   description?: string;
   endpointIds: string[];
   eventTypes?: string[];
+  proxyGroupId?: string | null;
   enabled: boolean;
   failureAlerts?: Partial<EndpointGroup["failureAlerts"]>;
 }) {
@@ -214,7 +216,12 @@ export async function createEndpointGroup(payload: {
 
 export async function updateEndpointGroup(
   id: string,
-  payload: Partial<Pick<EndpointGroup, "name" | "description" | "endpointIds" | "enabled" | "failureAlerts">>
+  payload: Partial<
+    Pick<
+      EndpointGroup,
+      "name" | "description" | "endpointIds" | "eventTypes" | "proxyGroupId" | "enabled" | "failureAlerts"
+    >
+  >
 ) {
   const data = await requestJson<{ message: string; group: EndpointGroup }>(`/endpoint-groups/${id}`, {
     method: "PATCH",
