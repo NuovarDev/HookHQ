@@ -4,7 +4,6 @@ import { cors } from "hono/cors";
 import { etag } from "hono/etag";
 import { logger } from "hono/logger";
 import { isApiDocsEnabled } from "@/lib/publicApi/docs";
-import { registerAdminRoutes } from "@/lib/publicApi/routes/admin/queue-metrics";
 import { registerEndpointGroupItemRoutes } from "@/lib/publicApi/routes/endpoint-groups/[id]";
 import { registerEndpointGroupPortalRoutes } from "@/lib/publicApi/routes/endpoint-groups/[id]/token";
 import { registerEndpointGroupCollectionRoutes } from "@/lib/publicApi/routes/endpoint-groups";
@@ -114,7 +113,6 @@ publicApiApp.get(
   })
 );
 
-registerAdminRoutes(publicApiApp);
 registerEnvironmentCollectionRoutes(publicApiApp);
 registerEnvironmentItemRoutes(publicApiApp);
 registerEndpointGroupCollectionRoutes(publicApiApp);

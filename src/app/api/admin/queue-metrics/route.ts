@@ -1,5 +1,10 @@
-import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
-import { getCloudflareConfig, validateAdminAccess } from "@/lib/cloudflareConfig";
+import { initAuth } from "@/auth";
+import { getDb } from "@/db";
+import { headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+import { serverConfig } from "@/db/environments.schema";
+import { eq } from "drizzle-orm";
+import { serializeAutoDisableConfig, serializeFailureAlertConfig } from "@/lib/destinations/config";
 import type {
   CloudflareGraphQLResponse,
   QueueBacklogMetrics,
@@ -7,8 +12,7 @@ import type {
   QueueMessageOperationsMetrics,
   TimeRange,
 } from "@/lib/queueMetricsTypes";
-import { errorResponseSchema, queueMetricsQuerySchema, queueMetricsSchema } from "@/lib/publicApi/schemas";
-import { jsonError } from "@/lib/publicApi/utils";
+import { getCloudflareConfig } from "@/lib/cloudflareConfig";
 
 const CLOUDFLARE_GRAPHQL_API = "https://api.cloudflare.com/client/v4/graphql";
 type QueueMetricsField =
@@ -16,34 +20,30 @@ type QueueMetricsField =
   | "queueConsumerMetricsAdaptiveGroups"
   | "queueMessageOperationsAdaptiveGroups";
 
-const queueMetricsRoute = createRoute({
-  method: "get",
-  path: "/admin/queue-metrics",
-  tags: ["Admin"],
-  summary: "Get Cloudflare Queue Metrics",
-  request: { query: queueMetricsQuerySchema },
-  responses: {
-    200: { description: "Success", content: { "application/json": { schema: queueMetricsSchema } } },
-    400: { description: "Bad Request", content: { "application/json": { schema: errorResponseSchema } } },
-    401: { description: "Unauthorized", content: { "application/json": { schema: errorResponseSchema } } },
-    500: { description: "Internal Server Error", content: { "application/json": { schema: errorResponseSchema } } },
-  },
-});
+// GET /api/admin/queue-metrics - Get queue metrics
+export async function GET(request: NextRequest) {
+  try {
+    const authInstance = await initAuth();
+    const session = await authInstance.api.getSession({ headers: await headers() });
 
-export function registerAdminRoutes(app: OpenAPIHono<{ Bindings: CloudflareEnv }>) {
-  app.openapi(queueMetricsRoute, (async (c: any) => {
-    const hasAccess = await validateAdminAccess(c.req.raw, c.env);
-    if (!hasAccess) return jsonError("Unauthorized", 401);
-    const query = c.req.valid("query");
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (session?.user?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const query = Object.fromEntries(new URL(request.url).searchParams.entries());
     const timeRange = (query.timeRange ?? "24h") as TimeRange;
     const includeRaw = query.includeRaw === "true";
-    const config = await getCloudflareConfig(c.env);
+
+    const config = await getCloudflareConfig();
+
     if (!config) {
-      return jsonError(
-        "Cloudflare credentials not configured. Please configure Cloudflare API token, Account ID, and Queue ID in the admin settings.",
-        400
-      );
+      return NextResponse.json({ error: "Cloudflare credentials not configured. Please configure Cloudflare API token, Account ID, and Queue ID in the admin settings." }, { status: 400 });
     }
+
     const now = new Date();
     const start = new Date(now.getTime() - getTimeRangeMs(timeRange));
     const [backlogMetrics, consumerMetrics, messageOpsMetrics] = await Promise.all([
@@ -69,6 +69,7 @@ export function registerAdminRoutes(app: OpenAPIHono<{ Bindings: CloudflareEnv }
         now
       ),
     ]);
+
     const response: Record<string, unknown> = {
       backlog: {
         messages:
@@ -100,11 +101,16 @@ export function registerAdminRoutes(app: OpenAPIHono<{ Bindings: CloudflareEnv }
       timeRange,
       lastUpdated: new Date().toISOString(),
     };
+
     if (includeRaw) {
       response.rawData = { backlog: backlogMetrics, consumer: consumerMetrics, operations: messageOpsMetrics };
     }
-    return c.json(response as never, 200);
-  }) as never);
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error("Error fetching server config:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 async function fetchQueueBacklogMetrics(
