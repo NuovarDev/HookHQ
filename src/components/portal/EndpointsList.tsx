@@ -19,12 +19,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, ExternalLink, LoaderCircle, Trash2 } from "lucide-react";
 import CopyableCode from "@/components/CopyableCode";
+import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 
 interface Endpoint {
   id: string;
   name: string;
   url: string;
   description?: string;
+  destinationType?: "webhook" | "sqs" | "pubsub";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -304,12 +306,18 @@ export default function EndpointsList({ endpointGroupId, environmentId, token, t
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div
+                          <DestinationTypeIcon
+                            destinationType={endpoint.destinationType}
                             className={`w-8 h-8 ${theme === "dark" ? "bg-gray-700" : "bg-gray-100"} rounded-full flex items-center justify-center`}
-                          >
-                            <ExternalLink className={`h-4 w-4 ${iconClasses}`} />
-                          </div>
-                          <span className="font-medium">Webhook</span>
+                            iconClassName="h-4 w-4"
+                          />
+                          <span className="font-medium">
+                            {endpoint.destinationType === "sqs"
+                              ? "AWS SQS"
+                              : endpoint.destinationType === "pubsub"
+                                ? "GCP Pub/Sub"
+                                : "Webhook"}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">

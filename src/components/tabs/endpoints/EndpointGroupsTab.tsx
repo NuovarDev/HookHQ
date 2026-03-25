@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
-import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
+import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import {
   updateEndpointGroup,
 } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { toast } from "sonner";
 
 type EndpointGroupFormState = {
   name: string;
@@ -94,7 +95,6 @@ export default function EndpointGroupsTab() {
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<EndpointGroup | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -118,7 +118,7 @@ export default function EndpointGroupsTab() {
         setProxyGroups(nextProxyGroups);
       } catch (nextError) {
         if (!isMounted) return;
-        setError(nextError instanceof Error ? nextError.message : "Failed to load endpoint groups");
+        toast.error(nextError instanceof Error ? nextError.message : "Failed to load endpoint groups");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -164,7 +164,6 @@ export default function EndpointGroupsTab() {
 
   async function handleSubmit() {
     try {
-      setError(null);
       const payload = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
@@ -193,17 +192,16 @@ export default function EndpointGroupsTab() {
       setCreateDialogOpen(false);
       resetForm();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to save endpoint group");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to save endpoint group");
     }
   }
 
   async function handleToggleGroup(group: EndpointGroup) {
     try {
-      setError(null);
       const updatedGroup = await updateEndpointGroup(group.id, { enabled: !group.enabled });
       setEndpointGroups(current => current.map(item => (item.id === group.id ? updatedGroup : item)));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to update endpoint group");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to update endpoint group");
     }
   }
 
@@ -211,11 +209,10 @@ export default function EndpointGroupsTab() {
     if (!confirm("Are you sure you want to delete this endpoint group?")) return;
 
     try {
-      setError(null);
       await deleteEndpointGroup(id);
       setEndpointGroups(current => current.filter(group => group.id !== id));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to delete endpoint group");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to delete endpoint group");
     }
   }
 
@@ -247,7 +244,7 @@ export default function EndpointGroupsTab() {
       setCopiedId(id);
       window.setTimeout(() => setCopiedId(null), 2000);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to copy value");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to copy value");
     }
   }
 
@@ -466,8 +463,6 @@ export default function EndpointGroupsTab() {
           </DialogContent>
         </Dialog>
       </div>
-
-      {error && <ErrorStateCard message={error} />}
 
       {endpointGroups.length === 0 ? (
         <EmptyStateCard

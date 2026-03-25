@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
+import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
-import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
+import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
   updateEndpoint,
 } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { toast } from "sonner";
 
 type EndpointFormState = {
   name: string;
@@ -178,7 +180,6 @@ export default function EndpointsTab() {
   const [proxyGroups, setProxyGroups] = useState<ProxyGroup[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -200,7 +201,7 @@ export default function EndpointsTab() {
         setEventTypes(nextEventTypes);
       } catch (nextError) {
         if (!isMounted) return;
-        setError(nextError instanceof Error ? nextError.message : "Failed to load endpoints");
+        toast.error(nextError instanceof Error ? nextError.message : "Failed to load endpoints");
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -261,7 +262,6 @@ export default function EndpointsTab() {
 
   async function handleSubmit() {
     try {
-      setError(null);
       const payload = getEndpointPayload(formData, editingEndpoint);
 
       if (editingEndpoint) {
@@ -277,17 +277,16 @@ export default function EndpointsTab() {
       setCreateDialogOpen(false);
       resetForm();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to save endpoint");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to save endpoint");
     }
   }
 
   async function handleToggleEndpoint(endpoint: Endpoint) {
     try {
-      setError(null);
       const updatedEndpoint = await updateEndpoint(endpoint.id, { enabled: !endpoint.enabled });
       setEndpoints(current => current.map(item => (item.id === endpoint.id ? updatedEndpoint : item)));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to update endpoint");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to update endpoint");
     }
   }
 
@@ -295,11 +294,10 @@ export default function EndpointsTab() {
     if (!confirm("Are you sure you want to delete this endpoint?")) return;
 
     try {
-      setError(null);
       await deleteEndpoint(id);
       setEndpoints(current => current.filter(endpoint => endpoint.id !== id));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to delete endpoint");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to delete endpoint");
     }
   }
 
@@ -309,7 +307,7 @@ export default function EndpointsTab() {
       setCopiedId(id);
       window.setTimeout(() => setCopiedId(null), 2000);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to copy value");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to copy value");
     }
   }
 
@@ -724,8 +722,6 @@ export default function EndpointsTab() {
         </Dialog>
       </div>
 
-      {error && <ErrorStateCard message={error} />}
-
       {endpoints.length === 0 ? (
         <EmptyStateCard
           icon={Globe}
@@ -754,7 +750,11 @@ export default function EndpointsTab() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2 text-lg">
-                      <Globe className="h-4 w-4" />
+                      <DestinationTypeIcon
+                        destinationType={endpoint.destinationType}
+                        className="h-6 w-6 bg-muted flex items-center justify-center"
+                        iconClassName="h-3.5 w-3.5"
+                      />
                       {endpoint.name}
                     </CardTitle>
                     <CardDescription>{endpoint.description || "No description"}</CardDescription>

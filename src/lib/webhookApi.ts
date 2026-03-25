@@ -243,7 +243,7 @@ export async function fetchEventTypes() {
 export async function createEventType(payload: {
   name: string;
   description?: string;
-  schema?: Record<string, unknown> | null;
+  schema?: Record<string, unknown>;
   enabled: boolean;
 }) {
   return requestJson<EventType>("/event-types", {
@@ -255,7 +255,7 @@ export async function createEventType(payload: {
 
 export async function updateEventType(
   id: string,
-  payload: Partial<Pick<EventType, "name" | "description" | "schema" | "enabled">>
+  payload: Partial<Omit<EventType, "schema">> & { schema?: Record<string, unknown> }
 ) {
   const data = await requestJson<{ message: string; eventType: EventType }>(`/event-types/${id}`, {
     method: "PATCH",

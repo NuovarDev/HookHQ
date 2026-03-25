@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Code, Edit, Plus, Power, PowerOff, Trash2, Zap } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
-import { EmptyStateCard, ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-state";
+import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createEventType, deleteEventType, fetchEventTypes, type EventType, updateEventType } from "@/lib/webhookApi";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { toast } from "sonner";
 
 type EventTypeFormState = {
   name: string;
@@ -38,7 +39,7 @@ const initialFormState: EventTypeFormState = {
 
 function parseSchema(schema: string) {
   if (!schema.trim()) {
-    return null;
+    return undefined;
   }
 
   return JSON.parse(schema) as Record<string, unknown>;
@@ -47,7 +48,6 @@ function parseSchema(schema: string) {
 export default function EventTypesTab() {
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingEventType, setEditingEventType] = useState<EventType | null>(null);
   const [formData, setFormData] = useState<EventTypeFormState>(initialFormState);
@@ -63,7 +63,7 @@ export default function EventTypesTab() {
         }
       } catch (nextError) {
         if (isMounted) {
-          setError(nextError instanceof Error ? nextError.message : "Failed to load event types");
+          toast.error(nextError instanceof Error ? nextError.message : "Failed to load event types");
         }
       } finally {
         if (isMounted) {
@@ -102,7 +102,6 @@ export default function EventTypesTab() {
 
   async function handleSubmit() {
     try {
-      setError(null);
       const payload = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
@@ -123,17 +122,16 @@ export default function EventTypesTab() {
       setCreateDialogOpen(false);
       resetForm();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to save event type");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to save event type");
     }
   }
 
   async function handleToggleEventType(eventType: EventType) {
     try {
-      setError(null);
       const updatedEventType = await updateEventType(eventType.id, { enabled: !eventType.enabled });
       setEventTypes(current => current.map(item => (item.id === eventType.id ? updatedEventType : item)));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to update event type");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to update event type");
     }
   }
 
@@ -141,11 +139,10 @@ export default function EventTypesTab() {
     if (!confirm("Are you sure you want to delete this event type?")) return;
 
     try {
-      setError(null);
       await deleteEventType(id);
       setEventTypes(current => current.filter(eventType => eventType.id !== id));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to delete event type");
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to delete event type");
     }
   }
 
@@ -229,8 +226,6 @@ export default function EventTypesTab() {
           </DialogContent>
         </Dialog>
       </div>
-
-      {error && <ErrorStateCard message={error} />}
 
       {eventTypes.length === 0 ? (
         <EmptyStateCard

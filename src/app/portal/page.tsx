@@ -9,12 +9,14 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 
 interface Endpoint {
   id: string;
   name: string;
   url: string;
   description?: string;
+  destinationType?: "webhook" | "sqs" | "pubsub";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -301,9 +303,7 @@ export default function PortalDashboard() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-muted flex items-center justify-center">
-                            <Webhook className="h-5 w-5" />
-                          </div>
+                          <DestinationTypeIcon destinationType={endpoint.destinationType} />
                           <div className="flex-1 min-w-0">
                             <span className="flex items-center gap-2">
                               <p className="font-medium truncate">{endpoint.name}</p>
@@ -352,7 +352,10 @@ export default function PortalDashboard() {
                     <Badge variant={group.failureAlerts.enabled ? "default" : "secondary"}>
                       {group.failureAlerts.enabled ? "Enabled" : "Disabled"}
                     </Badge>
-                    <Badge variant="outline">{group.failureAlerts.channelType.charAt(0).toUpperCase() + group.failureAlerts.channelType.slice(1)}</Badge>
+                    <Badge variant="outline">
+                      {group.failureAlerts.channelType.charAt(0).toUpperCase() +
+                        group.failureAlerts.channelType.slice(1)}
+                    </Badge>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="space-y-2">
@@ -471,7 +474,6 @@ export default function PortalDashboard() {
                 </CardContent>
               </Card>
             )}
-
           </>
         )}
       </div>

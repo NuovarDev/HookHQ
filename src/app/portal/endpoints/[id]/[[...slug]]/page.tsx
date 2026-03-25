@@ -19,6 +19,7 @@ interface Endpoint {
   name: string;
   url: string;
   description?: string;
+  destinationType?: "webhook" | "sqs" | "pubsub";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -718,7 +719,8 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                                       title: "Logged Payload",
                                       value:
                                         formatLoggedBody(selectedEventDetails.requestBody) ??
-                                        selectedEventDetails.requestBody ?? "",
+                                        selectedEventDetails.requestBody ??
+                                        "",
                                     })
                                   }
                                 >
@@ -746,7 +748,8 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                                       title: "Logged Response",
                                       value:
                                         formatLoggedBody(selectedEventDetails.responseBody) ??
-                                        selectedEventDetails.responseBody ?? "",
+                                        selectedEventDetails.responseBody ??
+                                        "",
                                     })
                                   }
                                 >

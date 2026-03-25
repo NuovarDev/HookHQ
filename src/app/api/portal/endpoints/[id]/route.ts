@@ -4,47 +4,52 @@ import { endpoints, endpointGroups, webhookAttempts, webhookMessages, eventTypes
 import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authResult = authenticatePortalRequest(request);
 
   if (!authResult.success) {
-    return NextResponse.json({
-      error: authResult.error
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: authResult.error,
+      },
+      { status: 401 }
+    );
   }
 
   const { payload } = authResult;
   const { id: endpointId } = await params;
 
   if (!endpointId) {
-    return NextResponse.json({
-      error: "Endpoint ID is required"
-    }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "Endpoint ID is required",
+      },
+      { status: 400 }
+    );
   }
 
   const db = await getDb();
 
   try {
     // Get endpoint details
-    const endpoint = await db
-      .select()
-      .from(endpoints)
-      .where(eq(endpoints.id, endpointId))
-      .limit(1);
+    const endpoint = await db.select().from(endpoints).where(eq(endpoints.id, endpointId)).limit(1);
 
     if (endpoint.length === 0) {
-      return NextResponse.json({
-        error: "Endpoint not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found",
+        },
+        { status: 404 }
+      );
     }
 
     if (endpoint[0].environmentId !== payload.environmentId) {
-      return NextResponse.json({
-        error: "Endpoint not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found",
+        },
+        { status: 404 }
+      );
     }
 
     // Verify endpoint belongs to the group
@@ -55,16 +60,22 @@ export async function GET(
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({
-        error: "Endpoint group not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint group not found",
+        },
+        { status: 404 }
+      );
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
     if (!groupEndpointIds.includes(endpointId)) {
-      return NextResponse.json({
-        error: "Endpoint not found in group"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found in group",
+        },
+        { status: 404 }
+      );
     }
 
     // Get latest attempts for metrics (last 7 days)
@@ -74,18 +85,21 @@ export async function GET(
         status: webhookAttempts.status,
         attemptNumber: webhookAttempts.attemptNumber,
         attemptedAt: webhookAttempts.attemptedAt,
-        rowNumber: sql<number>`ROW_NUMBER() OVER (PARTITION BY ${webhookAttempts.messageId} ORDER BY ${webhookAttempts.attemptNumber} DESC, ${webhookAttempts.attemptedAt} DESC)`.as('row_number'),
+        rowNumber:
+          sql<number>`ROW_NUMBER() OVER (PARTITION BY ${webhookAttempts.messageId} ORDER BY ${webhookAttempts.attemptNumber} DESC, ${webhookAttempts.attemptedAt} DESC)`.as(
+            "row_number"
+          ),
       })
       .from(webhookAttempts)
       .where(
         and(
           eq(webhookAttempts.endpointId, endpointId),
-          gte(webhookAttempts.attemptedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)),
+          gte(webhookAttempts.attemptedAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
         )
       )
-      .as('ranked_attempts');
+      .as("ranked_attempts");
 
-    const latestAttempts = await db
+    const latestAttempts = (await db
       .select({
         messageId: rankedAttemptsSubquery.messageId,
         status: rankedAttemptsSubquery.status,
@@ -93,12 +107,12 @@ export async function GET(
         attemptedAt: rankedAttemptsSubquery.attemptedAt,
       })
       .from(rankedAttemptsSubquery)
-      .where(sql`${rankedAttemptsSubquery.rowNumber} = 1`) as Array<{
-        messageId: string;
-        status: string;
-        attemptNumber: number;
-        attemptedAt: Date;
-      }>;
+      .where(sql`${rankedAttemptsSubquery.rowNumber} = 1`)) as Array<{
+      messageId: string;
+      status: string;
+      attemptNumber: number;
+      attemptedAt: Date;
+    }>;
 
     // Get recent events with message details
     const recentEvents = await db
@@ -139,18 +153,20 @@ export async function GET(
       .orderBy(eventTypes.name);
 
     // Calculate metrics
-    const metrics24h = latestAttempts.filter(metric =>
-      metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const metrics24h = latestAttempts.filter(
+      metric => metric.attemptedAt && metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
     );
     const metrics7d = latestAttempts;
 
     const totalEvents24h = metrics24h.length;
-    const successfulEvents24h = metrics24h.filter(m => m.status === 'delivered').length;
-    const errorRate24h = totalEvents24h > 0 ? ((totalEvents24h - successfulEvents24h) / totalEvents24h * 100).toFixed(1) : "0.0";
+    const successfulEvents24h = metrics24h.filter(m => m.status === "delivered").length;
+    const errorRate24h =
+      totalEvents24h > 0 ? (((totalEvents24h - successfulEvents24h) / totalEvents24h) * 100).toFixed(1) : "0.0";
 
     const totalEvents7d = metrics7d.length;
-    const successfulEvents7d = metrics7d.filter(m => m.status === 'delivered').length;
-    const errorRate7d = totalEvents7d > 0 ? ((totalEvents7d - successfulEvents7d) / totalEvents7d * 100).toFixed(1) : "0.0";
+    const successfulEvents7d = metrics7d.filter(m => m.status === "delivered").length;
+    const errorRate7d =
+      totalEvents7d > 0 ? (((totalEvents7d - successfulEvents7d) / totalEvents7d) * 100).toFixed(1) : "0.0";
 
     // Generate chart data for 24h (hourly intervals)
     const generateHourlyChartData = () => {
@@ -166,15 +182,15 @@ export async function GET(
           return attemptedAt >= hourStart && attemptedAt < hourEnd;
         });
 
-        const success = hourMetrics.filter(m => m.status === 'delivered').length;
-        const failed = hourMetrics.filter(m => m.status !== 'delivered').length;
+        const success = hourMetrics.filter(m => m.status === "delivered").length;
+        const failed = hourMetrics.filter(m => m.status !== "delivered").length;
 
         chartData.push({
-          time: hourStart.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false }),
+          time: hourStart.toLocaleTimeString("en-US", { hour: "2-digit", hour12: false }),
           count: success + failed,
           success,
           failed,
-          errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0"
+          errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0",
         });
       }
 
@@ -195,15 +211,15 @@ export async function GET(
           return attemptedAt >= dayStart && attemptedAt < dayEnd;
         });
 
-        const success = dayMetrics.filter(m => m.status === 'delivered').length;
-        const failed = dayMetrics.filter(m => m.status !== 'delivered').length;
+        const success = dayMetrics.filter(m => m.status === "delivered").length;
+        const failed = dayMetrics.filter(m => m.status !== "delivered").length;
 
         chartData.push({
-          time: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          time: dayStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           count: success + failed,
           success,
           failed,
-          errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0"
+          errorRate: success + failed > 0 ? ((failed / (success + failed)) * 100).toFixed(1) : "0.0",
         });
       }
 
@@ -216,6 +232,10 @@ export async function GET(
         name: endpoint[0].name,
         url: endpoint[0].url,
         description: endpoint[0].description,
+        destinationType:
+          endpoint[0].destinationType === "sqs" || endpoint[0].destinationType === "pubsub"
+            ? endpoint[0].destinationType
+            : "webhook",
         isActive: endpoint[0].isActive,
         createdAt: endpoint[0].createdAt.toISOString(),
         updatedAt: endpoint[0].updatedAt.toISOString(),
@@ -240,58 +260,65 @@ export async function GET(
         id: et.id,
         name: et.name,
         description: et.description,
-      }))
+      })),
     });
-
   } catch (error) {
     console.error("Error fetching endpoint details:", error);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authResult = authenticatePortalRequest(request);
 
   if (!authResult.success) {
-    return NextResponse.json({
-      error: authResult.error
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: authResult.error,
+      },
+      { status: 401 }
+    );
   }
 
   const { payload } = authResult;
   const { id: endpointId } = await params;
 
   if (!endpointId) {
-    return NextResponse.json({
-      error: "Endpoint ID is required"
-    }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: "Endpoint ID is required",
+      },
+      { status: 400 }
+    );
   }
 
   const db = await getDb();
 
   try {
     // Check if endpoint exists and belongs to the environment
-    const endpoint = await db
-      .select()
-      .from(endpoints)
-      .where(eq(endpoints.id, endpointId))
-      .limit(1);
+    const endpoint = await db.select().from(endpoints).where(eq(endpoints.id, endpointId)).limit(1);
 
     if (endpoint.length === 0) {
-      return NextResponse.json({
-        error: "Endpoint not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found",
+        },
+        { status: 404 }
+      );
     }
 
     if (endpoint[0].environmentId !== payload.environmentId) {
-      return NextResponse.json({
-        error: "Endpoint not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found",
+        },
+        { status: 404 }
+      );
     }
 
     // Get the endpoint group to verify the endpoint belongs to it
@@ -302,16 +329,22 @@ export async function DELETE(
       .limit(1);
 
     if (endpointGroup.length === 0) {
-      return NextResponse.json({
-        error: "Endpoint group not found"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint group not found",
+        },
+        { status: 404 }
+      );
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
     if (!groupEndpointIds.includes(endpointId)) {
-      return NextResponse.json({
-        error: "Endpoint not found in group"
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Endpoint not found in group",
+        },
+        { status: 404 }
+      );
     }
 
     // Remove endpoint from the group
@@ -321,27 +354,27 @@ export async function DELETE(
       .update(endpointGroups)
       .set({
         endpointIds: JSON.stringify(updatedEndpointIds),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(endpointGroups.id, payload.endpointGroupId));
 
     // Delete the endpoint
-    await db
-      .delete(endpoints)
-      .where(eq(endpoints.id, endpointId));
+    await db.delete(endpoints).where(eq(endpoints.id, endpointId));
 
     return NextResponse.json({
       message: "Endpoint deleted successfully",
       deletedEndpoint: {
         id: endpoint[0].id,
-        name: endpoint[0].name
-      }
+        name: endpoint[0].name,
+      },
     });
-
   } catch (error) {
     console.error("Error deleting portal endpoint:", error);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

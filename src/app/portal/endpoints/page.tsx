@@ -20,14 +20,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { usePortalContext } from "../layout";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 
 interface Endpoint {
   id: string;
   name: string;
   url: string;
   description?: string;
+  destinationType?: "webhook" | "sqs" | "pubsub";
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -46,6 +50,40 @@ interface Endpoint {
   }>;
 }
 
+type CreateEndpointFormState = {
+  name: string;
+  description: string;
+  destinationType: "webhook" | "sqs" | "pubsub";
+  target: string;
+  timeoutMs: number;
+  customHeaders: string;
+  sqsRegion: string;
+  sqsAccessKeyId: string;
+  sqsSecretAccessKey: string;
+  sqsDelaySeconds: number;
+  sqsMessageGroupId: string;
+  pubsubServiceAccountJson: string;
+  pubsubAttributes: string;
+  pubsubOrderingKey: string;
+};
+
+const initialFormState: CreateEndpointFormState = {
+  name: "",
+  description: "",
+  destinationType: "webhook",
+  target: "",
+  timeoutMs: 10000,
+  customHeaders: "",
+  sqsRegion: "",
+  sqsAccessKeyId: "",
+  sqsSecretAccessKey: "",
+  sqsDelaySeconds: 0,
+  sqsMessageGroupId: "",
+  pubsubServiceAccountJson: "",
+  pubsubAttributes: "",
+  pubsubOrderingKey: "",
+};
+
 interface ChartData {
   date: string;
   success: number;
@@ -61,6 +99,7 @@ export default function EndpointsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"24h" | "7d">("7d");
+  const [formData, setFormData] = useState<CreateEndpointFormState>(initialFormState);
 
   useEffect(() => {
     fetchEndpoints();
@@ -125,6 +164,71 @@ export default function EndpointsPage() {
     }
 
     return chartData;
+  };
+
+  const resetForm = () => {
+    setFormData(initialFormState);
+  };
+
+  const handleCreateEndpoint = async () => {
+    if (!formData.name.trim() || !formData.target.trim()) {
+      setError("Name and target are required");
+      return;
+    }
+
+    try {
+      const destination =
+        formData.destinationType === "webhook"
+          ? {
+              url: formData.target.trim(),
+              timeoutMs: formData.timeoutMs,
+              customHeaders: formData.customHeaders.trim()
+                ? (JSON.parse(formData.customHeaders) as Record<string, string>)
+                : undefined,
+            }
+          : formData.destinationType === "sqs"
+            ? {
+                queueUrl: formData.target.trim(),
+                region: formData.sqsRegion.trim(),
+                accessKeyId: formData.sqsAccessKeyId.trim(),
+                secretAccessKey: formData.sqsSecretAccessKey.trim(),
+                delaySeconds: formData.sqsDelaySeconds || undefined,
+                messageGroupId: formData.sqsMessageGroupId.trim() || undefined,
+              }
+            : {
+                topicName: formData.target.trim(),
+                serviceAccountJson: formData.pubsubServiceAccountJson.trim(),
+                attributes: formData.pubsubAttributes.trim()
+                  ? (JSON.parse(formData.pubsubAttributes) as Record<string, string>)
+                  : undefined,
+                orderingKey: formData.pubsubOrderingKey.trim() || undefined,
+              };
+
+      const response = await fetch(`/api/portal/endpoints?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          destinationType: formData.destinationType,
+          destination,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create endpoint");
+      }
+
+      const createdEndpoint = (await response.json()) as Endpoint;
+      setEndpoints(current => [...current, { ...createdEndpoint, topics: [], metrics24h: [], metrics7d: [] }]);
+      setCreateDialogOpen(false);
+      resetForm();
+      setError(null);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to create endpoint");
+    }
   };
 
   return (
@@ -206,9 +310,7 @@ export default function EndpointsPage() {
                           <td className="p-4">
                             <Link href={`/portal/endpoints/${endpoint.id}`} className="block group">
                               <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 bg-muted flex items-center justify-center">
-                                  <Webhook className="h-5 w-5" />
-                                </div>
+                                <DestinationTypeIcon destinationType={endpoint.destinationType} />
                                 <div className="min-w-0">
                                   <p className="font-medium group-hover:text-primary transition-colors">
                                     {endpoint.name}
@@ -306,27 +408,206 @@ export default function EndpointsPage() {
         <DialogContent className="border-0">
           <DialogHeader>
             <DialogTitle>Create Endpoint</DialogTitle>
-            <DialogDescription>Add a new webhook endpoint to receive events</DialogDescription>
+            <DialogDescription>Add a new event destination to receive events</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Production API" className="border-0" />
+              <Label htmlFor="portal-endpoint-name">Name</Label>
+              <Input
+                id="portal-endpoint-name"
+                placeholder="Production API"
+                className="border-0"
+                value={formData.name}
+                onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="url">Webhook URL</Label>
-              <Input id="url" placeholder="https://api.example.com/webhooks" className="border-0" />
+              <Label htmlFor="portal-endpoint-type">Destination Type</Label>
+              <Select
+                value={formData.destinationType}
+                onValueChange={(value: CreateEndpointFormState["destinationType"]) =>
+                  setFormData(current => ({ ...current, destinationType: value }))
+                }
+              >
+                <SelectTrigger id="portal-endpoint-type" className="border-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="webhook">Webhook</SelectItem>
+                  <SelectItem value="sqs">Amazon SQS</SelectItem>
+                  <SelectItem value="pubsub">Google Pub/Sub</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input id="description" placeholder="Main production webhook endpoint" className="border-0" />
+              <Label htmlFor="portal-endpoint-target">
+                {formData.destinationType === "webhook"
+                  ? "Webhook URL"
+                  : formData.destinationType === "sqs"
+                    ? "Queue URL"
+                    : "Topic Name"}
+              </Label>
+              <Input
+                id="portal-endpoint-target"
+                placeholder={
+                  formData.destinationType === "webhook"
+                    ? "https://api.example.com/webhooks"
+                    : formData.destinationType === "sqs"
+                      ? "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
+                      : "orders-created"
+                }
+                className="border-0"
+                value={formData.target}
+                onChange={event => setFormData(current => ({ ...current, target: event.target.value }))}
+              />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="portal-endpoint-description">Description (optional)</Label>
+              <Input
+                id="portal-endpoint-description"
+                placeholder="Main production destination"
+                className="border-0"
+                value={formData.description}
+                onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
+              />
+            </div>
+
+            {formData.destinationType === "webhook" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-endpoint-timeout">Timeout (ms)</Label>
+                  <Input
+                    id="portal-endpoint-timeout"
+                    type="number"
+                    min={1000}
+                    className="border-0"
+                    value={formData.timeoutMs}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        timeoutMs: Number.parseInt(event.target.value || "1000", 10),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-endpoint-headers">Custom Headers (JSON)</Label>
+                  <Textarea
+                    id="portal-endpoint-headers"
+                    rows={4}
+                    className="border-0 font-mono text-sm"
+                    placeholder='{"Authorization":"Bearer token"}'
+                    value={formData.customHeaders}
+                    onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            {formData.destinationType === "sqs" ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="portal-sqs-region">AWS Region</Label>
+                  <Input
+                    id="portal-sqs-region"
+                    className="border-0"
+                    placeholder="us-east-1"
+                    value={formData.sqsRegion}
+                    onChange={event => setFormData(current => ({ ...current, sqsRegion: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-sqs-access-key">Access Key ID</Label>
+                  <Input
+                    id="portal-sqs-access-key"
+                    className="border-0"
+                    value={formData.sqsAccessKeyId}
+                    onChange={event => setFormData(current => ({ ...current, sqsAccessKeyId: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-sqs-secret">Secret Access Key</Label>
+                  <Input
+                    id="portal-sqs-secret"
+                    type="password"
+                    className="border-0"
+                    value={formData.sqsSecretAccessKey}
+                    onChange={event => setFormData(current => ({ ...current, sqsSecretAccessKey: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-sqs-delay">Delay Seconds</Label>
+                  <Input
+                    id="portal-sqs-delay"
+                    type="number"
+                    min={0}
+                    max={900}
+                    className="border-0"
+                    value={formData.sqsDelaySeconds}
+                    onChange={event =>
+                      setFormData(current => ({
+                        ...current,
+                        sqsDelaySeconds: Number.parseInt(event.target.value || "0", 10),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="portal-sqs-group">FIFO Group ID (optional)</Label>
+                  <Input
+                    id="portal-sqs-group"
+                    className="border-0"
+                    placeholder="Required for FIFO queues"
+                    value={formData.sqsMessageGroupId}
+                    onChange={event => setFormData(current => ({ ...current, sqsMessageGroupId: event.target.value }))}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {formData.destinationType === "pubsub" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-pubsub-service-account">Service Account JSON</Label>
+                  <Textarea
+                    id="portal-pubsub-service-account"
+                    rows={5}
+                    className="border-0 font-mono text-sm"
+                    placeholder={`{"type":"service_account","project_id":"my-project",...}`}
+                    value={formData.pubsubServiceAccountJson}
+                    onChange={event =>
+                      setFormData(current => ({ ...current, pubsubServiceAccountJson: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-pubsub-attributes">Attributes (JSON)</Label>
+                  <Textarea
+                    id="portal-pubsub-attributes"
+                    rows={3}
+                    className="border-0 font-mono text-sm"
+                    placeholder='{"source":"hookhq"}'
+                    value={formData.pubsubAttributes}
+                    onChange={event => setFormData(current => ({ ...current, pubsubAttributes: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="portal-pubsub-ordering-key">Ordering Key (optional)</Label>
+                  <Input
+                    id="portal-pubsub-ordering-key"
+                    className="border-0"
+                    value={formData.pubsubOrderingKey}
+                    onChange={event => setFormData(current => ({ ...current, pubsubOrderingKey: event.target.value }))}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setCreateDialogOpen(false)}>Create Endpoint</Button>
+            <Button onClick={handleCreateEndpoint}>Create Endpoint</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

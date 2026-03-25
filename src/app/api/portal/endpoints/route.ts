@@ -3,6 +3,8 @@ import { getDb } from "@/db";
 import { endpoints, endpointGroups, webhookAttempts } from "@/db/webhooks.schema";
 import { eq, and, inArray, gte, sql } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
+import { buildEndpointInsertValues } from "@/lib/publicApi/serializers";
+import { resolveDestinationConfig } from "@/lib/destinations/config";
 
 export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
@@ -85,29 +87,47 @@ export async function GET(request: NextRequest) {
       attemptedAt: Date;
     }>;
 
+    const formattedEndpoints = await Promise.all(
+      groupEndpoints.map(async endpoint => {
+        const destination = await resolveDestinationConfig(endpoint);
+        const target =
+          destination.type === "webhook"
+            ? destination.url
+            : destination.type === "sqs"
+              ? destination.queueUrl
+              : destination.topicName;
+
+        return {
+          id: endpoint.id,
+          name: endpoint.name,
+          url: target,
+          description: endpoint.description,
+          destinationType:
+            endpoint.destinationType === "sqs" || endpoint.destinationType === "pubsub"
+              ? endpoint.destinationType
+              : "webhook",
+          isActive: endpoint.isActive,
+          createdAt: endpoint.createdAt.toISOString(),
+          updatedAt: endpoint.updatedAt.toISOString(),
+          topics: endpoint.topics ? JSON.parse(endpoint.topics) : [],
+          metrics24h: latestAttempts.filter(
+            metric =>
+              metric.endpointId === endpoint.id &&
+              metric.attemptedAt &&
+              metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          ),
+          metrics7d: latestAttempts.filter(
+            metric =>
+              metric.endpointId === endpoint.id &&
+              metric.attemptedAt &&
+              metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          ),
+        };
+      })
+    );
+
     return NextResponse.json({
-      endpoints: groupEndpoints.map(endpoint => ({
-        id: endpoint.id,
-        name: endpoint.name,
-        url: endpoint.url,
-        description: endpoint.description,
-        isActive: endpoint.isActive,
-        createdAt: endpoint.createdAt.toISOString(),
-        updatedAt: endpoint.updatedAt.toISOString(),
-        topics: endpoint.topics ? JSON.parse(endpoint.topics) : [],
-        metrics24h: latestAttempts.filter(
-          metric =>
-            metric.endpointId === endpoint.id &&
-            metric.attemptedAt &&
-            metric.attemptedAt > new Date(Date.now() - 24 * 60 * 60 * 1000)
-        ),
-        metrics7d: latestAttempts.filter(
-          metric =>
-            metric.endpointId === endpoint.id &&
-            metric.attemptedAt &&
-            metric.attemptedAt > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        ),
-      })),
+      endpoints: formattedEndpoints,
     });
   } catch (error) {
     console.error("Error fetching portal endpoints:", error);
@@ -134,16 +154,22 @@ export async function POST(request: NextRequest) {
 
   const { payload } = authResult;
   const body = await request.json();
-  const { name, url, description } = body as {
+  const {
+    name,
+    description,
+    destinationType = "webhook",
+    destination,
+  } = body as {
     name: string;
-    url: string;
     description?: string;
+    destinationType?: "webhook" | "sqs" | "pubsub";
+    destination?: Record<string, unknown>;
   };
 
-  if (!name || !url) {
+  if (!name || !destination || typeof destination !== "object") {
     return NextResponse.json(
       {
-        error: "Name and URL are required",
+        error: "Name and destination are required",
       },
       { status: 400 }
     );
@@ -157,32 +183,18 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     // Create the endpoint
-    await db.insert(endpoints).values({
-      id: endpointId,
-      environmentId: payload.environmentId,
-      name,
-      url,
-      description,
-      isActive: true,
-      retryPolicy: "exponential",
-      backoffStrategy: "exponential",
-      retryStrategy: "exponential",
-      baseDelaySeconds: 5,
-      maxRetryDelaySeconds: 300,
-      retryJitterFactor: 0.2,
-      maxRetries: 3,
-      timeoutMs: 30000,
-      headers: JSON.stringify({}),
-      proxyGroupId: null,
-      destinationType: "webhook",
-      destinationConfig: JSON.stringify({
-        url,
-        timeoutMs: 30000,
-        proxyGroupId: null,
-      }),
-      createdAt: now,
-      updatedAt: now,
-    });
+    await db.insert(endpoints).values(
+      await buildEndpointInsertValues({
+        id: endpointId,
+        environmentId: payload.environmentId,
+        name,
+        description,
+        destinationType,
+        destination,
+        enabled: true,
+        now,
+      })
+    );
 
     // Add endpoint to the endpoint group
     const endpointGroup = await db
@@ -207,8 +219,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id: endpointId,
       name,
-      url,
+      url:
+        destinationType === "sqs"
+          ? String(destination.queueUrl ?? "")
+          : destinationType === "pubsub"
+            ? String(destination.topicName ?? "")
+            : String(destination.url ?? ""),
       description,
+      destinationType,
       isActive: true,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
