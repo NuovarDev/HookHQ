@@ -241,7 +241,7 @@ export default function MessagesTab() {
                   <div className="flex-1">
                     <CardTitle className="text-lg flex items-center gap-2 mb-1">
                       {getStatusIcon(message.status)}
-                      {message.eventType}
+                      {message.eventType ? message.eventType : "No event type"}
                       {message.eventId && (
                         <span className="text-sm font-normal text-gray-500">({message.eventId})</span>
                       )}
@@ -306,7 +306,7 @@ export default function MessagesTab() {
                   {message.payloadSize && (
                     <div>
                       <h4 className="text-sm font-medium mb-1">Payload</h4>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         Size: {message.payloadSize} bytes
                         {message.payload && (
                           <span className="ml-2">
@@ -325,19 +325,13 @@ export default function MessagesTab() {
 
                   {message.lastError && (
                     <div>
-                      <h4 className="text-sm font-medium mb-1 text-red-600">Last Error</h4>
-                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                      <h4 className="text-sm font-medium mb-1 ">Last Error</h4>
+                      <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 p-2 rounded">
                         {message.lastError}
                         {message.lastErrorAt && (
-                          <div className="text-xs text-red-500 mt-1">{formatTimestamp(message.lastErrorAt)}</div>
+                          <div className="text-xs text-red-500 dark:text-red-400 mt-1">{formatTimestamp(message.lastErrorAt)}</div>
                         )}
                       </div>
-                      {message.retryableEndpointIds.length > 0 && (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Manual retry is available for retained failed deliveries. Retries are not dependent on payload
-                          logging, but they do require the failed delivery record to still exist.
-                        </p>
-                      )}
                     </div>
                   )}
 

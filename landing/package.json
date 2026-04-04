@@ -1,0 +1,37 @@
+{
+  "name": "@hookhq/landing",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "clean": "rm -rf .open-next && rm -rf .wrangler && rm -rf node_modules && rm -rf .next",
+    "clean-deploy": "pnpm clean && pnpm i && pnpm run deploy",
+    "dev": "next dev -p 3300",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "start": "next start -p 3300",
+    "format": "prettier --write .",
+    "lint": "next lint",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
+  },
+  "dependencies": {
+    "next": "15.3.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250813.0",
+    "@opennextjs/cloudflare": "^1.18.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5",
+    "wrangler": "^4.80.0"
+  }
+}

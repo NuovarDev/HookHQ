@@ -1,7 +1,13 @@
 {
   "name": "webhooks",
   "version": "0.2.1",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NuovarDev/HookHQ"
+  },
+  "homepage": "https://hookhq.dev",
+  "description": "Webhooks-as-a-service application built with Cloudflare Workers",
   "scripts": {
     "clean": "rm -rf .open-next && rm -rf .wrangler && rm -rf node_modules && rm -rf .next",
     "clean-deploy": "pnpm clean && pnpm i && pnpm run deploy",
@@ -18,6 +24,10 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "deploy": "opennextjs-cloudflare build && npx wrangler d1 migrations apply DATABASE --remote; opennextjs-cloudflare deploy",
+    "dev:landing": "pnpm --dir landing dev",
+    "build:landing": "pnpm --dir landing build",
+    "start:landing": "pnpm --dir landing start",
+    "deploy:landing": "pnpm --dir landing run deploy",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "auth:generate": "npx --yes @better-auth/cli@latest generate --config src/auth/schema.ts --output src/db/auth.schema.ts -y",
     "auth:format": "npx --yes prettier --write src/db/auth.schema.ts",
