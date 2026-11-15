@@ -63,6 +63,10 @@ function normalizeDestinationInput(
       rawDestination.customHeaders !== undefined
         ? ((rawDestination.customHeaders as Record<string, string> | undefined) ?? {})
         : (existing?.customHeaders ?? {}),
+    payloadTemplate:
+      rawDestination.payloadTemplate !== undefined
+        ? String(rawDestination.payloadTemplate).trim() || undefined
+        : existing?.payloadTemplate,
     proxyGroupId: (rawDestination.proxyGroupId as string | null | undefined) ?? null,
   };
 }
@@ -86,6 +90,7 @@ export async function formatEndpoint(endpoint: typeof endpoints.$inferSelect, en
             url: destination.url,
             timeoutMs: destination.timeoutMs,
             hasCustomHeaders: Object.keys(destination.customHeaders ?? {}).length > 0,
+            payloadTemplate: destination.payloadTemplate,
             proxyGroupId: destination.proxyGroupId ?? null,
           }
         : destination.type === "sqs"

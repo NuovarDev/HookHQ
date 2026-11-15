@@ -8,9 +8,12 @@ export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
 
   if (!authResult.success) {
-    return NextResponse.json({
-      error: authResult.error
-    }, { status: 401 });
+    return NextResponse.json(
+      {
+        error: authResult.error,
+      },
+      { status: 401 }
+    );
   }
 
   const { payload } = authResult;
@@ -35,16 +38,19 @@ export async function GET(request: NextRequest) {
         name: eventType.name,
         description: eventType.description,
         schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+        variables: eventType.variables ? JSON.parse(eventType.variables) : [],
         enabled: eventType.enabled,
         createdAt: eventType.createdAt.toISOString(),
-        updatedAt: eventType.updatedAt.toISOString()
-      }))
+        updatedAt: eventType.updatedAt.toISOString(),
+      })),
     });
-
   } catch (error) {
     console.error("Error fetching portal event types:", error);
-    return NextResponse.json({
-      error: "Internal server error"
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }

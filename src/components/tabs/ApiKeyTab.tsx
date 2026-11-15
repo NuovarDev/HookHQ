@@ -4,27 +4,42 @@ import ApiKeyManager from "@/components/ApiKeyManager";
 import { useState, useEffect } from "react";
 import authClient from "@/auth/authClient";
 import { ApiKey } from "@/lib/apiKeys";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 
 export default function ApiKeyTab() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedEnvironment } = useEnvironment();
 
-  const fetchApiKeys = async () => {
-    const { data, error } = await authClient.apiKey.list();
-
-    if (error) {
-      setError(error.message || "An error occurred");
-    } else {
-      setApiKeys(data as ApiKey[]);
+  const fetchApiKeys = async (environmentId: string | undefined) => {
+    if (!environmentId) {
+      setApiKeys([]);
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await authClient.apiKey.list();
+      if (error) {
+        throw new Error(error.message || "Failed to load API keys");
+      }
+
+      setApiKeys((data as ApiKey[]).filter(apiKey => apiKey.metadata?.environment === environmentId));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "An error occurred");
+      setApiKeys([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchApiKeys();
-  }, []);
+    void fetchApiKeys(selectedEnvironment?.id);
+  }, [selectedEnvironment?.id]);
 
   const handleCreateKey = async (name: string, permissions: Record<string, string[]>, environment: string) => {
     try {

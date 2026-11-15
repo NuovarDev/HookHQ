@@ -6,7 +6,8 @@ import { endpoints } from "@/db/webhooks.schema";
 import { parseAutoDisableConfig } from "@/lib/destinations/config";
 import { buildEndpointInsertValues, formatEndpoint } from "@/lib/publicApi/serializers";
 import { enabledQuerySchema, endpointCreateSchema, endpointSchema, errorResponseSchema } from "@/lib/publicApi/schemas";
-import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
+import { jsonError, parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
+import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
 const listEndpointsRoute = createRoute({
   method: "get",
@@ -87,6 +88,13 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
     if (auth instanceof Response) return auth;
 
     const body = c.req.valid("json");
+    if (body.destinationType === "webhook") {
+      try {
+        validateWebhookDestinationTemplates(body.destination);
+      } catch (error) {
+        return jsonError(error instanceof Error ? error.message : "Invalid template", 400);
+      }
+    }
     const now = new Date();
     const endpointId = `ep_${auth.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
 

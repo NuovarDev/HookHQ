@@ -267,7 +267,7 @@ export default function EndpointGroupsTab() {
               Create Group
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
             <DialogHeader>
               <DialogTitle>{editingGroup ? "Edit Endpoint Group" : "Create New Endpoint Group"}</DialogTitle>
               <DialogDescription>
@@ -277,7 +277,7 @@ export default function EndpointGroupsTab() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid gap-4 py-4">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
               <div className="space-y-2">
                 <Label htmlFor="endpoint-group-name">Name *</Label>
                 <Input
@@ -362,7 +362,7 @@ export default function EndpointGroupsTab() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 rounded-md border p-4">
+              <div className="grid grid-cols-1 gap-4 rounded-md border p-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <input
@@ -454,7 +454,7 @@ export default function EndpointGroupsTab() {
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>

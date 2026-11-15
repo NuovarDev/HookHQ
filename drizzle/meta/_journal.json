@@ -15,6 +15,13 @@
       "when": 1774221313848,
       "tag": "0001_dear_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794696117326,
+      "tag": "0002_lonely_quicksilver",
+      "breakpoints": true
     }
   ]
 }

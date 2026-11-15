@@ -28,6 +28,7 @@ export type WebhookEndpoint = EndpointBase & {
     url: string;
     timeoutMs?: number;
     hasCustomHeaders: boolean;
+    payloadTemplate?: string;
     proxyGroupId?: string | null;
   };
 };
@@ -62,6 +63,7 @@ export type EndpointWriteDestination =
       url: string;
       timeoutMs?: number;
       customHeaders?: Record<string, string>;
+      payloadTemplate?: string;
       proxyGroupId?: string | null;
     }
   | {
@@ -129,9 +131,16 @@ export interface EventType {
   name: string;
   description?: string | null;
   schema?: Record<string, unknown> | null;
+  variables: EventTypeVariable[];
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EventTypeVariable {
+  name: string;
+  description: string;
+  example: string;
 }
 
 export interface ProxyGroup {
@@ -244,6 +253,7 @@ export async function createEventType(payload: {
   name: string;
   description?: string;
   schema?: Record<string, unknown>;
+  variables?: EventTypeVariable[];
   enabled: boolean;
 }) {
   return requestJson<EventType>("/event-types", {

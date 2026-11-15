@@ -17,11 +17,11 @@ type EventTypeSelectorProps = {
 };
 
 function normalizeSelection(selection: string[]) {
-  if (selection.length === 0 || selection.includes(ALL_VALUE)) {
+  if (selection.includes(ALL_VALUE)) {
     return [ALL_VALUE];
   }
 
-  return selection;
+  return Array.from(new Set(selection.filter(Boolean)));
 }
 
 export default function EventTypeSelector({
@@ -49,7 +49,9 @@ export default function EventTypeSelector({
 
   const selectedLabel = isAllSelected
     ? label
-    : normalizedValue.map(item => eventTypes.find(eventType => eventType.name === item)?.name || item).join(", ");
+    : normalizedValue.length > 0
+      ? normalizedValue.map(item => eventTypes.find(eventType => eventType.name === item)?.name || item).join(", ")
+      : "No event types selected";
 
   return (
     <Popover>
@@ -88,7 +90,6 @@ export default function EventTypeSelector({
                     <Checkbox
                       checked={checked}
                       onCheckedChange={nextChecked => toggleEventType(eventType.name, Boolean(nextChecked))}
-                      disabled={isAllSelected}
                     />
                     <div className="min-w-0">
                       <div className="text-sm font-medium">{eventType.name}</div>

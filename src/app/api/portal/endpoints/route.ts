@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { endpoints, endpointGroups, webhookAttempts } from "@/db/webhooks.schema";
+import { endpoints, endpointGroups, eventTypes, webhookAttempts } from "@/db/webhooks.schema";
 import { eq, and, inArray, gte, sql } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
 import { buildEndpointInsertValues } from "@/lib/publicApi/serializers";
 import { resolveDestinationConfig } from "@/lib/destinations/config";
+import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
 export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
@@ -46,6 +47,15 @@ export async function GET(request: NextRequest) {
     }
 
     const groupEndpointIds = JSON.parse(endpointGroup[0].endpointIds || "[]");
+    const groupEventTypes = JSON.parse(endpointGroup[0].eventTypes || '["*"]') as string[];
+    const configuredEventTypes = await db
+      .select({ name: eventTypes.name, variables: eventTypes.variables })
+      .from(eventTypes)
+      .where(eq(eventTypes.environmentId, payload.environmentId));
+    const templateVariables = configuredEventTypes
+      .filter(eventType => groupEventTypes.includes("*") || groupEventTypes.includes(eventType.name))
+      .flatMap(eventType => (eventType.variables ? JSON.parse(eventType.variables) : []))
+      .filter((variable, index, variables) => variables.findIndex(item => item.name === variable.name) === index);
     const groupEndpoints = endpointList.filter(endpoint => groupEndpointIds.includes(endpoint.id));
 
     // Get latest attempt per messageId using SQL window function
@@ -128,6 +138,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       endpoints: formattedEndpoints,
+      templateVariables,
     });
   } catch (error) {
     console.error("Error fetching portal endpoints:", error);
@@ -173,6 +184,17 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     );
+  }
+
+  if (destinationType === "webhook") {
+    try {
+      validateWebhookDestinationTemplates(destination);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Invalid template" },
+        { status: 400 }
+      );
+    }
   }
 
   const db = await getDb();

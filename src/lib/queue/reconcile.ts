@@ -13,6 +13,7 @@ const MAX_MESSAGES_PER_RUN = 100;
 type MessageMetadata = {
   payloadKey?: string | null;
   queueRecoveryAttempts?: number;
+  variables?: Record<string, unknown>;
 };
 
 function parseMetadata(value: string | null): MessageMetadata {
@@ -119,6 +120,7 @@ export async function reconcileStalePendingMessages(env: CloudflareEnv): Promise
           payloadKey: metadata.payloadKey ?? null,
           timestamp: (message.queuedAt ?? message.createdAt).toISOString(),
           idempotencyKey: message.idempotencyKey ?? undefined,
+          variables: metadata.variables,
           retryConfig,
           destination: await resolveDestinationConfig(endpoint, env),
         });

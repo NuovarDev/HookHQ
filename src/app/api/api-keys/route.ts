@@ -13,16 +13,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, permissions, environment } = body as { name: string; permissions: Record<string, string[]>; environment: string };
+    const { name, permissions, environment } = body as {
+      name: string;
+      permissions: Record<string, string[]>;
+      environment: string;
+    };
 
     if (!name || !permissions || !environment) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
     // Validate permissions are valid ApiKeyPermission types
-    const validPermissions = Object.keys(permissions).every(p =>
-      p.startsWith("endpoints") || p.startsWith("messages") || p.startsWith("endpointGroups") || p.startsWith("eventTypes")
-    ) && Object.values(permissions).every(p => p.every((op: string) => ["create", "read", "update", "delete"].includes(op)));
+    const validPermissions =
+      Object.keys(permissions).every(
+        p =>
+          p.startsWith("endpoints") ||
+          p.startsWith("messages") ||
+          p.startsWith("endpointGroups") ||
+          p.startsWith("eventTypes")
+      ) &&
+      Object.values(permissions).every(p =>
+        p.every((op: string) => ["create", "read", "update", "delete"].includes(op))
+      );
 
     if (Object.keys(permissions).length === 0 || !validPermissions) {
       return NextResponse.json({ error: "At least one valid permission is required" }, { status: 400 });

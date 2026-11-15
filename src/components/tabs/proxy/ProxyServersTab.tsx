@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -249,15 +250,15 @@ export default function ProxyServersTab() {
               Add Proxy Server
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
             <DialogHeader>
               <DialogTitle>{editingProxy ? "Edit Proxy Server" : "Create Proxy Server"}</DialogTitle>
               <DialogDescription>
                 Add or update a proxy relay for webhook delivery with static IP support.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="name">Name *</Label>
                   <Input
@@ -288,7 +289,7 @@ export default function ProxyServersTab() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <Label htmlFor="provider">Provider</Label>
                   <Select
@@ -337,22 +338,21 @@ export default function ProxyServersTab() {
                   />
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveProxy} disabled={creating || !formData.name || !formData.url}>
-                  {creating
-                    ? editingProxy
-                      ? "Saving..."
-                      : "Creating..."
-                    : editingProxy
-                      ? "Save Changes"
-                      : "Create Proxy Server"}
-                </Button>
-              </div>
             </div>
+            <DialogFooter className="shrink-0 border-t pt-4">
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveProxy} disabled={creating || !formData.name || !formData.url}>
+                {creating
+                  ? editingProxy
+                    ? "Saving..."
+                    : "Creating..."
+                  : editingProxy
+                    ? "Save Changes"
+                    : "Create Proxy Server"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

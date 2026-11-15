@@ -7,6 +7,7 @@ import { sendToSqs } from "@/lib/destinations/sqs";
 import { chooseProxyServer, decryptProxySecret, getProxyRelayUrl } from "@/lib/proxy";
 import type { DeliveryMessage } from "@/lib/queue/types";
 import type { DestinationConfig, WebhookDestinationConfig } from "@/lib/destinations/types";
+import { renderWebhookPayload, renderWebhookTemplate } from "@/lib/webhookTemplates";
 
 interface DeliveryResult {
   endpointId: string;
@@ -138,9 +139,9 @@ export class DestinationDelivery {
       return this.sendWebhookDirect(endpointData);
     }
 
-    const payload = await this.getPayload();
+    const payload = await this.getWebhookPayload(destination);
     const proxyRequest = {
-      url: destination.url,
+      url: this.renderDestinationUrl(destination),
       method: "POST",
       headers: this.buildHeaders(destination),
       body: payload,
@@ -182,7 +183,7 @@ export class DestinationDelivery {
     }
 
     await this.logAttempt(endpointData.id, result, {
-      requestUrl: destination.url,
+      requestUrl: proxyRequest.url,
       requestMethod: "POST",
       requestHeaders: JSON.stringify(proxyRequest.headers),
       requestBody: JSON.stringify(payload),
@@ -199,8 +200,9 @@ export class DestinationDelivery {
   private async sendWebhookDirect(endpointData: EndpointData): Promise<DeliveryResult> {
     const destination = this.message.destination as WebhookDestinationConfig;
     const headers = this.buildHeaders(destination);
-    const payload = await this.getPayload();
-    const response = await fetch(destination.url, {
+    const payload = await this.getWebhookPayload(destination);
+    const requestUrl = this.renderDestinationUrl(destination);
+    const response = await fetch(requestUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -220,7 +222,7 @@ export class DestinationDelivery {
     }
 
     await this.logAttempt(endpointData.id, result, {
-      requestUrl: destination.url,
+      requestUrl,
       requestMethod: "POST",
       requestHeaders: JSON.stringify(headers),
       requestBody: JSON.stringify(payload),
@@ -295,12 +297,32 @@ export class DestinationDelivery {
   }
 
   private buildHeaders(destination: WebhookDestinationConfig): HeadersInit {
+    const variables = this.message.variables ?? {};
+    const customHeaders = Object.fromEntries(
+      Object.entries(destination.customHeaders ?? {}).map(([key, value]) => [
+        key,
+        renderWebhookTemplate(value, variables, `header ${key}`),
+      ])
+    );
+
     return {
       "Content-Type": "application/json",
       "User-Agent": "HookHQ/1.0",
-      ...(destination.customHeaders ?? {}),
+      ...customHeaders,
       ...(this.message.idempotencyKey ? { "Idempotency-Key": this.message.idempotencyKey } : {}),
     };
+  }
+
+  private renderDestinationUrl(destination: WebhookDestinationConfig): string {
+    return renderWebhookTemplate(destination.url, this.message.variables ?? {}, "URL");
+  }
+
+  private async getWebhookPayload(destination: WebhookDestinationConfig): Promise<unknown> {
+    if (!destination.payloadTemplate) {
+      return this.getPayload();
+    }
+
+    return renderWebhookPayload(destination.payloadTemplate, this.message.variables ?? {});
   }
 
   private async getEndpointWithCache(endpointId: string) {

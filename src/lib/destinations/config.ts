@@ -129,6 +129,8 @@ export async function resolveDestinationConfig(
       typeof config.customHeaders === "object" && config.customHeaders !== null
         ? (config.customHeaders as Record<string, string>)
         : parseJson<Record<string, string>>(record.headers, {}),
+    payloadTemplate:
+      typeof config.payloadTemplate === "string" && config.payloadTemplate.trim() ? config.payloadTemplate : undefined,
     proxyGroupId: (config.proxyGroupId as string | null | undefined) ?? record.proxyGroupId,
   };
 }
@@ -166,6 +168,7 @@ export async function serializeDestinationConfig(config: DestinationConfig, env?
       url: config.url,
       timeoutMs: config.timeoutMs,
       customHeaders: config.customHeaders ?? {},
+      payloadTemplate: config.payloadTemplate || undefined,
       proxyGroupId: config.proxyGroupId ?? null,
     }),
     env

@@ -16,6 +16,7 @@ type SendEventBody = {
   payload?: unknown;
   eventId?: string;
   logPayload?: boolean;
+  variables?: Record<string, unknown>;
 };
 
 type HandleSendEventRequestInput = {
@@ -36,7 +37,7 @@ export async function handleSendEventRequest({
   request,
   environmentId,
 }: HandleSendEventRequestInput): Promise<Response> {
-  const { destinations, eventType, eventId, payload, logPayload } = (body ?? {}) as SendEventBody;
+  const { destinations, eventType, eventId, payload, logPayload, variables } = (body ?? {}) as SendEventBody;
 
   if (!destinations || payload === undefined) {
     return Response.json(
@@ -70,7 +71,7 @@ export async function handleSendEventRequest({
 
   if (eventType) {
     const eventTypeRecord = await db
-      .select({ schema: eventTypes.schema })
+      .select({ schema: eventTypes.schema, variables: eventTypes.variables })
       .from(eventTypes)
       .where(and(eq(eventTypes.name, eventType), eq(eventTypes.environmentId, environmentId)))
       .limit(1);
@@ -87,6 +88,22 @@ export async function handleSendEventRequest({
           { status: 400 }
         );
       }
+    }
+
+    const declaredVariables = eventTypeRecord[0]?.variables
+      ? (JSON.parse(eventTypeRecord[0].variables) as Array<{ name: string }>)
+      : [];
+    const missingVariables = declaredVariables
+      .filter(variable => !(variable.name in (variables ?? {})))
+      .map(variable => variable.name);
+    if (missingVariables.length > 0) {
+      return Response.json(
+        {
+          error: "Template variables are required",
+          details: missingVariables.map(name => `Missing variable: ${name}`),
+        },
+        { status: 400 }
+      );
     }
   }
 
@@ -139,6 +156,7 @@ export async function handleSendEventRequest({
     metadata: JSON.stringify({
       payloadKey: `webhook-payload:${webhookId}`,
       queueRecoveryAttempts: 0,
+      variables,
     }),
   });
 
@@ -159,6 +177,7 @@ export async function handleSendEventRequest({
     idempotencyKey,
     payloadKey,
     payload: shouldUseKV ? null : payload,
+    variables,
   };
 
   const baseMessageSize = JSON.stringify(baseMessageBody).length;

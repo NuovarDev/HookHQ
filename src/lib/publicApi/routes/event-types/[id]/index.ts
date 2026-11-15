@@ -19,6 +19,7 @@ function formatEventType(eventType: typeof eventTypes.$inferSelect) {
     name: eventType.name,
     description: eventType.description,
     schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+    variables: eventType.variables ? JSON.parse(eventType.variables) : [],
     enabled: eventType.enabled,
     createdAt: eventType.createdAt.toISOString(),
     updatedAt: eventType.updatedAt.toISOString(),
@@ -135,6 +136,7 @@ export function registerEventTypeItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfl
     if (body.name !== undefined) updateData.name = body.name;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.schema !== undefined) updateData.schema = JSON.stringify(body.schema);
+    if (body.variables !== undefined) updateData.variables = JSON.stringify(body.variables);
     if (body.enabled !== undefined) updateData.enabled = body.enabled;
     await db
       .update(eventTypes)

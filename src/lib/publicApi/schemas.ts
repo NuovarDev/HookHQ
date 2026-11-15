@@ -43,6 +43,22 @@ export const createEnvironmentSchema = z
   })
   .openapi("CreateEnvironmentRequest");
 
+export const cloneEnvironmentSchema = z
+  .object({
+    name: z.string().min(1).describe("Name of the new environment."),
+    description: z.string().optional().describe("Optional description for the new environment."),
+    copy: z
+      .object({
+        endpoints: z.boolean().default(true),
+        endpointGroups: z.boolean().default(true),
+        eventTypes: z.boolean().default(true),
+        proxyServers: z.boolean().default(true),
+        proxyGroups: z.boolean().default(true),
+      })
+      .describe("Resources to copy. Delivery logs, attempts, and metrics are never copied."),
+  })
+  .openapi("CloneEnvironmentRequest");
+
 export const messageRetryParamSchema = z.object({
   messageId: z.string().describe("ID of the message to retry."),
   endpointId: z.string().describe("ID of the endpoint to retry the message on."),
@@ -79,11 +95,31 @@ export const retryConfigSchema = z
   })
   .openapi("RetryConfig");
 
+const webhookUrlSchema = z
+  .string()
+  .min(1)
+  .refine(
+    value => {
+      try {
+        const url = new URL(value.replace(/{{[^}]+}}/g, "template-value"));
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "Must be a valid HTTP(S) URL. Template variables such as {{tenant}} are allowed." }
+  );
+
 const webhookDestinationConfigSchema = z
   .object({
-    url: z.string().url(),
+    url: webhookUrlSchema,
     timeoutMs: z.number().int().min(1000).optional(),
     customHeaders: z.record(z.string(), z.string()).optional(),
+    payloadTemplate: z
+      .string()
+      .max(100_000)
+      .optional()
+      .describe("Optional JSON template used instead of the default payload."),
     proxyGroupId: z.string().nullable().optional(),
   })
   .describe("Webhook destination configuration")
@@ -91,9 +127,10 @@ const webhookDestinationConfigSchema = z
 
 const webhookDestinationResponseSchema = z
   .object({
-    url: z.string().url(),
+    url: webhookUrlSchema,
     timeoutMs: z.number().int().min(1000).optional(),
     hasCustomHeaders: z.boolean(),
+    payloadTemplate: z.string().optional(),
     proxyGroupId: z.string().nullable().optional(),
   })
   .describe("Webhook destination configuration");
@@ -299,6 +336,16 @@ export const endpointGroupUpdateSchema = z
   })
   .openapi("UpdateEndpointGroupRequest");
 
+export const eventTypeVariableSchema = z
+  .object({
+    name: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "Use letters, numbers, and underscores; start with a letter or underscore."),
+    description: z.string().max(500),
+    example: z.string().max(10_000),
+  })
+  .openapi("EventTypeVariable");
+
 export const eventTypeSchema = z
   .object({
     id: z.string(),
@@ -306,6 +353,7 @@ export const eventTypeSchema = z
     name: z.string(),
     description: z.string().nullable().optional(),
     schema: genericObjectSchema.nullable().optional(),
+    variables: z.array(eventTypeVariableSchema),
     enabled: z.boolean(),
     createdAt: z.string(),
     updatedAt: z.string(),
@@ -317,6 +365,10 @@ export const eventTypeCreateSchema = z
     name: z.string().describe("Name of the event type."),
     description: z.string().optional().describe("Optional description for the event type."),
     schema: genericObjectSchema.optional().describe("Schema to validate the event payload against."),
+    variables: z
+      .array(eventTypeVariableSchema)
+      .optional()
+      .describe("Variables that can be used in endpoint webhook templates."),
     enabled: z.boolean().optional().describe("Whether the event type is enabled."),
   })
   .openapi("CreateEventTypeRequest");
@@ -326,6 +378,10 @@ export const eventTypeUpdateSchema = z
     name: z.string().optional().describe("Name of the event type."),
     description: z.string().optional().describe("Optional description for the event type."),
     schema: genericObjectSchema.optional().describe("Schema to validate the event payload against."),
+    variables: z
+      .array(eventTypeVariableSchema)
+      .optional()
+      .describe("Variables that can be used in endpoint webhook templates."),
     enabled: z.boolean().optional().describe("Whether the event type is enabled."),
   })
   .openapi("UpdateEventTypeRequest");

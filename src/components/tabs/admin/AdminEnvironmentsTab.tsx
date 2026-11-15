@@ -4,7 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Trash2, AlertTriangle, Calendar, Shield } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Globe, Trash2, AlertTriangle, Calendar, Copy, Shield } from "lucide-react";
 import { useEnvironment, Environment } from "@/components/providers/EnvironmentProvider";
 import {
   Dialog,
@@ -17,11 +20,32 @@ import {
 } from "@/components/ui/dialog";
 import { publicApiFetch } from "@/lib/publicApi/utils";
 
+type CloneOptions = {
+  endpoints: boolean;
+  endpointGroups: boolean;
+  eventTypes: boolean;
+  proxyServers: boolean;
+  proxyGroups: boolean;
+};
+
+const defaultCloneOptions: CloneOptions = {
+  endpoints: true,
+  endpointGroups: true,
+  eventTypes: true,
+  proxyServers: true,
+  proxyGroups: true,
+};
+
 export default function AdminEnvironmentsTab() {
   const { environments, loading, refreshEnvironments } = useEnvironment();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [environmentToDelete, setEnvironmentToDelete] = useState<Environment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [environmentToClone, setEnvironmentToClone] = useState<Environment | null>(null);
+  const [cloneName, setCloneName] = useState("");
+  const [cloneDescription, setCloneDescription] = useState("");
+  const [cloneOptions, setCloneOptions] = useState<CloneOptions>(defaultCloneOptions);
+  const [isCloning, setIsCloning] = useState(false);
 
   const handleDeleteClick = (environment: Environment) => {
     setEnvironmentToDelete(environment);
@@ -56,6 +80,50 @@ export default function AdminEnvironmentsTab() {
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
     setEnvironmentToDelete(null);
+  };
+
+  const handleCloneClick = (environment: Environment) => {
+    setEnvironmentToClone(environment);
+    setCloneName(`${environment.name} Copy`);
+    setCloneDescription(environment.description || "");
+    setCloneOptions(defaultCloneOptions);
+  };
+
+  const handleCloneCancel = () => {
+    setEnvironmentToClone(null);
+    setCloneName("");
+    setCloneDescription("");
+    setCloneOptions(defaultCloneOptions);
+  };
+
+  const handleCloneConfirm = async () => {
+    if (!environmentToClone || !cloneName.trim()) return;
+
+    setIsCloning(true);
+    try {
+      const response = await publicApiFetch(`/environments/${environmentToClone.id}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: cloneName.trim(),
+          description: cloneDescription.trim() || undefined,
+          copy: cloneOptions,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+        throw new Error(error?.message || error?.error || "Failed to clone environment");
+      }
+
+      await refreshEnvironments();
+      handleCloneCancel();
+    } catch (error) {
+      console.error("Failed to clone environment:", error);
+      alert(error instanceof Error ? error.message : "Failed to clone environment. Please try again.");
+    } finally {
+      setIsCloning(false);
+    }
   };
 
   if (loading) {
@@ -118,6 +186,10 @@ export default function AdminEnvironmentsTab() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleCloneClick(environment)}>
+                        <Copy className="mr-1 h-4 w-4" />
+                        Clone
+                      </Button>
                       {environment.isDefault ? (
                         <div className="flex items-center space-x-1 text-xs text-gray-500">
                           <Shield className="h-3 w-3" />
@@ -186,6 +258,77 @@ export default function AdminEnvironmentsTab() {
               </div>
             )}
           </div>
+
+          <Dialog open={environmentToClone !== null} onOpenChange={open => !open && handleCloneCancel()}>
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Copy className="h-5 w-5" />
+                  Clone Environment
+                </DialogTitle>
+                <DialogDescription>
+                  Choose the resources to copy from {environmentToClone?.name}. Delivery logs, attempts, and event
+                  history are never copied.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-5 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clone-environment-name">New environment name *</Label>
+                  <Input
+                    id="clone-environment-name"
+                    value={cloneName}
+                    onChange={event => setCloneName(event.target.value)}
+                    placeholder="Production Copy"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clone-environment-description">Description</Label>
+                  <Input
+                    id="clone-environment-description"
+                    value={cloneDescription}
+                    onChange={event => setCloneDescription(event.target.value)}
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label>Copy resources</Label>
+                  <div className="grid gap-3 rounded-md border p-4 sm:grid-cols-2">
+                    {(
+                      [
+                        ["endpoints", "Endpoints"],
+                        ["endpointGroups", "Endpoint groups"],
+                        ["eventTypes", "Event types"],
+                        ["proxyServers", "Proxy servers"],
+                        ["proxyGroups", "Proxy groups"],
+                      ] as Array<[keyof CloneOptions, string]>
+                    ).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 text-sm font-medium">
+                        <Checkbox
+                          checked={cloneOptions[key]}
+                          onCheckedChange={checked =>
+                            setCloneOptions(current => ({ ...current, [key]: checked === true }))
+                          }
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    References between copied resources are updated for the new environment. References to resources you
+                    do not copy are removed.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleCloneCancel} disabled={isCloning}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCloneConfirm} disabled={isCloning || !cloneName.trim()}>
+                  {isCloning ? "Cloning..." : "Clone Environment"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
     </div>

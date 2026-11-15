@@ -54,6 +54,7 @@ export const eventTypes = sqliteTable("event_types", {
   name: text("name").notNull(),
   description: text("description"),
   schema: text("schema"), // JSON schema for event payload validation
+  variables: text("variables").default("[]").notNull(), // JSON array of template variable definitions
   enabled: integer("enabled", { mode: "boolean" }).default(true).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })

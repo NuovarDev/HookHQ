@@ -267,10 +267,10 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
 
   const { payload } = authState;
 
-  // If embedded, show only content with solid background
+  // If embedded, use a solid muted surface so cards remain distinct without the page texture.
   if (isEmbedded) {
     return (
-      <div className={`min-h-screen ${theme === "dark" ? "bg-black" : "bg-white"}`}>
+      <div className="min-h-screen bg-muted/40 text-foreground">
         <main className="p-6">
           <PortalContext.Provider
             value={{

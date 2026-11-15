@@ -9,6 +9,7 @@ export interface DeliveryMessage {
   payloadKey?: string | null;
   timestamp: string;
   idempotencyKey?: string;
+  variables?: Record<string, unknown>;
   retryConfig: RetryConfig;
   destination: DestinationConfig;
   isManualRetry?: boolean;

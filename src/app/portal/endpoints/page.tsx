@@ -25,6 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { usePortalContext } from "../layout";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
+import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
+import type { EventTypeVariable } from "@/lib/webhookApi";
 
 interface Endpoint {
   id: string;
@@ -57,6 +59,7 @@ type CreateEndpointFormState = {
   target: string;
   timeoutMs: number;
   customHeaders: string;
+  payloadTemplate: string;
   sqsRegion: string;
   sqsAccessKeyId: string;
   sqsSecretAccessKey: string;
@@ -74,6 +77,7 @@ const initialFormState: CreateEndpointFormState = {
   target: "",
   timeoutMs: 10000,
   customHeaders: "",
+  payloadTemplate: "",
   sqsRegion: "",
   sqsAccessKeyId: "",
   sqsSecretAccessKey: "",
@@ -100,6 +104,7 @@ export default function EndpointsPage() {
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"24h" | "7d">("7d");
   const [formData, setFormData] = useState<CreateEndpointFormState>(initialFormState);
+  const [templateVariables, setTemplateVariables] = useState<EventTypeVariable[]>([]);
 
   useEffect(() => {
     fetchEndpoints();
@@ -114,8 +119,9 @@ export default function EndpointsPage() {
         throw new Error("Failed to fetch endpoints");
       }
 
-      const data = (await response.json()) as { endpoints: Endpoint[] };
+      const data = (await response.json()) as { endpoints: Endpoint[]; templateVariables?: EventTypeVariable[] };
       setEndpoints(data.endpoints || []);
+      setTemplateVariables(data.templateVariables || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch endpoints");
     } finally {
@@ -185,6 +191,7 @@ export default function EndpointsPage() {
               customHeaders: formData.customHeaders.trim()
                 ? (JSON.parse(formData.customHeaders) as Record<string, string>)
                 : undefined,
+              payloadTemplate: formData.payloadTemplate.trim() || undefined,
             }
           : formData.destinationType === "sqs"
             ? {
@@ -405,18 +412,17 @@ export default function EndpointsPage() {
 
       {/* Create Endpoint Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="border-0">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
           <DialogHeader>
             <DialogTitle>Create Endpoint</DialogTitle>
             <DialogDescription>Add a new event destination to receive events</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
             <div className="space-y-2">
               <Label htmlFor="portal-endpoint-name">Name</Label>
               <Input
                 id="portal-endpoint-name"
                 placeholder="Production API"
-                className="border-0"
                 value={formData.name}
                 onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
               />
@@ -429,7 +435,7 @@ export default function EndpointsPage() {
                   setFormData(current => ({ ...current, destinationType: value }))
                 }
               >
-                <SelectTrigger id="portal-endpoint-type" className="border-0">
+                <SelectTrigger id="portal-endpoint-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -456,7 +462,6 @@ export default function EndpointsPage() {
                       ? "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
                       : "orders-created"
                 }
-                className="border-0"
                 value={formData.target}
                 onChange={event => setFormData(current => ({ ...current, target: event.target.value }))}
               />
@@ -466,7 +471,6 @@ export default function EndpointsPage() {
               <Input
                 id="portal-endpoint-description"
                 placeholder="Main production destination"
-                className="border-0"
                 value={formData.description}
                 onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
               />
@@ -480,7 +484,6 @@ export default function EndpointsPage() {
                     id="portal-endpoint-timeout"
                     type="number"
                     min={1000}
-                    className="border-0"
                     value={formData.timeoutMs}
                     onChange={event =>
                       setFormData(current => ({
@@ -495,11 +498,25 @@ export default function EndpointsPage() {
                   <Textarea
                     id="portal-endpoint-headers"
                     rows={4}
-                    className="border-0 font-mono text-sm"
+                    className="font-mono text-sm"
                     placeholder='{"Authorization":"Bearer token"}'
                     value={formData.customHeaders}
                     onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payload template (optional)</Label>
+                  <WebhookTemplateEditor
+                    id="portal-endpoint-payload-template"
+                    value={formData.payloadTemplate}
+                    onChange={value => setFormData(current => ({ ...current, payloadTemplate: value }))}
+                    variables={templateVariables}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Use template expressions such as <code>{"{{ variable }}"}</code> in JSON. Type <code>{"{{"}</code> for
+                    variables, <code>{"|"}</code> for filters, or <code>{"{%"}</code> for tags. Use{" "}
+                    <code>{"{{ variable | json }}"}</code> for JSON values.
+                  </p>
                 </div>
               </>
             ) : null}
@@ -510,7 +527,6 @@ export default function EndpointsPage() {
                   <Label htmlFor="portal-sqs-region">AWS Region</Label>
                   <Input
                     id="portal-sqs-region"
-                    className="border-0"
                     placeholder="us-east-1"
                     value={formData.sqsRegion}
                     onChange={event => setFormData(current => ({ ...current, sqsRegion: event.target.value }))}
@@ -520,7 +536,6 @@ export default function EndpointsPage() {
                   <Label htmlFor="portal-sqs-access-key">Access Key ID</Label>
                   <Input
                     id="portal-sqs-access-key"
-                    className="border-0"
                     value={formData.sqsAccessKeyId}
                     onChange={event => setFormData(current => ({ ...current, sqsAccessKeyId: event.target.value }))}
                   />
@@ -530,7 +545,6 @@ export default function EndpointsPage() {
                   <Input
                     id="portal-sqs-secret"
                     type="password"
-                    className="border-0"
                     value={formData.sqsSecretAccessKey}
                     onChange={event => setFormData(current => ({ ...current, sqsSecretAccessKey: event.target.value }))}
                   />
@@ -542,7 +556,6 @@ export default function EndpointsPage() {
                     type="number"
                     min={0}
                     max={900}
-                    className="border-0"
                     value={formData.sqsDelaySeconds}
                     onChange={event =>
                       setFormData(current => ({
@@ -556,7 +569,6 @@ export default function EndpointsPage() {
                   <Label htmlFor="portal-sqs-group">FIFO Group ID (optional)</Label>
                   <Input
                     id="portal-sqs-group"
-                    className="border-0"
                     placeholder="Required for FIFO queues"
                     value={formData.sqsMessageGroupId}
                     onChange={event => setFormData(current => ({ ...current, sqsMessageGroupId: event.target.value }))}
@@ -572,7 +584,7 @@ export default function EndpointsPage() {
                   <Textarea
                     id="portal-pubsub-service-account"
                     rows={5}
-                    className="border-0 font-mono text-sm"
+                    className="font-mono text-sm"
                     placeholder={`{"type":"service_account","project_id":"my-project",...}`}
                     value={formData.pubsubServiceAccountJson}
                     onChange={event =>
@@ -585,7 +597,7 @@ export default function EndpointsPage() {
                   <Textarea
                     id="portal-pubsub-attributes"
                     rows={3}
-                    className="border-0 font-mono text-sm"
+                    className="font-mono text-sm"
                     placeholder='{"source":"hookhq"}'
                     value={formData.pubsubAttributes}
                     onChange={event => setFormData(current => ({ ...current, pubsubAttributes: event.target.value }))}
@@ -595,7 +607,6 @@ export default function EndpointsPage() {
                   <Label htmlFor="portal-pubsub-ordering-key">Ordering Key (optional)</Label>
                   <Input
                     id="portal-pubsub-ordering-key"
-                    className="border-0"
                     value={formData.pubsubOrderingKey}
                     onChange={event => setFormData(current => ({ ...current, pubsubOrderingKey: event.target.value }))}
                   />
@@ -603,7 +614,7 @@ export default function EndpointsPage() {
               </>
             ) : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t pt-4">
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
               Cancel
             </Button>

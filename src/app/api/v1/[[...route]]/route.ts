@@ -10,7 +10,14 @@ async function handleRequest(request: Request) {
   const { env } = await getCloudflareContext({ async: true });
   const headers = new Headers(request.headers);
   headers.set("x-local-dev-queue", "1");
-  const proxiedRequest = new Request(request, { headers });
+
+  const requestInit: RequestInit & { duplex?: "half" } = {
+    method: request.method,
+    headers,
+    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+    duplex: "half",
+  };
+  const proxiedRequest = new Request(request.url, requestInit);
   return publicApiApp.fetch(proxiedRequest, env);
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE `event_types` ADD `variables` text DEFAULT '[]' NOT NULL;

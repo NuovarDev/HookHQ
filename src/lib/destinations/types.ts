@@ -20,6 +20,7 @@ export interface WebhookDestinationConfig {
   url: string;
   timeoutMs: number;
   customHeaders: Record<string, string>;
+  payloadTemplate?: string;
   proxyGroupId?: string | null;
 }
 

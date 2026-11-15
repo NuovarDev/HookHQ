@@ -13,6 +13,7 @@ import {
   endpointIdParamSchema,
 } from "@/lib/publicApi/schemas";
 import { jsonError, requireEnvironmentAccess } from "@/lib/publicApi/utils";
+import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
 const getEndpointRoute = createRoute({
   method: "get",
@@ -119,6 +120,13 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
     const db = await getDb(c.env);
     const existing = await db.select().from(endpoints).where(eq(endpoints.id, id)).limit(1);
     if (existing.length === 0) return jsonError("Endpoint not found", 404);
+    if (body.destination && (body.destinationType === "webhook" || existing[0].destinationType === "webhook")) {
+      try {
+        validateWebhookDestinationTemplates(body.destination);
+      } catch (error) {
+        return jsonError(error instanceof Error ? error.message : "Invalid template", 400);
+      }
+    }
     const updateData = await buildEndpointUpdateValues({
       name: body.name,
       description: body.description,

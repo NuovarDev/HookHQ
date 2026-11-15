@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
 import {
   createEndpoint,
   deleteEndpoint,
@@ -58,6 +59,7 @@ type EndpointFormState = {
   autoDisableThreshold: number;
   timeoutMs: number;
   customHeaders: string;
+  payloadTemplate: string;
   proxyGroupId: string;
 };
 
@@ -101,6 +103,7 @@ const initialFormState: EndpointFormState = {
   autoDisableThreshold: 10,
   timeoutMs: 10_000,
   customHeaders: "",
+  payloadTemplate: "",
   proxyGroupId: "none",
 };
 
@@ -137,6 +140,9 @@ function getEndpointPayload(formData: EndpointFormState, existingEndpoint: Endpo
             url: formData.target.trim(),
             timeoutMs: formData.timeoutMs,
             ...(customHeaders !== undefined || !existingEndpoint ? { customHeaders } : {}),
+            ...(formData.payloadTemplate.trim() || !existingEndpoint
+              ? { payloadTemplate: formData.payloadTemplate.trim() || undefined }
+              : {}),
             proxyGroupId: formData.proxyGroupId === "none" ? undefined : formData.proxyGroupId,
           }
         : formData.destinationType === "sqs"
@@ -184,6 +190,10 @@ export default function EndpointsTab() {
   const [editingEndpoint, setEditingEndpoint] = useState<Endpoint | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [formData, setFormData] = useState<EndpointFormState>(initialFormState);
+  const templateVariables = eventTypes
+    .filter(eventType => formData.eventTypes.includes("*") || formData.eventTypes.includes(eventType.name))
+    .flatMap(eventType => eventType.variables ?? [])
+    .filter((variable, index, variables) => variables.findIndex(item => item.name === variable.name) === index);
 
   useEffect(() => {
     let isMounted = true;
@@ -254,6 +264,7 @@ export default function EndpointsTab() {
       autoDisableThreshold: endpoint.autoDisable.threshold,
       timeoutMs: endpoint.destinationType === "webhook" ? (endpoint.destination.timeoutMs ?? 10000) : 10000,
       customHeaders: "",
+      payloadTemplate: endpoint.destinationType === "webhook" ? (endpoint.destination.payloadTemplate ?? "") : "",
       proxyGroupId: endpoint.destinationType === "webhook" ? endpoint.destination.proxyGroupId || "none" : "none",
     });
     setEditingEndpoint(endpoint);
@@ -330,7 +341,7 @@ export default function EndpointsTab() {
               Create Endpoint
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
             <DialogHeader>
               <DialogTitle>{editingEndpoint ? "Edit Endpoint" : "Create New Endpoint"}</DialogTitle>
               <DialogDescription>
@@ -339,8 +350,8 @@ export default function EndpointsTab() {
                   : "Add a new event endpoint to receive notifications"}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-name">Name *</Label>
                   <Input
@@ -415,7 +426,7 @@ export default function EndpointsTab() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-retry-policy">Retry Policy</Label>
                   <Select
@@ -470,7 +481,7 @@ export default function EndpointsTab() {
               </div>
 
               {formData.destinationType === "pubsub" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="endpoint-pubsub-ordering-key">Ordering Key</Label>
                     <Input
@@ -515,7 +526,7 @@ export default function EndpointsTab() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-auto-disable">Auto Disable</Label>
                   <Select
@@ -552,7 +563,7 @@ export default function EndpointsTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-max-delay">Max Delay (s)</Label>
                   <Input
@@ -643,6 +654,22 @@ export default function EndpointsTab() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="endpoint-payload-template">Payload template (optional)</Label>
+                    <WebhookTemplateEditor
+                      id={`endpoint-payload-template-${editingEndpoint?.id ?? "new"}`}
+                      value={formData.payloadTemplate}
+                      onChange={value => setFormData(current => ({ ...current, payloadTemplate: value }))}
+                      variables={templateVariables}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Use template expressions such as <code>{"{{ variable }}"}</code> to replace the default payload for
+                      this endpoint. Type <code>{"{{"}</code> for variables, <code>{"|"}</code> for filters, or{" "}
+                      <code>{"{%"}</code> for tags; use <code>{"{{ variable | json }}"}</code> for JSON values. Hover a
+                      variable for its description and example. URLs and header values support the same syntax.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="endpoint-proxy-group">Proxy Group (Optional)</Label>
                     <Select
                       value={formData.proxyGroupId}
@@ -663,7 +690,7 @@ export default function EndpointsTab() {
                   </div>
                 </>
               ) : formData.destinationType === "sqs" ? (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="endpoint-sqs-region">AWS Region</Label>
                     <Input
@@ -712,7 +739,7 @@ export default function EndpointsTab() {
                 </div>
               ) : null}
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 Cancel
               </Button>

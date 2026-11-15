@@ -18,9 +18,17 @@ const sendRequestSchema = z
       example: "user.created",
     }),
     payload: payloadSchema.openapi({
-      description: "Payload to send with the event",
+      description: "Default payload to send to endpoints without a payload template. Required for every event.",
       example: { userId: "abcd1234" },
     }),
+    variables: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .openapi({
+        description:
+          "Values for the selected event type's declared template variables. Required when that event type declares variables.",
+        example: { userId: "abcd1234" },
+      }),
     eventId: z.string().optional().openapi({
       description: "Optional unique event ID to track the event",
       example: "abcdef1234567890",

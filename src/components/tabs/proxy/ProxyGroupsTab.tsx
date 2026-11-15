@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -18,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Edit, Hash, Plus, Settings, Server, LoaderCircle, Computer, Boxes, Trash2 } from "lucide-react";
-import { toast } from "sonner"
+import { toast } from "sonner";
 
 interface ProxyServer {
   id: string;
@@ -201,15 +202,15 @@ export default function ProxyGroupsTab() {
               Create Proxy Group
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
             <DialogHeader>
               <DialogTitle>{editingGroup ? "Edit Proxy Group" : "Create Proxy Group"}</DialogTitle>
               <DialogDescription>
                 Create a group of proxy servers for load balancing webhook delivery.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="name">Name *</Label>
                   <Input
@@ -288,25 +289,21 @@ export default function ProxyGroupsTab() {
                   )}
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveGroup}
-                  disabled={creating || !formData.name}
-                >
-                  {creating
-                    ? editingGroup
-                      ? "Saving..."
-                      : "Creating..."
-                    : editingGroup
-                      ? "Save Changes"
-                      : "Create Proxy Group"}
-                </Button>
-              </div>
             </div>
+            <DialogFooter className="shrink-0 border-t pt-4">
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveGroup} disabled={creating || !formData.name}>
+                {creating
+                  ? editingGroup
+                    ? "Saving..."
+                    : "Creating..."
+                  : editingGroup
+                    ? "Save Changes"
+                    : "Create Proxy Group"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
