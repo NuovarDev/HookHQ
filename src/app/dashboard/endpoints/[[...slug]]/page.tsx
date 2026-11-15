@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import EndpointGroupsTab from "@/components/tabs/endpoints/EndpointGroupsTab";
 import EndpointsTab from "@/components/tabs/endpoints/EndpointsTab";
 import EventTypesTab from "@/components/tabs/endpoints/EventTypesTab";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EndpointsPageProps {
@@ -12,6 +13,7 @@ interface EndpointsPageProps {
 }
 
 export default function EndpointsPage({ params }: EndpointsPageProps) {
+  const { selectedEnvironment } = useEnvironment();
   const [resolvedParams, setResolvedParams] = useState<{ slug?: string[] }>({});
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function EndpointsPage({ params }: EndpointsPageProps) {
   };
 
   return (
-    <Tabs value={currentTab} onValueChange={handleTabChange}>
+    <Tabs key={selectedEnvironment?.id ?? "no-environment"} value={currentTab} onValueChange={handleTabChange}>
       <TabsList className="mb-2 w-full rounded-none">
         <TabsTrigger value="endpoints" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
           <Globe className="h-4 w-4" /> Endpoints

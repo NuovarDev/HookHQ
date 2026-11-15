@@ -367,7 +367,7 @@ export default function QueueMetricsTab() {
 
         <div className="flex justify-center">
           <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>
         </div>

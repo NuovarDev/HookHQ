@@ -24,6 +24,13 @@ type HandleSendEventRequestInput = {
   env: CloudflareEnv;
   request: Request;
   environmentId: string;
+  /**
+   * Trusted server-side delivery targets. This is intentionally not part of
+   * SendEventBody, so public API callers cannot bypass endpoint activation or
+   * provide a proxy override.
+   */
+  internalDeliveryTargets?: ResolvedEndpointTarget[];
+  useDefaultProxyGroup?: boolean;
 };
 
 type ResolvedEndpointTarget = {
@@ -36,6 +43,8 @@ export async function handleSendEventRequest({
   env,
   request,
   environmentId,
+  internalDeliveryTargets,
+  useDefaultProxyGroup = true,
 }: HandleSendEventRequestInput): Promise<Response> {
   const { destinations, eventType, eventId, payload, logPayload, variables } = (body ?? {}) as SendEventBody;
 
@@ -112,15 +121,23 @@ export async function handleSendEventRequest({
   const idempotencyKey = request.headers.get("Idempotency-Key") ?? undefined;
   const serializedPayload = JSON.stringify(payload);
 
-  const resolvedEndpoints = await resolveEndpointGroups({
-    endpointGroupIds,
-    eventType,
-    environmentId,
-    env,
-  });
+  const resolvedEndpoints = internalDeliveryTargets
+    ? []
+    : await resolveEndpointGroups({
+        endpointGroupIds,
+        eventType,
+        environmentId,
+        env,
+      });
   const directEndpoints =
-    endpointIds.length > 0 ? await resolveDirectEndpoints({ endpointIds, eventType, environmentId, env }) : [];
+    internalDeliveryTargets || endpointIds.length === 0
+      ? []
+      : await resolveDirectEndpoints({ endpointIds, eventType, environmentId, env });
   const endpointTargets = new Map<string, string | null>();
+
+  for (const target of internalDeliveryTargets ?? []) {
+    endpointTargets.set(target.endpointId, target.proxyGroupId ?? null);
+  }
 
   for (const endpointId of directEndpoints) {
     endpointTargets.set(endpointId, null);
@@ -209,7 +226,8 @@ export async function handleSendEventRequest({
         destination.type === "webhook"
           ? {
               ...destination,
-              proxyGroupId: destination.proxyGroupId ?? proxyOverride ?? defaultProxyGroupId,
+              proxyGroupId:
+                destination.proxyGroupId ?? proxyOverride ?? (useDefaultProxyGroup ? defaultProxyGroupId : null),
             }
           : destination,
     });
@@ -257,7 +275,8 @@ async function resolveEndpointGroups({
 
   for (const groupId of endpointGroupIds) {
     const cacheEventTypeKey = eventType && eventType.trim() ? eventType : "*";
-    const cacheKey = `group:${groupId}:${cacheEventTypeKey}`;
+    const cacheGeneration = (await env.KV.get(`group:${groupId}:generation`)) ?? "0";
+    const cacheKey = `group:${groupId}:${cacheGeneration}:${cacheEventTypeKey}`;
     const cachedResult = await env.KV.get(cacheKey);
 
     if (cachedResult) {

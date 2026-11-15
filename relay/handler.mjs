@@ -77,7 +77,7 @@ export function createProxyRelayHandler({ secret = process.env.PROXY_SECRET || "
     if (method === "GET" && path === "/health") {
       return json(response, 200, {
         ok: true,
-        service: "hookhq-proxy-relay",
+        service: "hookhq-relay",
         timestamp: new Date().toISOString(),
       });
     }

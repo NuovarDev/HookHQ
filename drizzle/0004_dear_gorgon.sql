@@ -1,0 +1,1 @@
+ALTER TABLE `server_config` ADD `allow_unproxied_proxy_fallback` integer DEFAULT false NOT NULL;

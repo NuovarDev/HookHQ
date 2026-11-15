@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, TrendingUp, Activity, Zap, Database } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 
 interface MetricsData {
   timeRange: string;
@@ -50,6 +51,7 @@ interface MetricsData {
 }
 
 export default function MetricsTab() {
+  const { selectedEnvironment } = useEnvironment();
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +78,11 @@ export default function MetricsTab() {
   };
 
   useEffect(() => {
+    if (!selectedEnvironment) return;
+    setLoading(true);
+    setError(null);
     fetchMetrics();
-  }, [timeRange]);
+  }, [timeRange, selectedEnvironment?.id]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -179,7 +184,7 @@ export default function MetricsTab() {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>

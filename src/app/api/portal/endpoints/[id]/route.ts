@@ -4,7 +4,7 @@ import { endpoints, endpointGroups, webhookAttempts, webhookMessages, eventTypes
 import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
 import { buildEndpointUpdateValues } from "@/lib/publicApi/serializers";
-import { invalidateEndpointCache } from "@/lib/cacheUtils";
+import { invalidateEndpointCache, invalidateEndpointGroupCache } from "@/lib/cacheUtils";
 import { parseAutoDisableConfig, resolveDestinationConfig } from "@/lib/destinations/config";
 import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
@@ -445,6 +445,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         updatedAt: new Date(),
       })
       .where(eq(endpointGroups.id, payload.endpointGroupId));
+    await invalidateEndpointGroupCache(payload.endpointGroupId);
 
     // Delete the endpoint
     await db.delete(endpoints).where(eq(endpoints.id, endpointId));

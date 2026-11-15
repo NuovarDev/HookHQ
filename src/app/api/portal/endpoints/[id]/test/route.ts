@@ -86,6 +86,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       env,
       request,
       environmentId: endpoint.environmentId,
+      // The portal has already verified this endpoint belongs to its scoped
+      // group. Keep the test to one endpoint while applying normal proxy
+      // precedence: endpoint configuration, then its portal group.
+      internalDeliveryTargets: [{ endpointId, proxyGroupId: group.proxyGroupId ?? null }],
+      // Portal tests must be direct when neither the endpoint nor its group
+      // configures a proxy; the environment default is not part of this flow.
+      useDefaultProxyGroup: false,
     });
     const responseBody = await response.json();
     return NextResponse.json(responseBody, { status: response.status });

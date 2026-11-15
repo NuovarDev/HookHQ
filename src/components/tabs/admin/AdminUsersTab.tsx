@@ -311,7 +311,7 @@ export default function AdminUsersTab() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
+              <UserPlus className="h-4 w-4" />
               Create User
             </Button>
           </DialogTrigger>
@@ -396,7 +396,7 @@ export default function AdminUsersTab() {
             <h3 className="text-lg font-semibold mb-2">No Users</h3>
             <p className="text-muted-foreground text-center mb-4">Create your first user to get started.</p>
             <Button onClick={() => setShowCreateDialog(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
+              <UserPlus className="h-4 w-4" />
               Create User
             </Button>
           </CardContent>

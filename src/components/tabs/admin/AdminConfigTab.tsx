@@ -19,6 +19,7 @@ interface ServerConfig {
   defaultTimeoutMs: number;
   defaultBackoffStrategy: string;
   defaultAutoDisableConfig?: string;
+  allowUnproxiedProxyFallback: boolean;
   queueManagementEnabled: boolean;
   jwtExpiration: string;
   createdAt: string;
@@ -51,6 +52,7 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
     defaultBackoffStrategy: "exponential",
     autoDisableEnabled: false,
     autoDisableThreshold: 10,
+    allowUnproxiedProxyFallback: false,
     queueManagementEnabled: false,
     jwtExpirationValue: 1,
     jwtExpirationUnit: "day",
@@ -96,6 +98,7 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
           autoDisableThreshold: data.config.defaultAutoDisableConfig
             ? (JSON.parse(data.config.defaultAutoDisableConfig).threshold ?? 10)
             : 10,
+          allowUnproxiedProxyFallback: data.config.allowUnproxiedProxyFallback ?? false,
           queueManagementEnabled: data.config.queueManagementEnabled || false,
           jwtExpirationValue: jwtValue,
           jwtExpirationUnit: jwtUnit,
@@ -340,6 +343,38 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Cloud className="h-5 w-5 text-muted-foreground" />
+            <CardTitle>Proxy Delivery</CardTitle>
+          </div>
+          <CardDescription>
+            Choose what happens when a configured proxy group has no reachable proxy server
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="allowUnproxiedProxyFallback" className="mb-2">
+            Unavailable Proxy Behavior
+          </Label>
+          <Select
+            value={formData.allowUnproxiedProxyFallback ? "fallback" : "fail"}
+            onValueChange={value => setFormData({ ...formData, allowUnproxiedProxyFallback: value === "fallback" })}
+          >
+            <SelectTrigger id="allowUnproxiedProxyFallback">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fail">Fail delivery</SelectItem>
+              <SelectItem value="fallback">Send directly without the proxy</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground mt-1">
+            Fail delivery is the default and prevents an unavailable static-IP relay from being silently bypassed.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* JWT Configuration */}
       <Card>
         <CardHeader>
@@ -482,12 +517,12 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              <RefreshCw className="h-4 w-4 animate-spin" />
               Saving...
             </>
           ) : (
             <>
-              <Save className="h-4 w-4 mr-2" />
+              <Save className="h-4 w-4" />
               Save Configuration
             </>
           )}

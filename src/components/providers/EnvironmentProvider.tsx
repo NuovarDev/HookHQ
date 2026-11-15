@@ -84,8 +84,11 @@ export function EnvironmentProvider({ children }: EnvironmentProviderProps) {
   };
 
   const setSelectedEnvironment = async (environment: Environment) => {
+    const updated = await updateUserLastEnvironment(environment.id);
+    if (!updated) {
+      throw new Error("Failed to select environment");
+    }
     setSelectedEnvironmentState(environment);
-    await updateUserLastEnvironment(environment.id);
   };
 
   const refreshEnvironments = async () => {

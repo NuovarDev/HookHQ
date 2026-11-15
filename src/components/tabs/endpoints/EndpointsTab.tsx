@@ -79,6 +79,11 @@ function getEndpointTarget(endpoint: Endpoint) {
       : endpoint.destination.topicName;
 }
 
+function getEventTypeSummary(eventTypes: string[]) {
+  if (eventTypes.includes("*")) return "All event types";
+  return `${eventTypes.length} event type${eventTypes.length === 1 ? "" : "s"}`;
+}
+
 const initialFormState: EndpointFormState = {
   name: "",
   description: "",
@@ -329,11 +334,15 @@ export default function EndpointsTab() {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Endpoints</h2>
+          <p className="text-muted-foreground">Manage your event endpoints</p>
+        </div>
 
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Create Endpoint
             </Button>
           </DialogTrigger>
@@ -658,8 +667,8 @@ export default function EndpointsTab() {
                       variables={templateVariables}
                     />
                     <p className="text-sm text-muted-foreground">
-                      Use template expressions such as <code>{"{{ variable }}"}</code> to replace the default payload for
-                      this endpoint. Type <code>{"{{"}</code> for variables, <code>{"|"}</code> for filters, or{" "}
+                      Use template expressions such as <code>{"{{ variable }}"}</code> to replace the default payload
+                      for this endpoint. Type <code>{"{{"}</code> for variables, <code>{"|"}</code> for filters, or{" "}
                       <code>{"{%"}</code> for tags; use <code>{"{{ variable | json }}"}</code> for JSON values. Hover a
                       variable for its description and example. URLs and header values support the same syntax.
                     </p>
@@ -807,14 +816,13 @@ export default function EndpointsTab() {
 
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <Hash className="h-3 w-3 text-gray-400" />
                       <span className="text-muted-foreground">Endpoint ID:</span>
                       <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
                         {endpoint.id}
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0 hover:bg-gray-200"
+                          className="h-4 w-4 p-0 hover:bg-accent"
                           onClick={() => copyToClipboard(endpoint.id, `endpoint-${endpoint.id}`)}
                         >
                           {copiedId === `endpoint-${endpoint.id}` ? (
@@ -828,14 +836,13 @@ export default function EndpointsTab() {
 
                     {endpoint.destinationType === "webhook" && endpoint.destination.proxyGroupId && (
                       <div className="flex items-center gap-2">
-                        <Users className="h-3 w-3 text-gray-400" />
-                        <span className="text-muted-foreground">Proxy Group ID:</span>
-                        <span className="flex items-center gap-1 rounded bg-blue-100 px-2 py-1 font-mono text-xs dark:bg-blue-900">
+                        <span className="text-muted-foreground">Proxy Group:</span>
+                        <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
                           {endpoint.destination.proxyGroupId}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-4 w-4 p-0 hover:bg-blue-200"
+                            className="h-4 w-4 p-0 hover:bg-accent"
                             onClick={() =>
                               copyToClipboard(
                                 endpoint.destination.proxyGroupId!,
@@ -854,18 +861,21 @@ export default function EndpointsTab() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={endpoint.enabled ? "default" : "secondary"}>
                         {endpoint.enabled ? "Enabled" : "Disabled"}
                       </Badge>
                       <Badge variant="outline">{endpoint.destinationType}</Badge>
                       <Badge variant="outline">{endpoint.retry.strategy}</Badge>
-                      <Badge variant="outline">
-                        {endpoint.eventTypes.includes("*") ? "All event types" : endpoint.eventTypes.join(", ")}
-                      </Badge>
+                      <Badge variant="outline">{getEventTypeSummary(endpoint.eventTypes)}</Badge>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleToggleEndpoint(endpoint)}>
+                    <Button
+                      className="ml-auto"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleToggleEndpoint(endpoint)}
+                    >
                       {endpoint.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                     </Button>
                   </div>

@@ -208,7 +208,7 @@ export default function EventTypesTab() {
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Create Event Type
             </Button>
           </DialogTrigger>
@@ -251,7 +251,7 @@ export default function EventTypesTab() {
                       }))
                     }
                   >
-                    <Plus className="mr-2 h-4 w-4" /> Add variable
+                    <Plus className="h-4 w-4" /> Add variable
                   </Button>
                 </div>
                 {formData.variables.length > 0 && (
@@ -484,7 +484,7 @@ export default function EventTypesTab() {
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     Created {new Date(eventType.createdAt).toLocaleDateString()}
                   </div>
                 </div>

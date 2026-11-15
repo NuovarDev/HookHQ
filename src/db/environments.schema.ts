@@ -30,6 +30,7 @@ export const serverConfig = sqliteTable("server_config", {
   defaultFailureAlertConfig: text("default_failure_alert_config").default("{}").notNull(),
   defaultAutoDisableConfig: text("default_auto_disable_config").default("{}").notNull(),
   defaultProxyGroupId: text("default_proxy_group_id"),
+  allowUnproxiedProxyFallback: integer("allow_unproxied_proxy_fallback", { mode: "boolean" }).default(false).notNull(),
   queueManagementEnabled: integer("queue_management_enabled", { mode: "boolean" }).default(false).notNull(),
   jwtExpiration: text("jwt_expiration").default("1day").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),

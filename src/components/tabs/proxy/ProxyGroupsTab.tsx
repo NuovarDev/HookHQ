@@ -198,7 +198,7 @@ export default function ProxyGroupsTab() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Create Proxy Group
             </Button>
           </DialogTrigger>
@@ -326,7 +326,7 @@ export default function ProxyGroupsTab() {
               Create proxy groups to organize and load balance your proxy servers.
             </p>
             <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Create Proxy Group
             </Button>
           </CardContent>

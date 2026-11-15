@@ -16,6 +16,7 @@ import {
   CircleX,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 
 interface WebhookMessage {
   id: string;
@@ -45,6 +46,7 @@ interface WebhookMessage {
 }
 
 export default function MessagesTab() {
+  const { selectedEnvironment } = useEnvironment();
   const [messages, setMessages] = useState<WebhookMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +78,11 @@ export default function MessagesTab() {
   };
 
   useEffect(() => {
+    if (!selectedEnvironment) return;
+    setLoading(true);
+    setError(null);
     fetchMessages();
-  }, [statusFilter]);
+  }, [statusFilter, selectedEnvironment?.id]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -195,7 +200,7 @@ export default function MessagesTab() {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -329,7 +334,9 @@ export default function MessagesTab() {
                       <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 p-2 rounded">
                         {message.lastError}
                         {message.lastErrorAt && (
-                          <div className="text-xs text-red-500 dark:text-red-400 mt-1">{formatTimestamp(message.lastErrorAt)}</div>
+                          <div className="text-xs text-red-500 dark:text-red-400 mt-1">
+                            {formatTimestamp(message.lastErrorAt)}
+                          </div>
                         )}
                       </div>
                     </div>

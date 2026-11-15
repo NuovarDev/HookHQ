@@ -188,7 +188,7 @@ export default function ApiKeyManager({
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Create API Key
             </Button>
           </DialogTrigger>
@@ -355,7 +355,7 @@ export default function ApiKeyManager({
               Create your first API key to start using the webhook service.
             </p>
             <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Create Your First API Key
             </Button>
           </CardContent>

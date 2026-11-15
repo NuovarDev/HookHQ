@@ -69,54 +69,17 @@ export async function cacheEndpointData(
  * Invalidate endpoint group cache for a specific group
  * This should be called whenever an endpoint group is updated or deleted
  */
-export async function invalidateEndpointGroupCache(groupId: string): Promise<void> {
+export async function invalidateEndpointGroupCache(groupId: string, providedEnv?: CloudflareEnv): Promise<void> {
   try {
-    const { env } = await getCloudflareContext({ async: true });
+    const env = providedEnv ?? (await getCloudflareContext({ async: true })).env;
 
-    // Get all cached keys for this group
-    // Note: Cloudflare KV doesn't support pattern-based deletion, so we need to track keys
-    // For now, we'll use a simple approach with a known pattern
-    const cacheKeys = await getGroupCacheKeys(groupId, env);
-
-    // Delete all cached keys for this group
-    for (const key of cacheKeys) {
-      await env.KV.delete(key);
-    }
+    // Bumping the generation invalidates every event-type cache variant without
+    // needing KV key enumeration (which KV does not support).
+    await env.KV.put(`group:${groupId}:generation`, crypto.randomUUID());
   } catch (error) {
     console.error("Error invalidating endpoint group cache:", error);
     // Don't throw - cache invalidation failure shouldn't break the main operation
   }
-}
-
-/**
- * Get all cache keys for a specific endpoint group
- * This is a simplified approach - in production you might want to use a more sophisticated key tracking system
- */
-async function getGroupCacheKeys(groupId: string, env: CloudflareEnv): Promise<string[]> {
-  // For now, we'll use a simple approach and delete common event type patterns
-  // In a more sophisticated system, you might store a list of cached keys in KV
-  const commonEventTypes = [
-    "*",
-    "user.created",
-    "user.updated",
-    "user.deleted",
-    "order.created",
-    "order.updated",
-    "order.cancelled",
-    "payment.completed",
-    "payment.failed",
-    "notification.sent",
-    "webhook.delivered",
-    "webhook.failed",
-  ];
-
-  const cacheKeys: string[] = [];
-
-  for (const eventType of commonEventTypes) {
-    cacheKeys.push(`group:${groupId}:${eventType}`);
-  }
-
-  return cacheKeys;
 }
 
 /**

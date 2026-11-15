@@ -480,7 +480,7 @@ export default function EndpointsPage() {
             <h3 className="text-lg font-medium mb-2">No endpoints found</h3>
             <p className="text-muted-foreground mb-4">Get started by creating your first webhook endpoint</p>
             <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Create Endpoint
             </Button>
           </div>

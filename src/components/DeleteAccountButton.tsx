@@ -71,7 +71,7 @@ export default function DeleteAccountButton() {
         >
           <DialogTrigger asChild>
             <Button variant="destructive" className="w-full">
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="h-4 w-4" />
               Delete Account
             </Button>
           </DialogTrigger>

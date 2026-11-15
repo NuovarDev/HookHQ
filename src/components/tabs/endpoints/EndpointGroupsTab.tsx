@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Edit, ExternalLink, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
+import { Check, Copy, Edit, ExternalLink, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
 import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
@@ -70,6 +70,11 @@ function getEndpointTarget(endpoint: Endpoint) {
     : endpoint.destinationType === "sqs"
       ? endpoint.destination.queueUrl
       : endpoint.destination.topicName;
+}
+
+function getEventTypeSummary(eventTypes: string[]) {
+  if (eventTypes.includes("*")) return "All event types";
+  return `${eventTypes.length} event type${eventTypes.length === 1 ? "" : "s"}`;
 }
 
 async function fetchProxyGroups() {
@@ -298,7 +303,7 @@ export default function EndpointGroupsTab() {
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               Create Group
             </Button>
           </DialogTrigger>
@@ -543,14 +548,13 @@ export default function EndpointGroupsTab() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <Hash className="h-3 w-3 text-gray-400" />
-                    <span className="text-gray-500">Group ID:</span>
+                    <span className="text-muted-foreground">Group ID:</span>
                     <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
                       {group.id}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-4 w-4 p-0 hover:bg-gray-200"
+                        className="h-4 w-4 p-0 hover:bg-accent"
                         onClick={() => copyToClipboard(group.id, `group-${group.id}`)}
                       >
                         {copiedId === `group-${group.id}` ? (
@@ -562,57 +566,52 @@ export default function EndpointGroupsTab() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  {group.proxyGroupId && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Proxy Group:</span>
+                      <span className="flex items-center gap-1 rounded bg-muted px-2 py-1 font-mono text-xs">
+                        {group.proxyGroupId}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 hover:bg-accent"
+                          onClick={() => copyToClipboard(group.proxyGroupId!, `proxy-group-${group.proxyGroupId}`)}
+                        >
+                          {copiedId === `proxy-group-${group.proxyGroupId}` ? (
+                            <Check className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={group.enabled ? "default" : "secondary"}>
                         {group.enabled ? "Enabled" : "Disabled"}
                       </Badge>
                       <Badge variant="outline">
                         {group.endpointIds.length} endpoint{group.endpointIds.length !== 1 ? "s" : ""}
                       </Badge>
-                      <Badge variant="outline">
-                        {group.eventTypes.includes("*") ? "All event types" : group.eventTypes.join(", ")}
-                      </Badge>
+                      <Badge variant="outline">{getEventTypeSummary(group.eventTypes)}</Badge>
                       {group.proxyGroupId && <Badge variant="outline">proxy</Badge>}
                       {group.failureAlerts.enabled && <Badge variant="outline">alerts</Badge>}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleToggleGroup(group)}>
+                    <Button className="ml-auto" variant="ghost" size="sm" onClick={() => handleToggleGroup(group)}>
                       {group.enabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                     </Button>
                   </div>
-
-                  {group.endpointIds.length > 0 && (
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium">Endpoints</h4>
-                      <div className="space-y-1">
-                        {group.endpointIds.slice(0, 3).map(endpointId => (
-                          <div key={endpointId} className="flex items-center gap-2 text-sm">
-                            <Globe className="h-3 w-3 text-gray-400" />
-                            <span className="truncate">{getEndpointName(endpointId)}</span>
-                          </div>
-                        ))}
-                        {group.endpointIds.length > 3 && (
-                          <div className="text-xs text-gray-500">+{group.endpointIds.length - 3} more</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {group.proxyGroupId && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Hash className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-500">Proxy Group:</span>
-                      <span className="rounded bg-muted px-2 py-1 font-mono text-xs">{group.proxyGroupId}</span>
-                    </div>
-                  )}
 
                   <Button
                     variant="outline"
                     className="w-full"
                     onClick={() => handleOpenPortal(group)}
                     disabled={openingPortalGroupId === group.id}
+                    size="sm"
                   >
-                    <ExternalLink className="mr-2 h-4 w-4" />
+                    <ExternalLink className="h-4 w-4" />
                     {openingPortalGroupId === group.id ? "Opening Portal..." : "Open Portal"}
                   </Button>
                 </div>

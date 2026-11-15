@@ -64,6 +64,7 @@ export async function GET() {
           enabled: false,
           threshold: 10,
         }),
+        allowUnproxiedProxyFallback: false,
         queueManagementEnabled: false,
         jwtExpiration: "1day",
         createdAt: new Date().toISOString(),
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
       defaultRetryJitterFactor?: string;
       defaultFailureAlertConfig?: string;
       defaultAutoDisableConfig?: string;
+      allowUnproxiedProxyFallback?: boolean;
       queueManagementEnabled: string;
       jwtExpiration: string;
     };
@@ -126,6 +128,7 @@ export async function POST(request: NextRequest) {
       defaultRetryJitterFactor,
       defaultFailureAlertConfig,
       defaultAutoDisableConfig,
+      allowUnproxiedProxyFallback,
       queueManagementEnabled,
       jwtExpiration,
     } = body;
@@ -194,6 +197,7 @@ export async function POST(request: NextRequest) {
           enabled: false,
           threshold: 10,
         }),
+      allowUnproxiedProxyFallback: Boolean(allowUnproxiedProxyFallback),
       queueManagementEnabled: Boolean(queueManagementEnabled),
       jwtExpiration,
       updatedAt: new Date(),

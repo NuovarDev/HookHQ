@@ -9,6 +9,7 @@ import { ErrorStateCard, LoadingStateCard } from "@/components/shared/resource-s
 import { cn } from "@/lib/utils";
 import { getPublicApiUrl } from "@/lib/publicApi/utils";
 import { ErrorBody } from "@/lib/webhookApi";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 
 type MetricCard = {
   label: string;
@@ -134,12 +135,18 @@ function buildRecentEvents(data?: DashboardMetricsData): RecentEvent[] {
 }
 
 export function DashboardOverview({ apiDocsEnabled }: { apiDocsEnabled: boolean }) {
+  const { selectedEnvironment } = useEnvironment();
   const [data, setData] = useState<DashboardMetricsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!selectedEnvironment) return;
+
     let isMounted = true;
+    setLoading(true);
+    setError(null);
+    setData(null);
 
     async function loadDashboardMetrics() {
       try {
@@ -163,7 +170,7 @@ export function DashboardOverview({ apiDocsEnabled }: { apiDocsEnabled: boolean 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedEnvironment?.id]);
 
   if (loading) {
     return <LoadingStateCard title="Loading dashboard..." />;

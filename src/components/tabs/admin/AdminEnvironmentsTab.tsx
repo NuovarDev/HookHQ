@@ -37,7 +37,7 @@ const defaultCloneOptions: CloneOptions = {
 };
 
 export default function AdminEnvironmentsTab() {
-  const { environments, loading, refreshEnvironments } = useEnvironment();
+  const { environments, loading, refreshEnvironments, setSelectedEnvironment } = useEnvironment();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [environmentToDelete, setEnvironmentToDelete] = useState<Environment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -116,7 +116,9 @@ export default function AdminEnvironmentsTab() {
         throw new Error(error?.message || error?.error || "Failed to clone environment");
       }
 
+      const result = (await response.json()) as { environment: Environment };
       await refreshEnvironments();
+      await setSelectedEnvironment(result.environment);
       handleCloneCancel();
     } catch (error) {
       console.error("Failed to clone environment:", error);

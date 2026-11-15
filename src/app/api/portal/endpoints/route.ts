@@ -6,6 +6,7 @@ import { authenticatePortalRequest } from "@/lib/portalAuth";
 import { buildEndpointInsertValues } from "@/lib/publicApi/serializers";
 import { resolveDestinationConfig } from "@/lib/destinations/config";
 import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
+import { invalidateEndpointGroupCache } from "@/lib/cacheUtils";
 
 export async function GET(request: NextRequest) {
   const authResult = authenticatePortalRequest(request);
@@ -243,6 +244,7 @@ export async function POST(request: NextRequest) {
           updatedAt: now,
         })
         .where(eq(endpointGroups.id, payload.endpointGroupId));
+      await invalidateEndpointGroupCache(payload.endpointGroupId);
     }
 
     return NextResponse.json({

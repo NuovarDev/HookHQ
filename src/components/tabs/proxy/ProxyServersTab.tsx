@@ -246,7 +246,7 @@ export default function ProxyServersTab() {
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Add Proxy Server
             </Button>
           </DialogTrigger>
@@ -375,7 +375,7 @@ export default function ProxyServersTab() {
               Create your first proxy server to enable static IP webhook delivery.
             </p>
             <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" />
               Add Proxy Server
             </Button>
           </CardContent>

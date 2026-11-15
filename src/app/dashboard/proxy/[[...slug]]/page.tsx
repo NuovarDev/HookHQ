@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProxyServersTab from "@/components/tabs/proxy/ProxyServersTab";
 import ProxyGroupsTab from "@/components/tabs/proxy/ProxyGroupsTab";
+import { useEnvironment } from "@/components/providers/EnvironmentProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProxyPageProps {
@@ -12,6 +13,7 @@ interface ProxyPageProps {
 }
 
 export default function ProxyPage({ params }: ProxyPageProps) {
+  const { selectedEnvironment } = useEnvironment();
   const router = useRouter();
   const [resolvedParams, setResolvedParams] = useState<{ slug?: string[] }>({});
 
@@ -41,7 +43,7 @@ export default function ProxyPage({ params }: ProxyPageProps) {
   };
 
   return (
-    <Tabs value={currentTab} onValueChange={handleTabChange}>
+    <Tabs key={selectedEnvironment?.id ?? "no-environment"} value={currentTab} onValueChange={handleTabChange}>
       <TabsList className="mb-2 rounded-none w-full">
         <TabsTrigger value="proxy-servers" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
           <Server className="h-4 w-4" /> Proxy Servers

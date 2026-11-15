@@ -102,7 +102,7 @@ export function registerEndpointGroupItemRoutes(app: OpenAPIHono<{ Bindings: Clo
     const group = await db.select().from(endpointGroups).where(eq(endpointGroups.id, id)).limit(1);
     if (group.length === 0) return jsonError("Endpoint group not found", 404);
     await db.delete(endpointGroups).where(eq(endpointGroups.id, id));
-    await invalidateEndpointGroupCache(id);
+    await invalidateEndpointGroupCache(id, c.env);
     return c.json(
       { message: "Endpoint group deleted successfully", deletedGroup: { id: group[0].id, name: group[0].name } },
       200
@@ -134,7 +134,7 @@ export function registerEndpointGroupItemRoutes(app: OpenAPIHono<{ Bindings: Clo
       .update(endpointGroups)
       .set(updateData as never)
       .where(eq(endpointGroups.id, id));
-    await invalidateEndpointGroupCache(id);
+    await invalidateEndpointGroupCache(id, c.env);
     const updated = await db.select().from(endpointGroups).where(eq(endpointGroups.id, id)).limit(1);
     return c.json({ message: "Endpoint group updated successfully", group: formatEndpointGroup(updated[0]) }, 200);
   }) as never);

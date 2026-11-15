@@ -1,4 +1,5 @@
 import { webhookAttempts, endpoints, proxyServers, proxyGroups } from "@/db/webhooks.schema";
+import { serverConfig } from "@/db/environments.schema";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import { schema } from "@/db/schema";
@@ -140,7 +141,10 @@ export class DestinationDelivery {
     const destination = this.message.destination as WebhookDestinationConfig;
     const selectedProxy = await this.selectProxy(destination.proxyGroupId!);
     if (!selectedProxy) {
-      return this.sendWebhookDirect(endpointData);
+      return this.handleUnavailableProxy(
+        endpointData,
+        `No active proxy server is available in proxy group ${destination.proxyGroupId}`
+      );
     }
 
     const payload = await this.getWebhookPayload(destination);
@@ -156,16 +160,22 @@ export class DestinationDelivery {
       throw new Error("Proxy secret could not be decrypted");
     }
 
-    const response = await fetch(getProxyRelayUrl(selectedProxy.url), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "HookHQ/1.0",
-        Authorization: `Bearer ${proxySecret}`,
-      },
-      body: JSON.stringify(proxyRequest),
-      signal: AbortSignal.timeout(destination.timeoutMs),
-    });
+    let response: Response;
+    try {
+      response = await fetch(getProxyRelayUrl(selectedProxy.url), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "HookHQ/1.0",
+          Authorization: `Bearer ${proxySecret}`,
+        },
+        body: JSON.stringify(proxyRequest),
+        signal: AbortSignal.timeout(destination.timeoutMs),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown proxy relay error";
+      return this.handleUnavailableProxy(endpointData, `Proxy relay ${selectedProxy.id} is unreachable: ${message}`);
+    }
 
     const responseTime = Date.now() - this.startTime;
     const responseBody = await response.text();
@@ -199,6 +209,30 @@ export class DestinationDelivery {
     });
 
     return result;
+  }
+
+  private async handleUnavailableProxy(endpointData: EndpointData, error: string): Promise<DeliveryResult> {
+    if (await this.allowsUnproxiedProxyFallback()) {
+      console.warn("Falling back to direct webhook delivery because the configured proxy is unavailable", {
+        endpointId: endpointData.id,
+        proxyGroupId: (this.message.destination as WebhookDestinationConfig).proxyGroupId,
+        error,
+      });
+      return this.sendWebhookDirect(endpointData);
+    }
+
+    throw new Error(error);
+  }
+
+  private async allowsUnproxiedProxyFallback(): Promise<boolean> {
+    const db = drizzle(this.env.DATABASE, { schema });
+    const [config] = await db
+      .select({ allowUnproxiedProxyFallback: serverConfig.allowUnproxiedProxyFallback })
+      .from(serverConfig)
+      .where(eq(serverConfig.id, "default"))
+      .limit(1);
+
+    return config?.allowUnproxiedProxyFallback ?? false;
   }
 
   private async sendWebhookDirect(endpointData: EndpointData): Promise<DeliveryResult> {

@@ -328,7 +328,7 @@ function OnboardingPageContent() {
                   >
                     {isCreating ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                         Creating...
                       </>
                     ) : (
@@ -396,7 +396,7 @@ function OnboardingPageContent() {
                   </Button>
                   {isCreating ? (
                     <Button disabled>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Creating Environment...
                     </Button>
                   ) : (

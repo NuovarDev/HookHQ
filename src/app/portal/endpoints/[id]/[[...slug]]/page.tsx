@@ -872,7 +872,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                   value={selectedTopics}
                   onChange={setSelectedTopics}
                 />
-                <Button onClick={() => saveEndpoint({ eventTypes: selectedTopics })} disabled={saving}>
+                <Button onClick={() => saveEndpoint({ eventTypes: selectedTopics })} disabled={saving} size="sm">
                   {saving ? "Saving..." : "Save topics"}
                 </Button>
               </CardContent>
@@ -942,6 +942,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                         }
                       }}
                       disabled={saving}
+                      size="sm"
                     >
                       {saving ? "Saving..." : "Save configuration"}
                     </Button>
