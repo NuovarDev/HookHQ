@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
+import { Check, Copy, Edit, ExternalLink, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
 import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
@@ -31,7 +31,7 @@ import {
   type ProxyGroup,
   updateEndpointGroup,
 } from "@/lib/webhookApi";
-import { getPublicApiUrl } from "@/lib/publicApi/utils";
+import { getPublicApiUrl, publicApiFetch } from "@/lib/publicApi/utils";
 import { toast } from "sonner";
 
 type EndpointGroupFormState = {
@@ -98,6 +98,7 @@ export default function EndpointGroupsTab() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<EndpointGroup | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openingPortalGroupId, setOpeningPortalGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState<EndpointGroupFormState>(initialFormState);
 
   useEffect(() => {
@@ -213,6 +214,40 @@ export default function EndpointGroupsTab() {
       setEndpointGroups(current => current.filter(group => group.id !== id));
     } catch (nextError) {
       toast.error(nextError instanceof Error ? nextError.message : "Failed to delete endpoint group");
+    }
+  }
+
+  async function handleOpenPortal(group: EndpointGroup) {
+    const portalWindow = window.open("about:blank", "_blank");
+    if (!portalWindow) {
+      toast.error("Your browser blocked the portal window. Please allow popups and try again.");
+      return;
+    }
+
+    portalWindow.opener = null;
+    setOpeningPortalGroupId(group.id);
+
+    try {
+      const response = await publicApiFetch(`/endpoint-groups/${group.id}/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          allowedEventTypes: group.eventTypes.includes("*") ? undefined : group.eventTypes,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+        throw new Error(error?.message || error?.error || "Failed to generate portal link");
+      }
+
+      const { portalUrl } = (await response.json()) as { portalUrl: string };
+      portalWindow.location.replace(portalUrl);
+    } catch (nextError) {
+      portalWindow.close();
+      toast.error(nextError instanceof Error ? nextError.message : "Failed to open portal");
+    } finally {
+      setOpeningPortalGroupId(null);
     }
   }
 
@@ -570,6 +605,16 @@ export default function EndpointGroupsTab() {
                       <span className="rounded bg-muted px-2 py-1 font-mono text-xs">{group.proxyGroupId}</span>
                     </div>
                   )}
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleOpenPortal(group)}
+                    disabled={openingPortalGroupId === group.id}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {openingPortalGroupId === group.id ? "Opening Portal..." : "Open Portal"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

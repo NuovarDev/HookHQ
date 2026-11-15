@@ -139,6 +139,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       endpoints: formattedEndpoints,
       templateVariables,
+      eventTypes: configuredEventTypes
+        .filter(eventType => groupEventTypes.includes("*") || groupEventTypes.includes(eventType.name))
+        .map(eventType => ({
+          id: eventType.name,
+          name: eventType.name,
+          variables: eventType.variables ? JSON.parse(eventType.variables) : [],
+        })),
     });
   } catch (error) {
     console.error("Error fetching portal endpoints:", error);
@@ -168,11 +175,13 @@ export async function POST(request: NextRequest) {
   const {
     name,
     description,
+    eventTypes,
     destinationType = "webhook",
     destination,
   } = body as {
     name: string;
     description?: string;
+    eventTypes?: string[];
     destinationType?: "webhook" | "sqs" | "pubsub";
     destination?: Record<string, unknown>;
   };
@@ -190,10 +199,7 @@ export async function POST(request: NextRequest) {
     try {
       validateWebhookDestinationTemplates(destination);
     } catch (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Invalid template" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid template" }, { status: 400 });
     }
   }
 
@@ -201,7 +207,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Generate endpoint ID
-    const endpointId = `${payload.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
+    const endpointId = `ep_${payload.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     // Create the endpoint
@@ -211,6 +217,7 @@ export async function POST(request: NextRequest) {
         environmentId: payload.environmentId,
         name,
         description,
+        eventTypes,
         destinationType,
         destination,
         enabled: true,

@@ -168,14 +168,12 @@ export default function PortalDashboard() {
   return (
     <>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor your webhook endpoints and delivery metrics{" "}
-            {payload.applicationName && `for ${payload.applicationName}`}
+        <div className="space-y-1">
+          <h2 className="text-xl md:text-2xl font-bold">Dashboard</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Monitor your webhook endpoints and delivery metrics {payload.applicationName && `for ${payload.applicationName}`}
           </p>
         </div>
-
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>

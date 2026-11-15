@@ -3,16 +3,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Copy, Search, RefreshCw, Info, LoaderCircle, X } from "lucide-react";
+import { ArrowLeft, Copy, Search, RefreshCw, LoaderCircle, Send, Trash2, X, Power, PowerOff } from "lucide-react";
 import Link from "next/link";
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { usePortalContext } from "../../../layout";
+import EventTypeSelector from "@/components/shared/EventTypeSelector";
+import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
+import type { EventTypeVariable } from "@/lib/webhookApi";
+import { toast } from "sonner";
 
 interface Endpoint {
   id: string;
@@ -27,7 +31,12 @@ interface Endpoint {
   retryPolicy: string;
   maxRetries: number;
   timeoutMs: number;
-  headers?: any;
+  destination?: {
+    url: string;
+    timeoutMs: number;
+    customHeaders: Record<string, string>;
+    payloadTemplate: string;
+  };
 }
 
 interface Metrics {
@@ -74,8 +83,13 @@ interface Event {
 
 interface EventType {
   id: string;
+  environmentId: string;
   name: string;
   description?: string;
+  variables: EventTypeVariable[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface EndpointDetailPageProps {
@@ -128,6 +142,13 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
   const [availableEventTypes, setAvailableEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [destinationUrl, setDestinationUrl] = useState("");
+  const [timeoutMs, setTimeoutMs] = useState(10000);
+  const [customHeaders, setCustomHeaders] = useState("");
+  const [payloadTemplate, setPayloadTemplate] = useState("");
 
   // Time range state for each chart
   const [eventVolumeTimeRange, setEventVolumeTimeRange] = useState<"24h" | "7d">("7d");
@@ -173,6 +194,12 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
       setRecentEvents(data.recentEvents);
       setAvailableEventTypes(data.availableEventTypes);
       setSelectedTopics(data.endpoint.topics || []);
+      if (data.endpoint.destinationType === "webhook") {
+        setDestinationUrl(data.endpoint.destination?.url ?? data.endpoint.url);
+        setTimeoutMs(data.endpoint.destination?.timeoutMs ?? 10000);
+        setCustomHeaders(JSON.stringify(data.endpoint.destination?.customHeaders ?? {}, null, 2));
+        setPayloadTemplate(data.endpoint.destination?.payloadTemplate ?? "");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch endpoint data");
     } finally {
@@ -182,6 +209,60 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
 
   const toggleTopic = (topic: string) => {
     setSelectedTopics(prev => (prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]));
+  };
+
+  const saveEndpoint = async (changes: Record<string, unknown>) => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/portal/endpoints/${endpointId}?token=${encodeURIComponent(token)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to save endpoint");
+      await fetchEndpointData();
+      toast.success("Endpoint saved");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to save endpoint");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const response = await fetch(`/api/portal/endpoints/${endpointId}/test?token=${encodeURIComponent(token)}`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to queue test event");
+      await fetchEndpointData();
+      toast.success("Test event queued");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to queue test event");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleDeleteEndpoint = async () => {
+    if (!endpoint || !window.confirm(`Delete ${endpoint.name}? This cannot be undone.`)) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/portal/endpoints/${endpointId}?token=${encodeURIComponent(token)}`, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to delete endpoint");
+
+      window.location.assign("/portal/endpoints");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to delete endpoint");
+      setDeleting(false);
+    }
   };
 
   const filteredEvents = recentEvents.filter(event => {
@@ -261,42 +342,46 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
         <div>
           <Link
             href="/portal/endpoints"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4"
+            className="inline-flex items-center text-xs sm:text-sm text-muted-foreground hover:text-foreground mb-4"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-1 sm:mr-2 size-3 sm:size-4" />
             Back to Endpoints
           </Link>
           <div className="flex items-start gap-4">
-            <div className="h-14 w-14 bg-muted flex items-center justify-center">
-              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <div className="size-10 sm:size-12 md:size-14 bg-muted flex items-center justify-center mt-1 md:mt-0.5">
+              <svg className="size-5 sm:size-6 md:size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold tracking-tight">{endpoint.name}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-muted-foreground font-mono">{endpoint.url}</p>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                  <Copy className="h-3 w-3" />
+              <h1 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight">{endpoint.name}</h1>
+              <div className="flex items-center gap-2 sm:mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground font-mono">{endpoint.url}</p>
+                <Button variant="ghost" size="sm" className="size-5 p-0">
+                  <Copy className="size-3" />
                 </Button>
               </div>
             </div>
             <span
-              className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium ${
+              className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium ${
                 endpoint.isActive ? "bg-green-500/10 text-green-600" : "bg-gray-500/10 text-gray-600"
               }`}
             >
               <div className={`h-1.5 w-1.5 ${endpoint.isActive ? "bg-green-600" : "bg-gray-600"}`} />
               {endpoint.isActive ? "Active" : "Disabled"}
             </span>
+            <Button variant="outline" onClick={handleTest} disabled={testing} size="sm" className="rounded-none">
+              {testing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Send Test
+            </Button>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="mb-2 rounded-none w-full">
+          <TabsList className="rounded-none w-full">
             <TabsTrigger value="overview" className="rounded-none dark:data-[state=active]:bg-neutral-700/50">
               Overview
             </TabsTrigger>
@@ -782,47 +867,14 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                 <CardDescription>Select which event types this endpoint should receive</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Filter topics..." className="pl-9" />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 p-2 hover:bg-accent/50">
-                    <Checkbox
-                      id="select-all"
-                      checked={selectedTopics.length === availableEventTypes.length}
-                      onCheckedChange={checked => {
-                        if (checked) {
-                          setSelectedTopics(availableEventTypes.map(et => et.name));
-                        } else {
-                          setSelectedTopics([]);
-                        }
-                      }}
-                    />
-                    <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
-                      Select All
-                    </label>
-                  </div>
-
-                  {availableEventTypes.map(eventType => (
-                    <div key={eventType.id} className="flex items-center space-x-2 p-2 hover:bg-accent/50">
-                      <Checkbox
-                        id={eventType.name}
-                        checked={selectedTopics.includes(eventType.name)}
-                        onCheckedChange={() => toggleTopic(eventType.name)}
-                      />
-                      <label htmlFor={eventType.name} className="text-sm font-mono cursor-pointer flex-1">
-                        {eventType.name}
-                      </label>
-                      {eventType.description && (
-                        <span className="text-xs text-muted-foreground">{eventType.description}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <Button>Save</Button>
+                <EventTypeSelector
+                  eventTypes={availableEventTypes}
+                  value={selectedTopics}
+                  onChange={setSelectedTopics}
+                />
+                <Button onClick={() => saveEndpoint({ eventTypes: selectedTopics })} disabled={saving}>
+                  {saving ? "Saving..." : "Save topics"}
+                </Button>
               </CardContent>
             </Card>
 
@@ -832,13 +884,109 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                 <CardTitle>Configuration & Credentials</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="webhook-url">Webhook URL *</Label>
-                  <Input id="webhook-url" defaultValue={endpoint.url} className="font-mono text-sm" />
-                  <p className="text-xs text-muted-foreground">The URL to send webhook events to via HTTP POST</p>
-                </div>
+                {endpoint.destinationType === "webhook" ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="webhook-url">Webhook URL *</Label>
+                      <Input
+                        id="webhook-url"
+                        value={destinationUrl}
+                        onChange={event => setDestinationUrl(event.target.value)}
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">The URL to send webhook events to via HTTP POST</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="timeout">Timeout (ms)</Label>
+                      <Input
+                        id="timeout"
+                        type="number"
+                        min={1000}
+                        value={timeoutMs}
+                        onChange={event => setTimeoutMs(Number(event.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="headers">Custom headers (JSON)</Label>
+                      <Textarea
+                        id="headers"
+                        rows={4}
+                        value={customHeaders}
+                        onChange={event => setCustomHeaders(event.target.value)}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payload template</Label>
+                      <WebhookTemplateEditor
+                        id="portal-endpoint-payload-template"
+                        value={payloadTemplate}
+                        onChange={setPayloadTemplate}
+                        variables={availableEventTypes.flatMap(type => type.variables)}
+                      />
+                    </div>
+                    <Button
+                      onClick={() => {
+                        try {
+                          saveEndpoint({
+                            destinationType: "webhook",
+                            destination: {
+                              url: destinationUrl,
+                              timeoutMs,
+                              customHeaders: customHeaders.trim() ? JSON.parse(customHeaders) : {},
+                              payloadTemplate,
+                            },
+                          });
+                        } catch {
+                          setError("Custom headers must be valid JSON");
+                        }
+                      }}
+                      disabled={saving}
+                    >
+                      {saving ? "Saving..." : "Save configuration"}
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    This destination type can be edited by an administrator.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
-                <Button>Save</Button>
+            <Card className="border-0">
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+                <CardDescription>
+                  Manage whether this endpoint receives events or delete it permanently.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {endpoint.isActive
+                      ? "This endpoint is receiving events."
+                      : "This endpoint is disabled and will not receive events."}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => saveEndpoint({ enabled: !endpoint.isActive })}
+                    disabled={saving}
+                  >
+                    {endpoint.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    {saving ? "Saving..." : endpoint.isActive ? "Disable endpoint" : "Enable endpoint"}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-destructive/40 pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Permanently remove this endpoint and its delivery configuration.
+                  </p>
+                  <Button variant="destructive" size="sm" onClick={handleDeleteEndpoint} disabled={deleting}>
+                    <Trash2 className="h-4 w-4" />
+                    {deleting ? "Deleting..." : "Delete endpoint"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

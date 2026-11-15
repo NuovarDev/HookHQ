@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Webhook, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Webhook, MoreVertical, Pencil, Power, PowerOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -26,7 +26,8 @@ import { usePortalContext } from "../layout";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
-import type { EventTypeVariable } from "@/lib/webhookApi";
+import EventTypeSelector from "@/components/shared/EventTypeSelector";
+import type { EventType, EventTypeVariable } from "@/lib/webhookApi";
 
 interface Endpoint {
   id: string;
@@ -96,7 +97,7 @@ interface ChartData {
 }
 
 export default function EndpointsPage() {
-  const { payload, token, theme } = usePortalContext();
+  const { payload, token, theme, isEmbedded } = usePortalContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
@@ -105,6 +106,10 @@ export default function EndpointsPage() {
   const [timeRange, setTimeRange] = useState<"24h" | "7d">("7d");
   const [formData, setFormData] = useState<CreateEndpointFormState>(initialFormState);
   const [templateVariables, setTemplateVariables] = useState<EventTypeVariable[]>([]);
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(["*"]);
+  const [updatingEndpointId, setUpdatingEndpointId] = useState<string | null>(null);
+  const [deletingEndpointId, setDeletingEndpointId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEndpoints();
@@ -119,9 +124,14 @@ export default function EndpointsPage() {
         throw new Error("Failed to fetch endpoints");
       }
 
-      const data = (await response.json()) as { endpoints: Endpoint[]; templateVariables?: EventTypeVariable[] };
+      const data = (await response.json()) as {
+        endpoints: Endpoint[];
+        templateVariables?: EventTypeVariable[];
+        eventTypes?: EventType[];
+      };
       setEndpoints(data.endpoints || []);
       setTemplateVariables(data.templateVariables || []);
+      setEventTypes(data.eventTypes || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch endpoints");
     } finally {
@@ -174,6 +184,7 @@ export default function EndpointsPage() {
 
   const resetForm = () => {
     setFormData(initialFormState);
+    setSelectedEventTypes(["*"]);
   };
 
   const handleCreateEndpoint = async () => {
@@ -221,6 +232,7 @@ export default function EndpointsPage() {
           description: formData.description.trim() || undefined,
           destinationType: formData.destinationType,
           destination,
+          eventTypes: selectedEventTypes,
         }),
       });
 
@@ -238,39 +250,91 @@ export default function EndpointsPage() {
     }
   };
 
+  const handleDeleteEndpoint = async (endpoint: Endpoint) => {
+    if (!window.confirm(`Delete ${endpoint.name}? This cannot be undone.`)) return;
+
+    setDeletingEndpointId(endpoint.id);
+    try {
+      const response = await fetch(`/api/portal/endpoints/${endpoint.id}?token=${encodeURIComponent(token)}`, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Unable to delete endpoint");
+
+      setEndpoints(current => current.filter(currentEndpoint => currentEndpoint.id !== endpoint.id));
+      setError(null);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to delete endpoint");
+    } finally {
+      setDeletingEndpointId(null);
+    }
+  };
+
+  const handleSetEndpointEnabled = async (endpoint: Endpoint, enabled: boolean) => {
+    setUpdatingEndpointId(endpoint.id);
+    try {
+      const response = await fetch(`/api/portal/endpoints/${endpoint.id}?token=${encodeURIComponent(token)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      const data = (await response.json()) as { endpoint?: { isActive?: boolean }; error?: string };
+      if (!response.ok) throw new Error(data.error || `Unable to ${enabled ? "enable" : "disable"} endpoint`);
+
+      setEndpoints(current =>
+        current.map(currentEndpoint =>
+          currentEndpoint.id === endpoint.id
+            ? { ...currentEndpoint, isActive: data.endpoint?.isActive ?? enabled }
+            : currentEndpoint
+        )
+      );
+      setError(null);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Unable to update endpoint");
+    } finally {
+      setUpdatingEndpointId(null);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Endpoints</h1>
-            <p className="text-muted-foreground mt-1">Manage your event endpoints</p>
+        <div className="space-y-1">
+          <h2 className="text-xl md:text-2xl font-bold">Endpoints</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">Manage your event endpoints</p>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          {isEmbedded && (
+            <Link href="/portal">
+              <Button size="sm">
+                Overview
+              </Button>
+            </Link>
+          )}
+          {/* Search and Filters */}
+          <div className="flex items-center gap-4 flex-1">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Filter by name or URL..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 bg-card border-border "
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant={timeRange === "7d" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("7d")}>
+                7d
+              </Button>
+              <Button variant={timeRange === "24h" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("24h")}>
+                24h
+              </Button>
+            </div>
           </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+          <Button onClick={() => setCreateDialogOpen(true)} size="sm">
+            <Plus className="h-4 w-4" />
             Add Endpoint
           </Button>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Filter by name or URL..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 bg-card border-border "
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant={timeRange === "7d" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("7d")}>
-              7d
-            </Button>
-            <Button variant={timeRange === "24h" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("24h")}>
-              24h
-            </Button>
-          </div>
         </div>
 
         {/* Endpoints Table */}
@@ -371,13 +435,32 @@ export default function EndpointsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="border-0">
-                                <DropdownMenuItem>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/portal/endpoints/${endpoint.id}/settings`}>
+                                    <Pencil className="h-4 w-4" />
+                                    Edit
+                                  </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
+                                <DropdownMenuItem
+                                  disabled={updatingEndpointId === endpoint.id}
+                                  onSelect={() => void handleSetEndpointEnabled(endpoint, !endpoint.isActive)}
+                                >
+                                  {endpoint.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                                  {updatingEndpointId === endpoint.id
+                                    ? endpoint.isActive
+                                      ? "Disabling..."
+                                      : "Enabling..."
+                                    : endpoint.isActive
+                                      ? "Disable"
+                                      : "Enable"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  disabled={deletingEndpointId === endpoint.id}
+                                  onSelect={() => void handleDeleteEndpoint(endpoint)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  {deletingEndpointId === endpoint.id ? "Deleting..." : "Delete"}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -475,6 +558,18 @@ export default function EndpointsPage() {
                 onChange={event => setFormData(current => ({ ...current, description: event.target.value }))}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Event topics</Label>
+              <EventTypeSelector
+                eventTypes={eventTypes}
+                value={selectedEventTypes}
+                onChange={setSelectedEventTypes}
+                label="All event types allowed for this portal"
+              />
+              <p className="text-sm text-muted-foreground">
+                This endpoint will be added to this portal’s endpoint group.
+              </p>
+            </div>
 
             {formData.destinationType === "webhook" ? (
               <>
@@ -513,9 +608,9 @@ export default function EndpointsPage() {
                     variables={templateVariables}
                   />
                   <p className="text-sm text-muted-foreground">
-                    Use template expressions such as <code>{"{{ variable }}"}</code> in JSON. Type <code>{"{{"}</code> for
-                    variables, <code>{"|"}</code> for filters, or <code>{"{%"}</code> for tags. Use{" "}
-                    <code>{"{{ variable | json }}"}</code> for JSON values.
+                    Use template expressions such as <code>{"{{ variable }}"}</code> in the webhook body. Type{" "}
+                    <code>{"{{"}</code> for variables, <code>{"|"}</code> for filters, or <code>{"{%"}</code> for tags.
+                    Use <code>{"{{ variable | json }}"}</code> when inserting a value into JSON.
                   </p>
                 </div>
               </>

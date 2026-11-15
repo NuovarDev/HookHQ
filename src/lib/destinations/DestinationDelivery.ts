@@ -43,6 +43,10 @@ interface ProxyGroupData {
   servers: ProxyData[];
 }
 
+function serializeWebhookBody(payload: unknown): string {
+  return typeof payload === "string" ? payload : JSON.stringify(payload);
+}
+
 export class DestinationDelivery {
   private message: DeliveryMessage;
   private startTime: number;
@@ -186,7 +190,7 @@ export class DestinationDelivery {
       requestUrl: proxyRequest.url,
       requestMethod: "POST",
       requestHeaders: JSON.stringify(proxyRequest.headers),
-      requestBody: JSON.stringify(payload),
+      requestBody: serializeWebhookBody(payload),
       responseStatus: Number(proxyResponse.status ?? response.status),
       responseHeaders: JSON.stringify(proxyResponse.headers ?? Object.fromEntries(response.headers.entries())),
       responseBody,
@@ -205,7 +209,7 @@ export class DestinationDelivery {
     const response = await fetch(requestUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload),
+      body: serializeWebhookBody(payload),
       signal: AbortSignal.timeout(destination.timeoutMs),
     });
 
@@ -225,7 +229,7 @@ export class DestinationDelivery {
       requestUrl,
       requestMethod: "POST",
       requestHeaders: JSON.stringify(headers),
-      requestBody: JSON.stringify(payload),
+      requestBody: serializeWebhookBody(payload),
       responseStatus: response.status,
       responseHeaders: JSON.stringify(Object.fromEntries(response.headers.entries())),
       responseBody: responseBody.length > 1000 ? `${responseBody.slice(0, 1000)}...` : responseBody,
@@ -298,19 +302,23 @@ export class DestinationDelivery {
 
   private buildHeaders(destination: WebhookDestinationConfig): HeadersInit {
     const variables = this.message.variables ?? {};
-    const customHeaders = Object.fromEntries(
-      Object.entries(destination.customHeaders ?? {}).map(([key, value]) => [
-        key,
-        renderWebhookTemplate(value, variables, `header ${key}`),
-      ])
-    );
+    const headers = new Headers();
 
-    return {
-      "Content-Type": "application/json",
-      "User-Agent": "HookHQ/1.0",
-      ...customHeaders,
-      ...(this.message.idempotencyKey ? { "Idempotency-Key": this.message.idempotencyKey } : {}),
-    };
+    for (const [key, value] of Object.entries(destination.customHeaders ?? {})) {
+      headers.set(key, renderWebhookTemplate(value, variables, `header ${key}`));
+    }
+
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (!headers.has("User-Agent")) {
+      headers.set("User-Agent", "HookHQ/1.0");
+    }
+    if (this.message.idempotencyKey) {
+      headers.set("Idempotency-Key", this.message.idempotencyKey);
+    }
+
+    return Object.fromEntries(headers.entries());
   }
 
   private renderDestinationUrl(destination: WebhookDestinationConfig): string {

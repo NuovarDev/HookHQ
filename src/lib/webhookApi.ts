@@ -6,6 +6,7 @@ type EndpointBase = {
   name: string;
   description?: string | null;
   eventTypes: string[];
+  metadata: Record<string, string>;
   enabled: boolean;
   retry: {
     strategy: "none" | "fixed" | "linear" | "exponential";
@@ -91,6 +92,7 @@ export type EndpointWritePayload = {
   enabled: boolean;
   retry: Partial<Endpoint["retry"]>;
   autoDisable?: Partial<Endpoint["autoDisable"]>;
+  metadata?: Record<string, string>;
 };
 
 export type EndpointUpdatePayload = Partial<{
@@ -102,6 +104,7 @@ export type EndpointUpdatePayload = Partial<{
   enabled: boolean;
   retry: Partial<Endpoint["retry"]>;
   autoDisable: Partial<Endpoint["autoDisable"]>;
+  metadata: Record<string, string>;
 }>;
 
 export interface EndpointGroup {
@@ -111,6 +114,7 @@ export interface EndpointGroup {
   description?: string | null;
   endpointIds: string[];
   eventTypes: string[];
+  metadata: Record<string, string>;
   proxyGroupId?: string | null;
   enabled: boolean;
   failureAlerts: {
@@ -176,8 +180,9 @@ async function requestJson<T>(input: RequestInfo | URL, init?: RequestInit): Pro
   return (await response.json()) as T;
 }
 
-export async function fetchEndpoints() {
-  const data = await requestJson<{ endpoints: Endpoint[] }>("/endpoints");
+export async function fetchEndpoints(metadata?: Record<string, string>) {
+  const query = metadata ? `?metadata=${encodeURIComponent(JSON.stringify(metadata))}` : "";
+  const data = await requestJson<{ endpoints: Endpoint[] }>(`/endpoints${query}`);
   return data.endpoints;
 }
 
@@ -202,8 +207,9 @@ export async function deleteEndpoint(id: string) {
   await requestJson(`/endpoints/${id}`, { method: "DELETE" });
 }
 
-export async function fetchEndpointGroups() {
-  const data = await requestJson<{ endpointGroups: EndpointGroup[] }>("/endpoint-groups");
+export async function fetchEndpointGroups(metadata?: Record<string, string>) {
+  const query = metadata ? `?metadata=${encodeURIComponent(JSON.stringify(metadata))}` : "";
+  const data = await requestJson<{ endpointGroups: EndpointGroup[] }>(`/endpoint-groups${query}`);
   return data.endpointGroups;
 }
 
@@ -215,6 +221,7 @@ export async function createEndpointGroup(payload: {
   proxyGroupId?: string | null;
   enabled: boolean;
   failureAlerts?: Partial<EndpointGroup["failureAlerts"]>;
+  metadata?: Record<string, string>;
 }) {
   return requestJson<EndpointGroup>("/endpoint-groups", {
     method: "POST",
@@ -228,7 +235,7 @@ export async function updateEndpointGroup(
   payload: Partial<
     Pick<
       EndpointGroup,
-      "name" | "description" | "endpointIds" | "eventTypes" | "proxyGroupId" | "enabled" | "failureAlerts"
+      "name" | "description" | "endpointIds" | "eventTypes" | "proxyGroupId" | "enabled" | "failureAlerts" | "metadata"
     >
   >
 ) {

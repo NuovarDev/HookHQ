@@ -7,6 +7,15 @@ import { serverConfig } from "@/db/environments.schema";
 import { eq } from "drizzle-orm";
 import { serializeAutoDisableConfig, serializeFailureAlertConfig } from "@/lib/destinations/config";
 
+function redactCloudflareToken<T extends { cloudflareApiKey: string | null | undefined }>(config: T) {
+  const { cloudflareApiKey: _cloudflareApiKey, ...safeConfig } = config;
+
+  return {
+    ...safeConfig,
+    hasCloudflareApiKey: Boolean(_cloudflareApiKey),
+  };
+}
+
 // GET /api/admin/config - Get server configuration
 export async function GET() {
   try {
@@ -60,10 +69,10 @@ export async function GET() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      return NextResponse.json({ config: defaultConfig });
+      return NextResponse.json({ config: redactCloudflareToken(defaultConfig) });
     }
 
-    return NextResponse.json({ config: config[0] });
+    return NextResponse.json({ config: redactCloudflareToken(config[0]) });
   } catch (error) {
     console.error("Error fetching server config:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -157,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     const configData = {
       id: "default",
-      cloudflareApiKey,
+      cloudflareApiKey: cloudflareApiKey.trim() || existingConfig[0]?.cloudflareApiKey || null,
       cloudflareAccountId,
       cloudflareQueueId,
       logRetentionDays: parseInt(logRetentionDays),
@@ -204,7 +213,7 @@ export async function POST(request: NextRequest) {
     // Invalidate retry config cache if retry settings changed
     await invalidateGlobalRetryConfigCache();
 
-    return NextResponse.json({ config: configData });
+    return NextResponse.json({ config: redactCloudflareToken(configData) });
   } catch (error) {
     console.error("Error updating server config:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

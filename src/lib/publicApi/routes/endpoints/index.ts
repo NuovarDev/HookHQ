@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { serverConfig } from "@/db/environments.schema";
 import { endpoints } from "@/db/webhooks.schema";
@@ -67,9 +67,21 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
     if (auth instanceof Response) return auth;
 
     const enabled = parseEnabledFilter(c.req.valid("query").enabled);
+    let metadata: Record<string, string> = {};
+    const metadataQuery = c.req.valid("query").metadata;
+    if (metadataQuery) {
+      try {
+        metadata = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).parse(JSON.parse(metadataQuery));
+      } catch {
+        return jsonError("metadata must be a JSON object with string values", 400);
+      }
+    }
     const conditions = [eq(endpoints.environmentId, auth.environmentId)];
     if (enabled !== undefined) {
       conditions.push(eq(endpoints.isActive, enabled));
+    }
+    for (const [key, value] of Object.entries(metadata)) {
+      conditions.push(sql`json_extract(${endpoints.metadata}, ${`$.${key}`}) = ${value}`);
     }
 
     const db = await getDb(c.env);
@@ -111,6 +123,7 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
       destination: body.destination,
       retry: body.retry,
       autoDisable: body.autoDisable ?? parseAutoDisableConfig(globalConfig?.defaultAutoDisableConfig),
+      metadata: body.metadata,
       now,
       env: c.env,
     });

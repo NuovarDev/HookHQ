@@ -10,7 +10,7 @@ import QueueMetricsTab from "@/components/tabs/admin/QueueMetricsTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ServerConfig {
-  cloudflareApiKey: string | null;
+  hasCloudflareApiKey: boolean;
   cloudflareAccountId: string | null;
   cloudflareQueueId: string | null;
 }
@@ -49,7 +49,10 @@ export default function AdminPage({ params }: AdminPageProps) {
 
   // Check if Cloudflare config is complete
   const hasCloudflareConfig =
-    serverConfig && serverConfig.cloudflareApiKey && serverConfig.cloudflareAccountId && serverConfig.cloudflareQueueId;
+    serverConfig &&
+    serverConfig.hasCloudflareApiKey &&
+    serverConfig.cloudflareAccountId &&
+    serverConfig.cloudflareQueueId;
 
   // Determine active tab from URL slug
   const activeTab = resolvedParams.slug?.[0] || "config";

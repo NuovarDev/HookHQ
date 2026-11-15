@@ -82,14 +82,6 @@ export function validateWebhookDestinationTemplates(destination: Record<string, 
   }
 }
 
-export function renderWebhookPayload(template: string, variables: TemplateVariables): unknown {
-  const rendered = renderWebhookTemplate(template, variables, "payload");
-
-  try {
-    return JSON.parse(rendered);
-  } catch (error) {
-    throw new Error(
-      `Payload template must render valid JSON: ${error instanceof Error ? error.message : "Unknown error"}`
-    );
-  }
+export function renderWebhookPayload(template: string, variables: TemplateVariables): string {
+  return renderWebhookTemplate(template, variables, "payload");
 }

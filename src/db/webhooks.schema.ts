@@ -21,6 +21,7 @@ export const endpoints = sqliteTable("endpoints", {
   destinationType: text("destination_type").default("webhook"),
   destinationConfig: text("destination_config").default("{}").notNull(),
   autoDisableConfig: text("auto_disable_config").default("{}").notNull(),
+  metadata: text("metadata").default("{}").notNull(), // JSON object of user-defined string key-value pairs
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .defaultNow()
@@ -40,6 +41,7 @@ export const endpointGroups = sqliteTable("endpoint_groups", {
   proxyGroupId: text("proxy_group_id"),
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
   failureAlertConfig: text("failure_alert_config").default("{}").notNull(),
+  metadata: text("metadata").default("{}").notNull(), // JSON object of user-defined string key-value pairs
   createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .defaultNow()

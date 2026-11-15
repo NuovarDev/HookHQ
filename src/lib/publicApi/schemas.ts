@@ -66,7 +66,23 @@ export const messageRetryParamSchema = z.object({
 
 export const enabledQuerySchema = z.object({
   enabled: z.enum(["true", "false"]).optional().describe("Whether to filter endpoints by enabled status."),
+  metadata: z
+    .string()
+    .max(10_000)
+    .optional()
+    .describe('JSON object of exact metadata key-value pairs to match, e.g. {"tenant":"acme"}.'),
 });
+
+export const metadataSchema = z
+  .record(
+    z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+      .max(128),
+    z.string().max(2_000)
+  )
+  .default({})
+  .openapi({ description: "User-defined string key-value pairs.", example: { tenant: "acme", region: "us-east-1" } });
 
 export const eventSubscriptionSchema = z
   .array(z.string().min(1))
@@ -234,6 +250,7 @@ export const endpointSchema = z
     name: z.string().describe("Name of the endpoint."),
     description: z.string().nullable().optional().describe("Optional description for the endpoint."),
     eventTypes: eventSubscriptionSchema,
+    metadata: metadataSchema,
     destinationType: destinationTypeSchema,
     destination: z.union([
       webhookDestinationResponseSchema,
@@ -258,6 +275,7 @@ export const endpointCreateSchema = z
     enabled: z.boolean().optional().describe("Whether the endpoint is enabled."),
     retry: retryConfigSchema.partial().optional().describe("Retry configuration for the endpoint."),
     autoDisable: autoDisableConfigSchema.partial().optional().describe("Auto-disable configuration for the endpoint."),
+    metadata: metadataSchema.optional(),
   })
   .describe("Create a new endpoint for either a webhook, Amazon SQS, or Google Pub/Sub destination")
   .openapi("CreateEndpointRequest");
@@ -278,6 +296,7 @@ export const endpointUpdateSchema = z
     enabled: z.boolean().optional().describe("Whether the endpoint is enabled."),
     retry: retryConfigSchema.partial().optional().describe("Retry configuration for the endpoint."),
     autoDisable: autoDisableConfigSchema.partial().optional().describe("Auto-disable configuration for the endpoint."),
+    metadata: metadataSchema.optional(),
   })
   .describe("Update an existing endpoint for either a webhook, Amazon SQS, or Google Pub/Sub destination")
   .openapi("UpdateEndpointRequest");
@@ -290,6 +309,7 @@ export const endpointGroupSchema = z
     description: z.string().nullable().optional(),
     endpointIds: z.array(z.string()),
     eventTypes: eventSubscriptionSchema,
+    metadata: metadataSchema,
     proxyGroupId: z.string().nullable().optional(),
     enabled: z.boolean(),
     failureAlerts: failureAlertConfigSchema,
@@ -314,6 +334,7 @@ export const endpointGroupCreateSchema = z
       .partial()
       .optional()
       .describe("Failure alert configuration for the endpoint group."),
+    metadata: metadataSchema.optional(),
   })
   .openapi("CreateEndpointGroupRequest");
 
@@ -333,6 +354,7 @@ export const endpointGroupUpdateSchema = z
       .partial()
       .optional()
       .describe("Failure alert configuration for the endpoint group."),
+    metadata: metadataSchema.optional(),
   })
   .openapi("UpdateEndpointGroupRequest");
 

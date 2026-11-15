@@ -10,7 +10,7 @@ import { Save, RefreshCw, Database, AlertTriangle, CheckCircle, Settings, Cloud,
 
 interface ServerConfig {
   id: string;
-  cloudflareApiKey?: string;
+  hasCloudflareApiKey: boolean;
   cloudflareAccountId?: string;
   cloudflareQueueId?: string;
   logRetentionDays: number;
@@ -82,7 +82,7 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
         const jwtUnit = jwtMatch ? jwtMatch[2] : "day";
 
         setFormData({
-          cloudflareApiKey: data.config.cloudflareApiKey || "",
+          cloudflareApiKey: "",
           cloudflareAccountId: data.config.cloudflareAccountId || "",
           cloudflareQueueId: data.config.cloudflareQueueId || "",
           logRetentionDays: data.config.logRetentionDays || 30,
@@ -136,6 +136,7 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
 
       const updatedConfig = (await response.json()) as { config: ServerConfig };
       setConfig(updatedConfig.config);
+      setFormData(current => ({ ...current, cloudflareApiKey: "" }));
       setSuccess("Server configuration saved successfully!");
 
       // Notify parent component of config update
@@ -208,11 +209,19 @@ export default function AdminConfigTab({ onConfigUpdate }: AdminConfigTabProps) 
             <Input
               id="cloudflareApiKey"
               type="password"
-              placeholder="Enter your Cloudflare API token"
+              placeholder={
+                config?.hasCloudflareApiKey
+                  ? "Enter a new token to replace the saved token"
+                  : "Enter your Cloudflare API token"
+              }
               value={formData.cloudflareApiKey}
               onChange={e => setFormData({ ...formData, cloudflareApiKey: e.target.value })}
             />
-            <p className="text-sm text-muted-foreground mt-1">Required for accessing Cloudflare Queue metrics API</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {config?.hasCloudflareApiKey
+                ? "A token is configured. Enter a new value only to replace it."
+                : "Required for accessing Cloudflare Queue metrics API"}
+            </p>
             {showApiTokenHelp && (
               <div className="mt-2 p-3 bg-muted rounded-md text-sm space-y-2">
                 <p className="font-medium">How to create an API token:</p>

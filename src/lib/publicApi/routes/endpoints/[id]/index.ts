@@ -136,6 +136,7 @@ export function registerEndpointItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfla
       destination: body.destination,
       retry: body.retry,
       autoDisable: body.autoDisable,
+      metadata: body.metadata,
       existingAutoDisable: parseAutoDisableConfig(existing[0].autoDisableConfig),
       existingDestination: body.destination ? await resolveDestinationConfig(existing[0], c.env) : undefined,
       env: c.env,

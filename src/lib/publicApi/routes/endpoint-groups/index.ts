@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { endpointGroups } from "@/db/webhooks.schema";
 import { buildEndpointGroupInsertValues, formatEndpointGroup } from "@/lib/publicApi/serializers";
@@ -9,7 +9,7 @@ import {
   endpointGroupSchema,
   errorResponseSchema,
 } from "@/lib/publicApi/schemas";
-import { parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
+import { jsonError, parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 
 const listGroupsRoute = createRoute({
   method: "get",
@@ -51,8 +51,20 @@ export function registerEndpointGroupCollectionRoutes(app: OpenAPIHono<{ Binding
     });
     if (auth instanceof Response) return auth;
     const enabled = parseEnabledFilter(c.req.valid("query").enabled);
+    let metadata: Record<string, string> = {};
+    const metadataQuery = c.req.valid("query").metadata;
+    if (metadataQuery) {
+      try {
+        metadata = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).parse(JSON.parse(metadataQuery));
+      } catch {
+        return jsonError("metadata must be a JSON object with string values", 400);
+      }
+    }
     const conditions = [eq(endpointGroups.environmentId, auth.environmentId)];
     if (enabled !== undefined) conditions.push(eq(endpointGroups.isActive, enabled));
+    for (const [key, value] of Object.entries(metadata)) {
+      conditions.push(sql`json_extract(${endpointGroups.metadata}, ${`$.${key}`}) = ${value}`);
+    }
     const db = await getDb(c.env);
     const groups = await db
       .select()
@@ -81,6 +93,7 @@ export function registerEndpointGroupCollectionRoutes(app: OpenAPIHono<{ Binding
       proxyGroupId: body.proxyGroupId,
       enabled: body.enabled,
       failureAlerts: body.failureAlerts,
+      metadata: body.metadata,
       now,
     });
     await db.insert(endpointGroups).values(values);

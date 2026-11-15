@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createContext, useContext } from "react";
+import Image from "next/image";
 
 const navigation = [
   { name: "Dashboard", href: "/portal", current: false, icon: LayoutDashboard },
@@ -74,6 +75,12 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
   const [themeWasLocked, setThemeWasLocked] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [breadcrumbTitle, setBreadcrumbTitle] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (authState.authenticated && authState.payload) {
+      document.title = authState.payload.applicationName || "Webhook Portal";
+    }
+  }, [authState.authenticated, authState.payload]);
 
   useEffect(() => {
     // Check for token in query params first, then session storage
@@ -231,7 +238,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem("portal_theme_locked");
     sessionStorage.removeItem("portal_embed");
 
-    if (payload.returnUrl) {
+    if (payload?.returnUrl) {
       window.location.href = payload.returnUrl;
     } else {
       window.history.back();
@@ -266,6 +273,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
   }
 
   const { payload } = authState;
+  const showBackNavigation = Boolean(payload.returnUrl);
 
   // If embedded, use a solid muted surface so cards remain distinct without the page texture.
   if (isEmbedded) {
@@ -301,12 +309,28 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center border-b border-border px-4">
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={handleBackClick} className="h-9 w-9">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+            <div className="flex items-center gap-2 w-full">
+              {showBackNavigation ? (
+                <Button variant="ghost" size="icon" onClick={handleBackClick} className="size-9">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              ) : (
+                <div className="size-9 flex items-center justify-center">
+                  <Image
+                    src="/logo.svg"
+                    alt="Portal logo"
+                    width={64}
+                    height={64}
+                    className={
+                      theme === "dark" ? "transition-colors duration-200" : "invert transition-colors duration-200"
+                    }
+                  />
+                </div>
+              )}
               {!collapsed && (
-                <span className="text-lg">{payload.applicationName ? payload.applicationName : "Go Back"}</span>
+                <span className="text-lg overflow-hidden text-ellipsis whitespace-nowrap">
+                  {payload.applicationName ? payload.applicationName : "Webhook Portal"}
+                </span>
               )}
             </div>
           </div>

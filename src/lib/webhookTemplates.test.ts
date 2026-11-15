@@ -11,15 +11,14 @@ describe("webhook templates", () => {
     expect(renderWebhookTemplate("Bearer {{ name }}", variables, "header Authorization")).toBe("Bearer Ada");
   });
 
-  it("parses a rendered payload template as JSON", () => {
-    expect(renderWebhookPayload('{"account":"{{ accountId }}","name":{{ name | json }}}', variables)).toEqual({
-      account: "acct_123",
-      name: "Ada",
-    });
+  it("renders a payload template as the raw webhook body", () => {
+    expect(renderWebhookPayload('{"account":"{{ accountId }}","name":{{ name | json }}}', variables)).toBe(
+      '{"account":"acct_123","name":"Ada"}'
+    );
   });
 
-  it("rejects a payload template that does not render JSON", () => {
-    expect(() => renderWebhookPayload("{{ name }}", variables)).toThrow("Payload template must render valid JSON");
+  it("allows a rendered payload that is not valid JSON", () => {
+    expect(renderWebhookPayload("{{ name }}", variables)).toBe("Ada");
   });
 
   it("supports the approved logic tags and filters", () => {

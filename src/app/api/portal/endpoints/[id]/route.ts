@@ -3,6 +3,10 @@ import { getDb } from "@/db";
 import { endpoints, endpointGroups, webhookAttempts, webhookMessages, eventTypes } from "@/db/webhooks.schema";
 import { eq, and, gte, sql, desc } from "drizzle-orm";
 import { authenticatePortalRequest } from "@/lib/portalAuth";
+import { buildEndpointUpdateValues } from "@/lib/publicApi/serializers";
+import { invalidateEndpointCache } from "@/lib/cacheUtils";
+import { parseAutoDisableConfig, resolveDestinationConfig } from "@/lib/destinations/config";
+import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authResult = authenticatePortalRequest(request);
@@ -226,6 +230,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return chartData;
     };
 
+    const destination = await resolveDestinationConfig(endpoint[0]);
+
     return NextResponse.json({
       endpoint: {
         id: endpoint[0].id,
@@ -243,7 +249,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         retryPolicy: endpoint[0].retryPolicy,
         maxRetries: endpoint[0].maxRetries,
         timeoutMs: endpoint[0].timeoutMs,
-        headers: endpoint[0].headers,
+        destination:
+          destination.type === "webhook"
+            ? {
+                url: destination.url,
+                timeoutMs: destination.timeoutMs,
+                customHeaders: destination.customHeaders ?? {},
+                payloadTemplate: destination.payloadTemplate ?? "",
+              }
+            : destination,
       },
       metrics: {
         totalEvents24h,
@@ -260,6 +274,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         id: et.id,
         name: et.name,
         description: et.description,
+        variables: et.variables ? JSON.parse(et.variables) : [],
       })),
     });
   } catch (error) {
@@ -269,6 +284,79 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         error: "Internal server error",
       },
       { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authResult = authenticatePortalRequest(request);
+  if (!authResult.success) return NextResponse.json({ error: authResult.error }, { status: 401 });
+
+  const { id: endpointId } = await params;
+  const body = (await request.json()) as {
+    name?: string;
+    description?: string;
+    eventTypes?: string[];
+    enabled?: boolean;
+    destinationType?: "webhook" | "sqs" | "pubsub";
+    destination?: Record<string, unknown>;
+  };
+  const db = await getDb();
+
+  try {
+    const [endpoint] = await db.select().from(endpoints).where(eq(endpoints.id, endpointId)).limit(1);
+    if (!endpoint || endpoint.environmentId !== authResult.payload.environmentId) {
+      return NextResponse.json({ error: "Endpoint not found" }, { status: 404 });
+    }
+    const [group] = await db
+      .select()
+      .from(endpointGroups)
+      .where(eq(endpointGroups.id, authResult.payload.endpointGroupId))
+      .limit(1);
+    if (!group || !JSON.parse(group.endpointIds || "[]").includes(endpointId)) {
+      return NextResponse.json({ error: "Endpoint not found in group" }, { status: 404 });
+    }
+    if (body.destination && (body.destinationType === "webhook" || endpoint.destinationType === "webhook")) {
+      validateWebhookDestinationTemplates(body.destination);
+    }
+
+    const updateData = await buildEndpointUpdateValues({
+      ...body,
+      existingAutoDisable: parseAutoDisableConfig(endpoint.autoDisableConfig),
+      existingDestination: body.destination ? await resolveDestinationConfig(endpoint) : undefined,
+    });
+    await db
+      .update(endpoints)
+      .set(updateData as never)
+      .where(eq(endpoints.id, endpointId));
+    await invalidateEndpointCache(endpointId);
+    const [updated] = await db.select().from(endpoints).where(eq(endpoints.id, endpointId)).limit(1);
+    const destination = await resolveDestinationConfig(updated);
+    return NextResponse.json({
+      endpoint: {
+        id: updated.id,
+        name: updated.name,
+        description: updated.description,
+        destinationType: updated.destinationType,
+        isActive: updated.isActive,
+        topics: updated.topics ? JSON.parse(updated.topics) : [],
+        updatedAt: updated.updatedAt.toISOString(),
+        destination:
+          destination.type === "webhook"
+            ? {
+                url: destination.url,
+                timeoutMs: destination.timeoutMs,
+                customHeaders: destination.customHeaders ?? {},
+                payloadTemplate: destination.payloadTemplate ?? "",
+              }
+            : destination,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating portal endpoint:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to update endpoint" },
+      { status: 400 }
     );
   }
 }

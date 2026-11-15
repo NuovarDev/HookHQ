@@ -329,10 +329,6 @@ export default function EndpointsTab() {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Endpoints</h2>
-          <p className="text-muted-foreground">Manage your event endpoints</p>
-        </div>
 
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>

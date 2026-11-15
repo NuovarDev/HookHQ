@@ -80,6 +80,7 @@ export async function formatEndpoint(endpoint: typeof endpoints.$inferSelect, en
     name: endpoint.name,
     description: endpoint.description,
     eventTypes: parseEventSubscriptions(endpoint.topics),
+    metadata: endpoint.metadata ? JSON.parse(endpoint.metadata) : {},
     destinationType:
       endpoint.destinationType === "sqs" || endpoint.destinationType === "pubsub"
         ? endpoint.destinationType
@@ -125,6 +126,7 @@ export function formatEndpointGroup(group: typeof endpointGroups.$inferSelect) {
     description: group.description,
     endpointIds: group.endpointIds ? JSON.parse(group.endpointIds) : [],
     eventTypes: parseEventSubscriptions(group.eventTypes),
+    metadata: group.metadata ? JSON.parse(group.metadata) : {},
     proxyGroupId: group.proxyGroupId,
     enabled: group.isActive,
     failureAlerts: parseFailureAlertConfig(group.failureAlertConfig),
@@ -143,6 +145,7 @@ export async function buildEndpointInsertValues(input: {
   destination: Record<string, unknown> | DestinationConfig;
   retry?: Partial<RetryConfig>;
   autoDisable?: Partial<AutoDisableConfig>;
+  metadata?: Record<string, string>;
   id?: string;
   now?: Date;
   env?: CloudflareEnv;
@@ -179,6 +182,7 @@ export async function buildEndpointInsertValues(input: {
     retryJitterFactor: retry?.jitterFactor ?? 0.2,
     maxRetries: retry?.maxAttempts ?? 3,
     autoDisableConfig,
+    metadata: JSON.stringify(input.metadata ?? {}),
     timeoutMs: destination.type === "webhook" ? destination.timeoutMs : 30000,
     headers: null,
     proxyGroupId: destination.type === "webhook" ? (destination.proxyGroupId ?? null) : null,
@@ -200,6 +204,7 @@ export async function buildEndpointUpdateValues(input: {
   autoDisable?: Partial<AutoDisableConfig>;
   existingAutoDisable?: AutoDisableConfig;
   existingDestination?: DestinationConfig;
+  metadata?: Record<string, string>;
   env?: CloudflareEnv;
 }) {
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -208,6 +213,7 @@ export async function buildEndpointUpdateValues(input: {
   if (input.description !== undefined) updateData.description = input.description;
   if (input.eventTypes !== undefined) updateData.topics = serializeEventSubscriptions(input.eventTypes);
   if (input.enabled !== undefined) updateData.isActive = input.enabled;
+  if (input.metadata !== undefined) updateData.metadata = JSON.stringify(input.metadata);
 
   if (input.destinationType !== undefined) {
     updateData.destinationType = input.destinationType;
@@ -260,6 +266,7 @@ export function buildEndpointGroupInsertValues(input: {
   proxyGroupId?: string | null;
   enabled?: boolean;
   failureAlerts?: Partial<FailureAlertConfig>;
+  metadata?: Record<string, string>;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
@@ -280,6 +287,7 @@ export function buildEndpointGroupInsertValues(input: {
       channelType: input.failureAlerts?.channelType ?? "webhook",
       destinationUrl: input.failureAlerts?.destinationUrl ?? "",
     }),
+    metadata: JSON.stringify(input.metadata ?? {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -294,6 +302,7 @@ export function buildEndpointGroupUpdateValues(input: {
   enabled?: boolean;
   failureAlerts?: Partial<FailureAlertConfig>;
   existingFailureAlerts: FailureAlertConfig;
+  metadata?: Record<string, string>;
 }) {
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
   if (input.name !== undefined) updateData.name = input.name;
@@ -302,6 +311,7 @@ export function buildEndpointGroupUpdateValues(input: {
   if (input.eventTypes !== undefined) updateData.eventTypes = serializeEventSubscriptions(input.eventTypes);
   if (input.proxyGroupId !== undefined) updateData.proxyGroupId = input.proxyGroupId;
   if (input.enabled !== undefined) updateData.isActive = input.enabled;
+  if (input.metadata !== undefined) updateData.metadata = JSON.stringify(input.metadata);
   if (input.failureAlerts !== undefined) {
     updateData.failureAlertConfig = serializeFailureAlertConfig({
       ...input.existingFailureAlerts,

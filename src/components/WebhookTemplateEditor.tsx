@@ -17,6 +17,21 @@ type Props = {
 const variablesByModel = new Map<string, EventTypeVariable[]>();
 let providersRegistered = false;
 
+function uniqueTemplateVariables(variables: EventTypeVariable[]) {
+  const seen = new Set<string>();
+
+  return variables.filter(variable => {
+    const name = variable.name.trim();
+    if (!name || seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+}
+
+function currentMonacoTheme() {
+  return document.documentElement.classList.contains("dark") ? "vs-dark" : "vs";
+}
+
 const templateFilters = [
   ["append", "Append text or a value."],
   ["base64_decode", "Decode a Base64 value."],
@@ -188,11 +203,11 @@ export default function WebhookTemplateEditor({ id, value, onChange, variables, 
       registerTemplateProviders(monaco);
       monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: false });
       const model = monaco.editor.createModel(value, "json", monaco.Uri.parse(`inmemory://hookhq/${id}.json`));
-      variablesByModel.set(model.uri.toString(), variables);
+      variablesByModel.set(model.uri.toString(), uniqueTemplateVariables(variables));
       modelRef.current = model;
       editor = monaco.editor.create(elementRef.current, {
         model,
-        theme: resolvedTheme === "dark" ? "vs-dark" : "vs",
+        theme: currentMonacoTheme(),
         automaticLayout: true,
         minimap: { enabled: false },
         fixedOverflowWidgets: true,
@@ -232,12 +247,21 @@ export default function WebhookTemplateEditor({ id, value, onChange, variables, 
 
   useEffect(() => {
     const model = modelRef.current;
-    if (model) variablesByModel.set(model.uri.toString(), variables);
+    if (model) variablesByModel.set(model.uri.toString(), uniqueTemplateVariables(variables));
   }, [variables]);
 
   useEffect(() => {
-    editorRef.current?.updateOptions({ theme: resolvedTheme === "dark" ? "vs-dark" : "vs" });
+    editorRef.current?.updateOptions({ theme: currentMonacoTheme() });
   }, [resolvedTheme]);
+
+  useEffect(() => {
+    const syncTheme = () => editorRef.current?.updateOptions({ theme: currentMonacoTheme() });
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    syncTheme();
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div
