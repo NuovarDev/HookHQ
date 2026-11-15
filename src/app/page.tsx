@@ -184,7 +184,7 @@ function LoginContent() {
               </Button>
             ) : null}
             <div className="h-10 w-10 bg-black flex items-center justify-center dark:border-border dark:border">
-              <Image src="/logo.svg" alt="HookHQ" width={36} height={36} className="text-primary-foreground" />
+              <Image src="/img/logo.svg" alt="HookHQ" width={36} height={36} className="text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-xl font-semibold text-foreground">HookHQ</h1>

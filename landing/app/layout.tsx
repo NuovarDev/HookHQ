@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   description:
     "Open source Event Destinations infrastructure for webhooks, queues, retries, portals, and operator control.",
   icons: {
-    icon: "/logo.svg",
-    shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/img/logo.svg",
+    shortcut: "/img/logo.svg",
+    apple: "/img/logo.svg",
   },
 };
 

@@ -9,7 +9,7 @@ export function Footer({ deployUrl, docsUrl, repoUrl }: { deployUrl: string; doc
         <div>
           <div className="mb-4 flex items-center gap-3 text-[1.8rem] tracking-[-0.03em] text-foreground">
             <div className="flex h-9 w-9 items-center justify-center border border-lineStrong bg-panelStrong">
-              <Image src="/logo.svg" alt="HookHQ logo" width={32} height={32} className="invert brightness-0" />
+              <Image src="/img/logo.svg" alt="HookHQ logo" width={32} height={32} className="invert brightness-0" />
             </div>
             <span>HookHQ</span>
           </div>

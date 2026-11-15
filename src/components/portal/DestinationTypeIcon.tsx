@@ -5,9 +5,9 @@ import Image from "next/image";
 type DestinationType = "webhook" | "sqs" | "pubsub";
 
 const destinationIconMap: Record<DestinationType, { src: string; alt: string }> = {
-  webhook: { src: "/webhook.svg", alt: "Webhook" },
-  sqs: { src: "/sqs.svg", alt: "AWS SQS" },
-  pubsub: { src: "/pubsub.svg", alt: "Google Cloud Pub/Sub" },
+  webhook: { src: "/img/webhook.svg", alt: "Webhook" },
+  sqs: { src: "/img/sqs.svg", alt: "AWS SQS" },
+  pubsub: { src: "/img/pubsub.svg", alt: "Google Cloud Pub/Sub" },
 };
 
 interface DestinationTypeIconProps {

@@ -317,7 +317,7 @@ function PortalLayout({ children }: { children: React.ReactNode }) {
               ) : (
                 <div className="size-9 flex items-center justify-center">
                   <Image
-                    src="/logo.svg"
+                    src="/img/logo.svg"
                     alt="Portal logo"
                     width={64}
                     height={64}

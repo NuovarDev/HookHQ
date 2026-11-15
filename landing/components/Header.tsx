@@ -7,7 +7,7 @@ export function Header({ deployUrl, docsUrl, repoUrl }: { deployUrl: string; doc
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-[color:color-mix(in_srgb,var(--bg)_84%,transparent)] px-5 py-4 backdrop-blur-[18px] max-[760px]:px-3">
       <div className="flex items-center gap-4">
         <div className="flex h-8 w-8 items-center justify-center border border-lineStrong bg-panelStrong">
-          <Image src="/logo.svg" alt="HookHQ logo" width={32} height={32} className="invert brightness-0" />
+          <Image src="/img/logo.svg" alt="HookHQ logo" width={32} height={32} className="invert brightness-0" />
         </div>
         <div>
           <strong className="block text-[0.95rem] uppercase tracking-[0.08em]">HookHQ</strong>

@@ -110,20 +110,20 @@ export function Hero({ deployUrl, docsUrl, repoUrl }: { deployUrl: string; docsU
             </div>
 
             <div className="relative z-[2] mx-auto flex h-24 w-24 items-center justify-center rounded-[1.6rem] border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_88%,black_12%)] shadow-panel">
-              <Image src="/logo.svg" alt="HookHQ" width={72} height={72} />
+              <Image src="/img/logo.svg" alt="HookHQ" width={72} height={72} />
             </div>
 
             <div className="relative z-[2] grid justify-items-end gap-4 max-[760px]:justify-items-center">
               <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/webhook.svg" alt="" width={20} height={20} aria-hidden="true" />
+                <Image src="/img/webhook.svg" alt="" width={20} height={20} aria-hidden="true" />
                 Webhooks
               </div>
               <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/sqs.svg" alt="" width={20} height={20} aria-hidden="true" />
+                <Image src="/img/sqs.svg" alt="" width={20} height={20} aria-hidden="true" />
                 SQS
               </div>
               <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/pubsub.svg" alt="" width={20} height={20} aria-hidden="true" />
+                <Image src="/img/pubsub.svg" alt="" width={20} height={20} aria-hidden="true" />
                 Pub/Sub
               </div>
             </div>

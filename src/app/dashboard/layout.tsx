@@ -116,7 +116,7 @@ function DashboardContent({
               <div className="flex h-16 items-center border-b border-border px-4">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 bg-black flex items-center justify-center dark:border-border dark:border">
-                    <Image src="/logo.svg" alt="HookHQ" width={32} height={32} className="text-primary-foreground" />
+                    <Image src="/img/logo.svg" alt="HookHQ" width={32} height={32} className="text-primary-foreground" />
                   </div>
                   {!collapsed && <span className="ml-1 font-mono text-2xl font-semibold">HookHQ</span>}
                 </div>
