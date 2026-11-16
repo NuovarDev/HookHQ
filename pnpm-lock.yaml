@@ -56,6 +56,9 @@ importers:
       '@smithy/signature-v4':
         specifier: ^5.3.12
         version: 5.3.12
+      '@tanstack/react-table':
+        specifier: ^9.3.1
+        version: 9.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
@@ -69,7 +72,7 @@ importers:
         specifier: ^1.3.34
         version: 1.3.34(next@15.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       better-auth-cloudflare:
-        specifier: latest
+        specifier: 0.2.6
         version: 0.2.6(@cloudflare/workers-types@4.20251003.0)(better-auth@1.3.34(next@15.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(kysely@0.28.12)
       class-variance-authority:
         specifier: ^0.7.1
@@ -134,7 +137,7 @@ importers:
         version: 4.20251003.0
       '@opennextjs/cloudflare':
         specifier: ^1.6.5
-        version: 1.9.1(wrangler@4.76.0(@cloudflare/workers-types@4.20251003.0))
+        version: 1.9.1(supports-color@10.2.2)(wrangler@4.76.0(@cloudflare/workers-types@4.20251003.0))
       '@testing-library/jest-dom':
         specifier: ^6.8.0
         version: 6.9.1
@@ -158,7 +161,7 @@ importers:
         version: 19.2.0(@types/react@19.2.0)
       '@vitest/coverage-v8':
         specifier: ^3.2.4
-        version: 3.2.4(vitest@3.2.4)
+        version: 3.2.4(supports-color@10.2.2)(vitest@3.2.4)
       '@vitest/ui':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4)
@@ -167,10 +170,10 @@ importers:
         version: 10.4.21(postcss@8.5.6)
       drizzle-kit:
         specifier: ^0.31.0
-        version: 0.31.5
+        version: 0.31.5(supports-color@10.2.2)
       jsdom:
         specifier: ^27.0.0
-        version: 27.0.0(postcss@8.5.6)
+        version: 27.0.0(postcss@8.5.6)(supports-color@10.2.2)
       postcss:
         specifier: ^8.4.35
         version: 8.5.6
@@ -188,7 +191,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(terser@5.16.9)(yaml@2.8.1)
+        version: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6)(supports-color@10.2.2))(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1)
       wrangler:
         specifier: ^4.76.0
         version: 4.76.0(@cloudflare/workers-types@4.20251003.0)
@@ -2817,11 +2820,30 @@ packages:
   '@swc/helpers@0.5.17':
     resolution: {integrity: sha512-5IKx/Y13RsYd+sauPb2x+U/xZikHjolzfuDgTAl/Tdf3Q8rslRvC19NKDLgAJQ6wsqADk10ntlv08nPFw/gO/A==}
 
+  '@tanstack/react-store@0.11.2':
+    resolution: {integrity: sha512-oj5O5DmiMWE+ih+SioX2ayC1kbK7d3fpLx0B75fPJr9nY3zU+hoW010yr64qXsY/9fyiLVE2bn5mGNV3owm8RQ==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/react-table@9.3.1':
+    resolution: {integrity: sha512-E6Ya5TnY6EaGyZYIUqig/29Lr/gJSAubQkLJFqiWkUl5nRCr0Xr9hvJot+NiRTtG+TzGxHTiqUW3bnLtQxlHug==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      react: '>=18'
+
   '@tanstack/react-virtual@3.13.12':
     resolution: {integrity: sha512-Gd13QdxPSukP8ZrkbgS2RwoZseTTbQPLnQEn7HY/rqtM+8Zt95f7xKC7N0EsKs7aoz0WzZ+fditZux+F8EzYxA==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@tanstack/store@0.11.2':
+    resolution: {integrity: sha512-sJ4mjol8uQsHV0gOJzzjwXfh2Fwm+Sz0+8deqiTm4jGbMdjzNSW+xZCFm0kUa870uhd8yi+DpKnZb5Kc4apa0Q==}
+
+  '@tanstack/table-core@9.3.1':
+    resolution: {integrity: sha512-zQvlxSNi2qGM3L4jh85Z6hqMfdIR5qOfD9KHOU32nuKFJGN0RlJ7UvV1lsPb1fPVhpFYI0VP3jJGxLdLDpTKjQ==}
+    engines: {node: '>=20'}
 
   '@tanstack/virtual-core@3.13.12':
     resolution: {integrity: sha512-1YBOJfRHV4sXUmWsFSf5rQor4Ss82G8dQWLRbnk3GA4jeP8hQt1hxXh0tmflpC0dz3VgEv/1+qwPyLeWkQuPFA==}
@@ -3496,8 +3518,8 @@ packages:
       sqlite3:
         optional: true
 
-  drizzle-orm@0.44.6:
-    resolution: {integrity: sha512-uy6uarrrEOc9K1u5/uhBFJbdF5VJ5xQ/Yzbecw3eAYOunv5FDeYkR2m8iitocdHBOHbvorviKOW5GVw0U1j4LQ==}
+  drizzle-orm@0.44.7:
+    resolution: {integrity: sha512-quIpnYznjU9lHshEOAYLoZ9s3jweleHlZIAWR/jX9gAWNg/JhQ1wj0KGRf7/Zm+obRrYd9GjPVJg790QY9N5AQ==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -4241,6 +4263,7 @@ packages:
   next@15.3.1:
     resolution: {integrity: sha512-8+dDV0xNLOgHlyBxP1GwHGVaNXsmp+2NhZEYrXr24GWLHtt27YrBPbPuHvzlhi7kZNYjeJNR93IF5zfFu5UL0g==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -7022,7 +7045,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@opennextjs/aws@3.8.0':
+  '@opennextjs/aws@3.8.0(supports-color@10.2.2)':
     dependencies:
       '@ast-grep/napi': 0.35.0
       '@aws-sdk/client-cloudfront': 3.398.0
@@ -7037,7 +7060,7 @@ snapshots:
       chalk: 5.6.2
       cookie: 1.0.2
       esbuild: 0.25.4
-      express: 5.0.1
+      express: 5.0.1(supports-color@10.2.2)
       path-to-regexp: 6.3.0
       urlpattern-polyfill: 10.1.0
       yaml: 2.8.1
@@ -7045,10 +7068,10 @@ snapshots:
       - aws-crt
       - supports-color
 
-  '@opennextjs/cloudflare@1.9.1(wrangler@4.76.0(@cloudflare/workers-types@4.20251003.0))':
+  '@opennextjs/cloudflare@1.9.1(supports-color@10.2.2)(wrangler@4.76.0(@cloudflare/workers-types@4.20251003.0))':
     dependencies:
       '@dotenvx/dotenvx': 1.31.0
-      '@opennextjs/aws': 3.8.0
+      '@opennextjs/aws': 3.8.0(supports-color@10.2.2)
       cloudflare: 4.5.0
       enquirer: 2.4.1
       glob: 11.0.3
@@ -8343,11 +8366,32 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@tanstack/react-store@0.11.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@tanstack/store': 0.11.2
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      use-sync-external-store: 1.6.0(react@19.2.0)
+
+  '@tanstack/react-table@9.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@tanstack/react-store': 0.11.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@tanstack/table-core': 9.3.1
+      react: 19.2.0
+    transitivePeerDependencies:
+      - react-dom
+
   '@tanstack/react-virtual@3.13.12(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
+
+  '@tanstack/store@0.11.2': {}
+
+  '@tanstack/table-core@9.3.1':
+    dependencies:
+      '@tanstack/store': 0.11.2
 
   '@tanstack/virtual-core@3.13.12': {}
 
@@ -8454,22 +8498,22 @@ snapshots:
 
   '@types/use-sync-external-store@0.0.6': {}
 
-  '@vitest/coverage-v8@3.2.4(vitest@3.2.4)':
+  '@vitest/coverage-v8@3.2.4(supports-color@10.2.2)(vitest@3.2.4)':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
       ast-v8-to-istanbul: 0.3.5
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
-      istanbul-lib-source-maps: 5.0.6
+      istanbul-lib-source-maps: 5.0.6(supports-color@10.2.2)
       istanbul-reports: 3.2.0
       magic-string: 0.30.19
       magicast: 0.3.5
       std-env: 3.9.0
       test-exclude: 7.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(terser@5.16.9)(yaml@2.8.1)
+      vitest: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6)(supports-color@10.2.2))(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -8518,7 +8562,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(terser@5.16.9)(yaml@2.8.1)
+      vitest: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6)(supports-color@10.2.2))(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -8622,7 +8666,7 @@ snapshots:
   better-auth-cloudflare@0.2.6(@cloudflare/workers-types@4.20251003.0)(better-auth@1.3.34(next@15.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(kysely@0.28.12):
     dependencies:
       better-auth: 1.3.34(next@15.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      drizzle-orm: 0.44.6(@cloudflare/workers-types@4.20251003.0)(kysely@0.28.12)
+      drizzle-orm: 0.44.7(@cloudflare/workers-types@4.20251003.0)(kysely@0.28.12)
       zod: 4.3.6
     transitivePeerDependencies:
       - '@aws-sdk/client-rds-data'
@@ -8692,11 +8736,11 @@ snapshots:
 
   blake3-wasm@2.1.5: {}
 
-  body-parser@2.2.0:
+  body-parser@2.2.0(supports-color@10.2.2):
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       http-errors: 2.0.0
       iconv-lite: 0.6.3
       on-finished: 2.4.1
@@ -8900,13 +8944,17 @@ snapshots:
       whatwg-mimetype: 4.0.0
       whatwg-url: 15.1.0
 
-  debug@4.3.6:
+  debug@4.3.6(supports-color@10.2.2):
     dependencies:
       ms: 2.1.2
+    optionalDependencies:
+      supports-color: 10.2.2
 
-  debug@4.4.3:
+  debug@4.4.3(supports-color@10.2.2):
     dependencies:
       ms: 2.1.3
+    optionalDependencies:
+      supports-color: 10.2.2
 
   decimal.js-light@2.5.1: {}
 
@@ -8943,12 +8991,12 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-  drizzle-kit@0.31.5:
+  drizzle-kit@0.31.5(supports-color@10.2.2):
     dependencies:
       '@drizzle-team/brocli': 0.10.2
       '@esbuild-kit/esm-loader': 2.6.5
       esbuild: 0.25.10
-      esbuild-register: 3.6.0(esbuild@0.25.10)
+      esbuild-register: 3.6.0(esbuild@0.25.10)(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -8957,7 +9005,7 @@ snapshots:
       '@cloudflare/workers-types': 4.20251003.0
       kysely: 0.28.12
 
-  drizzle-orm@0.44.6(@cloudflare/workers-types@4.20251003.0)(kysely@0.28.12):
+  drizzle-orm@0.44.7(@cloudflare/workers-types@4.20251003.0)(kysely@0.28.12):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20251003.0
       kysely: 0.28.12
@@ -9023,9 +9071,9 @@ snapshots:
 
   es-toolkit@1.39.10: {}
 
-  esbuild-register@3.6.0(esbuild@0.25.10):
+  esbuild-register@3.6.0(esbuild@0.25.10)(supports-color@10.2.2):
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       esbuild: 0.25.10
     transitivePeerDependencies:
       - supports-color
@@ -9169,20 +9217,20 @@ snapshots:
 
   expect-type@1.2.2: {}
 
-  express@5.0.1:
+  express@5.0.1(supports-color@10.2.2):
     dependencies:
       accepts: 2.0.0
-      body-parser: 2.2.0
+      body-parser: 2.2.0(supports-color@10.2.2)
       content-disposition: 1.0.0
       content-type: 1.0.5
       cookie: 0.7.1
       cookie-signature: 1.2.2
-      debug: 4.3.6
+      debug: 4.3.6(supports-color@10.2.2)
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
-      finalhandler: 2.1.0
+      finalhandler: 2.1.0(supports-color@10.2.2)
       fresh: 2.0.0
       http-errors: 2.0.0
       merge-descriptors: 2.0.0
@@ -9194,10 +9242,10 @@ snapshots:
       proxy-addr: 2.0.7
       qs: 6.13.0
       range-parser: 1.2.1
-      router: 2.2.0
+      router: 2.2.0(supports-color@10.2.2)
       safe-buffer: 5.2.1
-      send: 1.2.0
-      serve-static: 2.2.0
+      send: 1.2.0(supports-color@10.2.2)
+      serve-static: 2.2.0(supports-color@10.2.2)
       setprototypeof: 1.2.0
       statuses: 2.0.1
       type-is: 2.0.1
@@ -9240,9 +9288,9 @@ snapshots:
     dependencies:
       to-regex-range: 5.0.1
 
-  finalhandler@2.1.0:
+  finalhandler@2.1.0(supports-color@10.2.2):
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -9383,17 +9431,17 @@ snapshots:
       statuses: 2.0.1
       toidentifier: 1.0.1
 
-  http-proxy-agent@7.0.2:
+  http-proxy-agent@7.0.2(supports-color@10.2.2):
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
-  https-proxy-agent@7.0.6:
+  https-proxy-agent@7.0.6(supports-color@10.2.2):
     dependencies:
       agent-base: 7.1.4
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -9464,10 +9512,10 @@ snapshots:
       make-dir: 4.0.0
       supports-color: 7.2.0
 
-  istanbul-lib-source-maps@5.0.6:
+  istanbul-lib-source-maps@5.0.6(supports-color@10.2.2):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       istanbul-lib-coverage: 3.2.2
     transitivePeerDependencies:
       - supports-color
@@ -9497,15 +9545,15 @@ snapshots:
 
   js-tokens@9.0.1: {}
 
-  jsdom@27.0.0(postcss@8.5.6):
+  jsdom@27.0.0(postcss@8.5.6)(supports-color@10.2.2):
     dependencies:
       '@asamuzakjp/dom-selector': 6.5.7
       cssstyle: 5.3.1(postcss@8.5.6)
       data-urls: 6.0.0
       decimal.js: 10.6.0
       html-encoding-sniffer: 4.0.0
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
+      http-proxy-agent: 7.0.2(supports-color@10.2.2)
+      https-proxy-agent: 7.0.6(supports-color@10.2.2)
       is-potential-custom-element-name: 1.0.1
       parse5: 7.3.0
       rrweb-cssom: 0.8.0
@@ -10029,9 +10077,9 @@ snapshots:
 
   rou3@0.5.1: {}
 
-  router@2.2.0:
+  router@2.2.0(supports-color@10.2.2):
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -10059,9 +10107,9 @@ snapshots:
 
   semver@7.7.4: {}
 
-  send@1.2.0:
+  send@1.2.0(supports-color@10.2.2):
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -10075,12 +10123,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  serve-static@2.2.0:
+  serve-static@2.2.0(supports-color@10.2.2):
     dependencies:
       encodeurl: 2.0.0
       escape-html: 1.0.3
       parseurl: 1.3.3
-      send: 1.2.0
+      send: 1.2.0(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -10474,10 +10522,10 @@ snapshots:
       d3-time: 3.1.0
       d3-timer: 3.0.1
 
-  vite-node@3.2.4(@types/node@20.19.19)(jiti@1.21.7)(terser@5.16.9)(yaml@2.8.1):
+  vite-node@3.2.4(@types/node@20.19.19)(jiti@1.21.7)(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       es-module-lexer: 1.7.0
       pathe: 2.0.3
       vite: 7.1.9(@types/node@20.19.19)(jiti@1.21.7)(terser@5.16.9)(yaml@2.8.1)
@@ -10510,7 +10558,7 @@ snapshots:
       terser: 5.16.9
       yaml: 2.8.1
 
-  vitest@3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6))(terser@5.16.9)(yaml@2.8.1):
+  vitest@3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@1.21.7)(jsdom@27.0.0(postcss@8.5.6)(supports-color@10.2.2))(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -10521,7 +10569,7 @@ snapshots:
       '@vitest/spy': 3.2.4
       '@vitest/utils': 3.2.4
       chai: 5.3.3
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@10.2.2)
       expect-type: 1.2.2
       magic-string: 0.30.19
       pathe: 2.0.3
@@ -10533,12 +10581,12 @@ snapshots:
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
       vite: 7.1.9(@types/node@20.19.19)(jiti@1.21.7)(terser@5.16.9)(yaml@2.8.1)
-      vite-node: 3.2.4(@types/node@20.19.19)(jiti@1.21.7)(terser@5.16.9)(yaml@2.8.1)
+      vite-node: 3.2.4(@types/node@20.19.19)(jiti@1.21.7)(supports-color@10.2.2)(terser@5.16.9)(yaml@2.8.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 20.19.19
       '@vitest/ui': 3.2.4(vitest@3.2.4)
-      jsdom: 27.0.0(postcss@8.5.6)
+      jsdom: 27.0.0(postcss@8.5.6)(supports-color@10.2.2)
     transitivePeerDependencies:
       - jiti
       - less
