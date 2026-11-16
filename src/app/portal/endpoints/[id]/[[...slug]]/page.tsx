@@ -15,6 +15,11 @@ import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { usePortalContext } from "../../../layout";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
 import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
+import KeyValuePairsEditor, {
+  keyValuePairsFromRecord,
+  recordFromKeyValuePairs,
+  type KeyValuePair,
+} from "@/components/shared/KeyValuePairsEditor";
 import type { EventTypeVariable } from "@/lib/webhookApi";
 import { toast } from "sonner";
 
@@ -147,7 +152,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
   const [testing, setTesting] = useState(false);
   const [destinationUrl, setDestinationUrl] = useState("");
   const [timeoutMs, setTimeoutMs] = useState(10000);
-  const [customHeaders, setCustomHeaders] = useState("");
+  const [customHeaders, setCustomHeaders] = useState<KeyValuePair[]>([]);
   const [payloadTemplate, setPayloadTemplate] = useState("");
 
   // Time range state for each chart
@@ -197,7 +202,7 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
       if (data.endpoint.destinationType === "webhook") {
         setDestinationUrl(data.endpoint.destination?.url ?? data.endpoint.url);
         setTimeoutMs(data.endpoint.destination?.timeoutMs ?? 10000);
-        setCustomHeaders(JSON.stringify(data.endpoint.destination?.customHeaders ?? {}, null, 2));
+        setCustomHeaders(keyValuePairsFromRecord(data.endpoint.destination?.customHeaders));
         setPayloadTemplate(data.endpoint.destination?.payloadTemplate ?? "");
       }
     } catch (err) {
@@ -349,7 +354,13 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
           </Link>
           <div className="flex items-start gap-4">
             <div className="size-10 sm:size-12 md:size-14 bg-muted flex items-center justify-center mt-1 md:mt-0.5">
-              <svg className="size-5 sm:size-6 md:size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                className="size-5 sm:size-6 md:size-7"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
                 <path d="M2 17l10 5 10-5" />
                 <path d="M2 12l10 5 10-5" />
@@ -907,13 +918,14 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="headers">Custom headers (JSON)</Label>
-                      <Textarea
+                      <Label>Custom headers</Label>
+                      <KeyValuePairsEditor
                         id="headers"
-                        rows={4}
                         value={customHeaders}
-                        onChange={event => setCustomHeaders(event.target.value)}
-                        className="font-mono text-sm"
+                        onChange={setCustomHeaders}
+                        keyPlaceholder="Header name"
+                        valuePlaceholder="Header value"
+                        addLabel="Add header"
                       />
                     </div>
                     <div className="space-y-2">
@@ -926,21 +938,17 @@ export default function EndpointDetailPage({ params }: EndpointDetailPageProps) 
                       />
                     </div>
                     <Button
-                      onClick={() => {
-                        try {
-                          saveEndpoint({
-                            destinationType: "webhook",
-                            destination: {
-                              url: destinationUrl,
-                              timeoutMs,
-                              customHeaders: customHeaders.trim() ? JSON.parse(customHeaders) : {},
-                              payloadTemplate,
-                            },
-                          });
-                        } catch {
-                          setError("Custom headers must be valid JSON");
-                        }
-                      }}
+                      onClick={() =>
+                        saveEndpoint({
+                          destinationType: "webhook",
+                          destination: {
+                            url: destinationUrl,
+                            timeoutMs,
+                            customHeaders: recordFromKeyValuePairs(customHeaders),
+                            payloadTemplate,
+                          },
+                        })
+                      }
                       disabled={saving}
                       size="sm"
                     >

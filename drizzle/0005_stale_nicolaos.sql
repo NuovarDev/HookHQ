@@ -1,0 +1,1 @@
+ALTER TABLE `event_types` ADD `example_payload` text;

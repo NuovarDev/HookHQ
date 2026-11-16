@@ -135,6 +135,7 @@ export interface EventType {
   name: string;
   description?: string | null;
   schema?: Record<string, unknown> | null;
+  examplePayload?: Record<string, unknown> | null;
   variables: EventTypeVariable[];
   enabled: boolean;
   createdAt: string;
@@ -260,6 +261,7 @@ export async function createEventType(payload: {
   name: string;
   description?: string;
   schema?: Record<string, unknown>;
+  examplePayload?: Record<string, unknown>;
   variables?: EventTypeVariable[];
   enabled: boolean;
 }) {

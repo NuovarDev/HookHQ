@@ -2,7 +2,7 @@ import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { eventTypes } from "@/db/webhooks.schema";
-import { validateSchema } from "@/lib/schemaValidation";
+import { validateData, validateSchema } from "@/lib/schemaValidation";
 import {
   enabledQuerySchema,
   errorResponseSchema,
@@ -18,6 +18,7 @@ function formatEventType(eventType: typeof eventTypes.$inferSelect) {
     name: eventType.name,
     description: eventType.description,
     schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+    examplePayload: eventType.examplePayload ? JSON.parse(eventType.examplePayload) : null,
     variables: eventType.variables ? JSON.parse(eventType.variables) : [],
     enabled: eventType.enabled,
     createdAt: eventType.createdAt.toISOString(),
@@ -85,6 +86,10 @@ export function registerEventTypeCollectionRoutes(app: OpenAPIHono<{ Bindings: C
       const validation = validateSchema(body.schema);
       if (!validation.valid) return jsonError("Invalid schema", 400, { details: validation.errors });
     }
+    if (body.schema && body.examplePayload) {
+      const validation = validateData(body.schema, body.examplePayload);
+      if (!validation.valid) return jsonError("Example payload validation failed", 400, { details: validation.errors });
+    }
     const now = new Date();
     const id = `${auth.environmentId}_${crypto.randomUUID().substring(0, 8)}`;
     const db = await getDb(c.env);
@@ -94,6 +99,7 @@ export function registerEventTypeCollectionRoutes(app: OpenAPIHono<{ Bindings: C
       name: body.name,
       description: body.description,
       schema: body.schema ? JSON.stringify(body.schema) : null,
+      examplePayload: body.examplePayload ? JSON.stringify(body.examplePayload) : null,
       variables: JSON.stringify(body.variables ?? []),
       enabled: body.enabled ?? true,
       createdAt: now,
@@ -106,6 +112,7 @@ export function registerEventTypeCollectionRoutes(app: OpenAPIHono<{ Bindings: C
         name: body.name,
         description: body.description ?? null,
         schema: body.schema ? JSON.stringify(body.schema) : null,
+        examplePayload: body.examplePayload ? JSON.stringify(body.examplePayload) : null,
         variables: JSON.stringify(body.variables ?? []),
         enabled: body.enabled ?? true,
         createdAt: now,

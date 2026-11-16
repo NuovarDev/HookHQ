@@ -2,7 +2,7 @@ import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { eventTypes } from "@/db/webhooks.schema";
-import { validateSchema } from "@/lib/schemaValidation";
+import { validateData, validateSchema } from "@/lib/schemaValidation";
 import {
   deleteResponseSchema,
   errorResponseSchema,
@@ -19,6 +19,7 @@ function formatEventType(eventType: typeof eventTypes.$inferSelect) {
     name: eventType.name,
     description: eventType.description,
     schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+    examplePayload: eventType.examplePayload ? JSON.parse(eventType.examplePayload) : null,
     variables: eventType.variables ? JSON.parse(eventType.variables) : [],
     enabled: eventType.enabled,
     createdAt: eventType.createdAt.toISOString(),
@@ -132,10 +133,21 @@ export function registerEventTypeItemRoutes(app: OpenAPIHono<{ Bindings: Cloudfl
       const validation = validateSchema(body.schema);
       if (!validation.valid) return jsonError("Invalid schema", 400, { details: validation.errors });
     }
+    if (body.examplePayload !== undefined && body.examplePayload !== null) {
+      const schema = body.schema ?? (existing[0].schema ? JSON.parse(existing[0].schema) : null);
+      if (schema) {
+        const validation = validateData(schema, body.examplePayload);
+        if (!validation.valid)
+          return jsonError("Example payload validation failed", 400, { details: validation.errors });
+      }
+    }
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (body.name !== undefined) updateData.name = body.name;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.schema !== undefined) updateData.schema = JSON.stringify(body.schema);
+    if (body.examplePayload !== undefined) {
+      updateData.examplePayload = body.examplePayload === null ? null : JSON.stringify(body.examplePayload);
+    }
     if (body.variables !== undefined) updateData.variables = JSON.stringify(body.variables);
     if (body.enabled !== undefined) updateData.enabled = body.enabled;
     await db

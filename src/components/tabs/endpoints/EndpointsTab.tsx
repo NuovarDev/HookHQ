@@ -5,6 +5,11 @@ import { Check, Copy, Edit, Globe, Hash, Plus, Power, PowerOff, Trash2, Users } 
 import EditableTemplate from "@/components/EditableTemplate";
 import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
+import KeyValuePairsEditor, {
+  keyValuePairsFromRecord,
+  recordFromKeyValuePairs,
+  type KeyValuePair,
+} from "@/components/shared/KeyValuePairsEditor";
 import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +63,8 @@ type EndpointFormState = {
   autoDisableEnabled: boolean;
   autoDisableThreshold: number;
   timeoutMs: number;
-  customHeaders: string;
+  customHeaders: KeyValuePair[];
+  metadata: KeyValuePair[];
   payloadTemplate: string;
   proxyGroupId: string;
 };
@@ -107,7 +113,8 @@ const initialFormState: EndpointFormState = {
   autoDisableEnabled: false,
   autoDisableThreshold: 10,
   timeoutMs: 10_000,
-  customHeaders: "",
+  customHeaders: [],
+  metadata: [],
   payloadTemplate: "",
   proxyGroupId: "none",
 };
@@ -130,9 +137,8 @@ async function fetchProxyGroups() {
 }
 
 function getEndpointPayload(formData: EndpointFormState, existingEndpoint: Endpoint | null) {
-  const customHeaders = formData.customHeaders.trim()
-    ? (JSON.parse(formData.customHeaders) as Record<string, string>)
-    : undefined;
+  const customHeaders = recordFromKeyValuePairs(formData.customHeaders);
+  const metadata = recordFromKeyValuePairs(formData.metadata);
 
   return {
     name: formData.name.trim(),
@@ -144,7 +150,7 @@ function getEndpointPayload(formData: EndpointFormState, existingEndpoint: Endpo
         ? {
             url: formData.target.trim(),
             timeoutMs: formData.timeoutMs,
-            ...(customHeaders !== undefined || !existingEndpoint ? { customHeaders } : {}),
+            ...(formData.customHeaders.length > 0 || !existingEndpoint ? { customHeaders } : {}),
             ...(formData.payloadTemplate.trim() || !existingEndpoint
               ? { payloadTemplate: formData.payloadTemplate.trim() || undefined }
               : {}),
@@ -183,6 +189,7 @@ function getEndpointPayload(formData: EndpointFormState, existingEndpoint: Endpo
       enabled: formData.autoDisableEnabled,
       threshold: formData.autoDisableThreshold,
     },
+    metadata,
   };
 }
 
@@ -268,7 +275,8 @@ export default function EndpointsTab() {
       autoDisableEnabled: endpoint.autoDisable.enabled,
       autoDisableThreshold: endpoint.autoDisable.threshold,
       timeoutMs: endpoint.destinationType === "webhook" ? (endpoint.destination.timeoutMs ?? 10000) : 10000,
-      customHeaders: "",
+      customHeaders: [],
+      metadata: keyValuePairsFromRecord(endpoint.metadata),
       payloadTemplate: endpoint.destinationType === "webhook" ? (endpoint.destination.payloadTemplate ?? "") : "",
       proxyGroupId: endpoint.destinationType === "webhook" ? endpoint.destination.proxyGroupId || "none" : "none",
     });
@@ -355,7 +363,7 @@ export default function EndpointsTab() {
                   : "Add a new event endpoint to receive notifications"}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain px-1 py-4 sm:px-2">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="endpoint-name">Name *</Label>
@@ -431,60 +439,6 @@ export default function EndpointsTab() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-retry-policy">Retry Policy</Label>
-                  <Select
-                    value={formData.retryStrategy}
-                    onValueChange={(value: EndpointFormState["retryStrategy"]) =>
-                      setFormData(current => ({ ...current, retryStrategy: value }))
-                    }
-                  >
-                    <SelectTrigger id="endpoint-retry-policy">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="exponential">Exponential</SelectItem>
-                      <SelectItem value="linear">Linear</SelectItem>
-                      <SelectItem value="fixed">Fixed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-max-attempts">Max Attempts</Label>
-                  <Input
-                    id="endpoint-max-attempts"
-                    type="number"
-                    min={1}
-                    value={formData.maxAttempts}
-                    onChange={event =>
-                      setFormData(current => ({
-                        ...current,
-                        maxAttempts: Number.parseInt(event.target.value || "1", 10),
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-base-delay">Base Delay (s)</Label>
-                  <Input
-                    id="endpoint-base-delay"
-                    type="number"
-                    min={1}
-                    value={formData.baseDelaySeconds}
-                    onChange={event =>
-                      setFormData(current => ({
-                        ...current,
-                        baseDelaySeconds: Number.parseInt(event.target.value || "1", 10),
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
               {formData.destinationType === "pubsub" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -531,129 +485,189 @@ export default function EndpointsTab() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-auto-disable">Auto Disable</Label>
-                  <Select
-                    value={formData.autoDisableEnabled ? "enabled" : "disabled"}
-                    onValueChange={value =>
-                      setFormData(current => ({ ...current, autoDisableEnabled: value === "enabled" }))
-                    }
-                  >
-                    <SelectTrigger id="endpoint-auto-disable">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="disabled">Disabled</SelectItem>
-                      <SelectItem value="enabled">Enabled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <details className="order-last rounded-md border p-4">
+                <summary className="cursor-pointer text-sm font-medium">Advanced settings</summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-retry-policy">Retry Policy</Label>
+                      <Select
+                        value={formData.retryStrategy}
+                        onValueChange={(value: EndpointFormState["retryStrategy"]) =>
+                          setFormData(current => ({ ...current, retryStrategy: value }))
+                        }
+                      >
+                        <SelectTrigger id="endpoint-retry-policy">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          <SelectItem value="exponential">Exponential</SelectItem>
+                          <SelectItem value="linear">Linear</SelectItem>
+                          <SelectItem value="fixed">Fixed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-auto-disable-threshold">Disable After Consecutive Failures</Label>
-                  <Input
-                    id="endpoint-auto-disable-threshold"
-                    type="number"
-                    min={1}
-                    value={formData.autoDisableThreshold}
-                    onChange={event =>
-                      setFormData(current => ({
-                        ...current,
-                        autoDisableThreshold: Number.parseInt(event.target.value || "1", 10),
-                      }))
-                    }
-                    disabled={!formData.autoDisableEnabled}
-                  />
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-max-attempts">Max Attempts</Label>
+                      <Input
+                        id="endpoint-max-attempts"
+                        type="number"
+                        min={1}
+                        value={formData.maxAttempts}
+                        onChange={event =>
+                          setFormData(current => ({
+                            ...current,
+                            maxAttempts: Number.parseInt(event.target.value || "1", 10),
+                          }))
+                        }
+                      />
+                    </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-max-delay">Max Delay (s)</Label>
-                  <Input
-                    id="endpoint-max-delay"
-                    type="number"
-                    min={1}
-                    value={formData.maxDelaySeconds}
-                    onChange={event =>
-                      setFormData(current => ({
-                        ...current,
-                        maxDelaySeconds: Number.parseInt(event.target.value || "1", 10),
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="endpoint-jitter">Jitter</Label>
-                  <Input
-                    id="endpoint-jitter"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={formData.jitterFactor}
-                    onChange={event =>
-                      setFormData(current => ({
-                        ...current,
-                        jitterFactor: Number.parseFloat(event.target.value || "0"),
-                      }))
-                    }
-                  />
-                </div>
-
-                {formData.destinationType === "webhook" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="endpoint-timeout">Timeout (ms)</Label>
-                    <Input
-                      id="endpoint-timeout"
-                      type="number"
-                      min={100}
-                      value={formData.timeoutMs}
-                      onChange={event =>
-                        setFormData(current => ({
-                          ...current,
-                          timeoutMs: Number.parseInt(event.target.value || "100", 10),
-                        }))
-                      }
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-base-delay">Base Delay (s)</Label>
+                      <Input
+                        id="endpoint-base-delay"
+                        type="number"
+                        min={1}
+                        value={formData.baseDelaySeconds}
+                        onChange={event =>
+                          setFormData(current => ({
+                            ...current,
+                            baseDelaySeconds: Number.parseInt(event.target.value || "1", 10),
+                          }))
+                        }
+                      />
+                    </div>
                   </div>
-                ) : formData.destinationType === "sqs" ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="endpoint-sqs-delay">SQS Delay (s)</Label>
-                    <Input
-                      id="endpoint-sqs-delay"
-                      type="number"
-                      min={0}
-                      max={900}
-                      value={formData.sqsDelaySeconds}
-                      onChange={event =>
-                        setFormData(current => ({
-                          ...current,
-                          sqsDelaySeconds: Number.parseInt(event.target.value || "0", 10),
-                        }))
-                      }
-                    />
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-auto-disable">Auto Disable</Label>
+                      <Select
+                        value={formData.autoDisableEnabled ? "enabled" : "disabled"}
+                        onValueChange={value =>
+                          setFormData(current => ({ ...current, autoDisableEnabled: value === "enabled" }))
+                        }
+                      >
+                        <SelectTrigger id="endpoint-auto-disable">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                          <SelectItem value="enabled">Enabled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-auto-disable-threshold">Disable After Consecutive Failures</Label>
+                      <Input
+                        id="endpoint-auto-disable-threshold"
+                        type="number"
+                        min={1}
+                        value={formData.autoDisableThreshold}
+                        onChange={event =>
+                          setFormData(current => ({
+                            ...current,
+                            autoDisableThreshold: Number.parseInt(event.target.value || "1", 10),
+                          }))
+                        }
+                        disabled={!formData.autoDisableEnabled}
+                      />
+                    </div>
                   </div>
-                ) : null}
-              </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-max-delay">Max Delay (s)</Label>
+                      <Input
+                        id="endpoint-max-delay"
+                        type="number"
+                        min={1}
+                        value={formData.maxDelaySeconds}
+                        onChange={event =>
+                          setFormData(current => ({
+                            ...current,
+                            maxDelaySeconds: Number.parseInt(event.target.value || "1", 10),
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="endpoint-jitter">Jitter</Label>
+                      <Input
+                        id="endpoint-jitter"
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={formData.jitterFactor}
+                        onChange={event =>
+                          setFormData(current => ({
+                            ...current,
+                            jitterFactor: Number.parseFloat(event.target.value || "0"),
+                          }))
+                        }
+                      />
+                    </div>
+
+                    {formData.destinationType === "webhook" ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="endpoint-timeout">Timeout (ms)</Label>
+                        <Input
+                          id="endpoint-timeout"
+                          type="number"
+                          min={100}
+                          value={formData.timeoutMs}
+                          onChange={event =>
+                            setFormData(current => ({
+                              ...current,
+                              timeoutMs: Number.parseInt(event.target.value || "100", 10),
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : formData.destinationType === "sqs" ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="endpoint-sqs-delay">SQS Delay (s)</Label>
+                        <Input
+                          id="endpoint-sqs-delay"
+                          type="number"
+                          min={0}
+                          max={900}
+                          value={formData.sqsDelaySeconds}
+                          onChange={event =>
+                            setFormData(current => ({
+                              ...current,
+                              sqsDelaySeconds: Number.parseInt(event.target.value || "0", 10),
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </details>
 
               {formData.destinationType === "webhook" ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="endpoint-custom-headers">Custom Headers (JSON)</Label>
-                    <Textarea
+                    <Label>Custom Headers</Label>
+                    <KeyValuePairsEditor
                       id="endpoint-custom-headers"
-                      className="min-h-[100px] font-mono text-sm"
                       value={formData.customHeaders}
-                      onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
-                      placeholder='{"Authorization":"Bearer token","X-Custom":"value"}'
+                      onChange={customHeaders => setFormData(current => ({ ...current, customHeaders }))}
+                      keyPlaceholder="Header name"
+                      valuePlaceholder="Header value"
+                      addLabel="Add header"
                     />
                     {editingEndpoint?.destinationType === "webhook" && editingEndpoint.destination.hasCustomHeaders ? (
                       <p className="text-sm text-muted-foreground">
-                        Custom headers are already stored. Leave this blank to keep them, or enter new JSON to replace
-                        them.
+                        Custom headers are already stored. Add one or more headers to replace them, or leave this blank
+                        to keep them.
                       </p>
                     ) : null}
                   </div>
@@ -743,6 +757,21 @@ export default function EndpointsTab() {
                   </div>
                 </div>
               ) : null}
+
+              <details className="rounded-md border p-4">
+                <summary className="cursor-pointer text-sm font-medium">Metadata (optional)</summary>
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">Add metadata to organize and filter this endpoint.</p>
+                  <KeyValuePairsEditor
+                    id="endpoint-metadata"
+                    value={formData.metadata}
+                    onChange={metadata => setFormData(current => ({ ...current, metadata }))}
+                    keyPlaceholder="Metadata key"
+                    valuePlaceholder="Metadata value"
+                    addLabel="Add metadata"
+                  />
+                </div>
+              </details>
             </div>
             <DialogFooter className="shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>

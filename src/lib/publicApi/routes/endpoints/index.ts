@@ -1,11 +1,16 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { serverConfig } from "@/db/environments.schema";
-import { endpoints } from "@/db/webhooks.schema";
+import { endpointGroups, endpoints } from "@/db/webhooks.schema";
 import { parseAutoDisableConfig } from "@/lib/destinations/config";
 import { buildEndpointInsertValues, formatEndpoint } from "@/lib/publicApi/serializers";
-import { enabledQuerySchema, endpointCreateSchema, endpointSchema, errorResponseSchema } from "@/lib/publicApi/schemas";
+import {
+  endpointCreateSchema,
+  endpointListQuerySchema,
+  endpointSchema,
+  errorResponseSchema,
+} from "@/lib/publicApi/schemas";
 import { jsonError, parseEnabledFilter, requireEnvironmentAccess } from "@/lib/publicApi/utils";
 import { validateWebhookDestinationTemplates } from "@/lib/webhookTemplates";
 
@@ -15,7 +20,7 @@ const listEndpointsRoute = createRoute({
   tags: ["Endpoints"],
   summary: "List Endpoints",
   request: {
-    query: enabledQuerySchema,
+    query: endpointListQuerySchema,
   },
   responses: {
     200: {
@@ -66,9 +71,10 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
     });
     if (auth instanceof Response) return auth;
 
-    const enabled = parseEnabledFilter(c.req.valid("query").enabled);
+    const query = c.req.valid("query");
+    const enabled = parseEnabledFilter(query.enabled);
     let metadata: Record<string, string> = {};
-    const metadataQuery = c.req.valid("query").metadata;
+    const metadataQuery = query.metadata;
     if (metadataQuery) {
       try {
         metadata = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string()).parse(JSON.parse(metadataQuery));
@@ -85,6 +91,18 @@ export function registerEndpointCollectionRoutes(app: OpenAPIHono<{ Bindings: Cl
     }
 
     const db = await getDb(c.env);
+    if (query.endpointGroupId) {
+      const group = await db
+        .select({ endpointIds: endpointGroups.endpointIds })
+        .from(endpointGroups)
+        .where(and(eq(endpointGroups.id, query.endpointGroupId), eq(endpointGroups.environmentId, auth.environmentId)))
+        .limit(1);
+      const endpointIds = group[0]?.endpointIds ? JSON.parse(group[0].endpointIds) : [];
+      if (!Array.isArray(endpointIds) || endpointIds.length === 0) {
+        return c.json({ endpoints: [] }, 200);
+      }
+      conditions.push(inArray(endpoints.id, endpointIds));
+    }
     const endpointList = await db
       .select()
       .from(endpoints)

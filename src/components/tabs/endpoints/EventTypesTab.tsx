@@ -34,6 +34,7 @@ type EventTypeFormState = {
   name: string;
   description: string;
   schema: string;
+  examplePayload: string;
   variables: EventTypeVariable[];
   enabled: boolean;
 };
@@ -42,6 +43,7 @@ const initialFormState: EventTypeFormState = {
   name: "",
   description: "",
   schema: "",
+  examplePayload: "",
   variables: [],
   enabled: true,
 };
@@ -106,6 +108,7 @@ export default function EventTypesTab() {
       name: eventType.name,
       description: eventType.description || "",
       schema: eventType.schema ? JSON.stringify(eventType.schema, null, 2) : "",
+      examplePayload: eventType.examplePayload ? JSON.stringify(eventType.examplePayload, null, 2) : "",
       variables: eventType.variables ?? [],
       enabled: eventType.enabled,
     });
@@ -135,6 +138,7 @@ export default function EventTypesTab() {
         name: duplicateName.trim(),
         description: duplicateDescription.trim() || undefined,
         schema: duplicateSource.schema ?? undefined,
+        examplePayload: duplicateSource.examplePayload ?? undefined,
         variables: duplicateSource.variables.map(variable => ({ ...variable })),
         enabled: duplicateSource.enabled,
       });
@@ -148,7 +152,8 @@ export default function EventTypesTab() {
 
   async function handleSubmit() {
     try {
-      const payload = {
+      const examplePayload = formData.examplePayload.trim() ? parseSchema(formData.examplePayload) : null;
+      const basePayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || undefined,
         schema: parseSchema(formData.schema),
@@ -157,12 +162,14 @@ export default function EventTypesTab() {
       };
 
       if (editingEventType) {
-        const updatedEventType = await updateEventType(editingEventType.id, payload);
+        const updatedEventType = await updateEventType(editingEventType.id, { ...basePayload, examplePayload });
         setEventTypes(current =>
           current.map(eventType => (eventType.id === editingEventType.id ? updatedEventType : eventType))
         );
       } else {
-        const createdEventType = await createEventType(payload);
+        const createdEventType = await createEventType(
+          examplePayload ? { ...basePayload, examplePayload } : basePayload
+        );
         setEventTypes(current => [...current, createdEventType]);
       }
 
@@ -221,7 +228,7 @@ export default function EventTypesTab() {
                   : "Define a new event type with its payload schema"}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain px-1 py-4 sm:px-2">
               <div className="space-y-2">
                 <Label htmlFor="event-type-name">Name *</Label>
                 <Input
@@ -352,6 +359,23 @@ export default function EventTypesTab() {
                   Define the structure of the event payload using JSON Schema.
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-type-example-payload">Example Payload (Optional)</Label>
+                <Textarea
+                  id="event-type-example-payload"
+                  className="min-h-[160px] font-mono text-sm"
+                  value={formData.examplePayload}
+                  onChange={event => setFormData(current => ({ ...current, examplePayload: event.target.value }))}
+                  placeholder={`{
+  "userId": "usr_123",
+  "email": "customer@example.com"
+}`}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for test deliveries unless the endpoint has its own payload template.
+                </p>
+              </div>
             </div>
             <DialogFooter className="shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -465,6 +489,7 @@ export default function EventTypesTab() {
                           Schema
                         </Badge>
                       )}
+                      {eventType.examplePayload && <Badge variant="outline">Example payload</Badge>}
                       {(eventType.variables?.length ?? 0) > 0 && (
                         <Badge variant="outline">{eventType.variables.length} variables</Badge>
                       )}

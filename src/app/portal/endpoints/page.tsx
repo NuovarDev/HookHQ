@@ -27,7 +27,12 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import DestinationTypeIcon from "@/components/portal/DestinationTypeIcon";
 import WebhookTemplateEditor from "@/components/WebhookTemplateEditor";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
+import KeyValuePairsEditor, {
+  recordFromKeyValuePairs,
+  type KeyValuePair,
+} from "@/components/shared/KeyValuePairsEditor";
 import type { EventType, EventTypeVariable } from "@/lib/webhookApi";
+import { toast } from "sonner";
 
 interface Endpoint {
   id: string;
@@ -59,7 +64,7 @@ type CreateEndpointFormState = {
   destinationType: "webhook" | "sqs" | "pubsub";
   target: string;
   timeoutMs: number;
-  customHeaders: string;
+  customHeaders: KeyValuePair[];
   payloadTemplate: string;
   sqsRegion: string;
   sqsAccessKeyId: string;
@@ -77,7 +82,7 @@ const initialFormState: CreateEndpointFormState = {
   destinationType: "webhook",
   target: "",
   timeoutMs: 10000,
-  customHeaders: "",
+  customHeaders: [],
   payloadTemplate: "",
   sqsRegion: "",
   sqsAccessKeyId: "",
@@ -110,6 +115,7 @@ export default function EndpointsPage() {
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(["*"]);
   const [updatingEndpointId, setUpdatingEndpointId] = useState<string | null>(null);
   const [deletingEndpointId, setDeletingEndpointId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; target?: boolean }>({});
 
   useEffect(() => {
     fetchEndpoints();
@@ -185,13 +191,23 @@ export default function EndpointsPage() {
   const resetForm = () => {
     setFormData(initialFormState);
     setSelectedEventTypes(["*"]);
+    setFieldErrors({});
   };
 
   const handleCreateEndpoint = async () => {
-    if (!formData.name.trim() || !formData.target.trim()) {
-      setError("Name and target are required");
+    const nextFieldErrors = { name: !formData.name.trim(), target: !formData.target.trim() };
+    if (nextFieldErrors.name || nextFieldErrors.target) {
+      setFieldErrors(nextFieldErrors);
+      toast.error(
+        nextFieldErrors.name && nextFieldErrors.target
+          ? "Enter an endpoint name and destination."
+          : nextFieldErrors.name
+            ? "Enter an endpoint name."
+            : "Enter a destination."
+      );
       return;
     }
+    setFieldErrors({});
 
     try {
       const destination =
@@ -199,8 +215,8 @@ export default function EndpointsPage() {
           ? {
               url: formData.target.trim(),
               timeoutMs: formData.timeoutMs,
-              customHeaders: formData.customHeaders.trim()
-                ? (JSON.parse(formData.customHeaders) as Record<string, string>)
+              customHeaders: formData.customHeaders.length
+                ? recordFromKeyValuePairs(formData.customHeaders)
                 : undefined,
               payloadTemplate: formData.payloadTemplate.trim() || undefined,
             }
@@ -237,7 +253,8 @@ export default function EndpointsPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create endpoint");
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || "Failed to create endpoint");
       }
 
       const createdEndpoint = (await response.json()) as Endpoint;
@@ -246,7 +263,9 @@ export default function EndpointsPage() {
       resetForm();
       setError(null);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Failed to create endpoint");
+      const message = nextError instanceof Error ? nextError.message : "Failed to create endpoint";
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -306,9 +325,7 @@ export default function EndpointsPage() {
         <div className="flex items-center justify-between gap-4">
           {isEmbedded && (
             <Link href="/portal">
-              <Button size="sm">
-                Overview
-              </Button>
+              <Button size="sm">Overview</Button>
             </Link>
           )}
           {/* Search and Filters */}
@@ -326,7 +343,11 @@ export default function EndpointsPage() {
               <Button variant={timeRange === "7d" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("7d")}>
                 7d
               </Button>
-              <Button variant={timeRange === "24h" ? "default" : "outline"} size="sm" onClick={() => setTimeRange("24h")}>
+              <Button
+                variant={timeRange === "24h" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeRange("24h")}
+              >
                 24h
               </Button>
             </div>
@@ -494,20 +515,30 @@ export default function EndpointsPage() {
       </div>
 
       {/* Create Endpoint Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={open => {
+          setCreateDialogOpen(open);
+          if (!open) setFieldErrors({});
+        }}
+      >
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-4 overflow-hidden p-4 sm:w-[calc(100vw-4rem)] sm:p-6">
           <DialogHeader>
             <DialogTitle>Create Endpoint</DialogTitle>
             <DialogDescription>Add a new event destination to receive events</DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-1 py-4 sm:px-2">
             <div className="space-y-2">
               <Label htmlFor="portal-endpoint-name">Name</Label>
               <Input
                 id="portal-endpoint-name"
                 placeholder="Production API"
                 value={formData.name}
-                onChange={event => setFormData(current => ({ ...current, name: event.target.value }))}
+                aria-invalid={fieldErrors.name}
+                onChange={event => {
+                  setFormData(current => ({ ...current, name: event.target.value }));
+                  setFieldErrors(current => ({ ...current, name: false }));
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -546,7 +577,11 @@ export default function EndpointsPage() {
                       : "orders-created"
                 }
                 value={formData.target}
-                onChange={event => setFormData(current => ({ ...current, target: event.target.value }))}
+                aria-invalid={fieldErrors.target}
+                onChange={event => {
+                  setFormData(current => ({ ...current, target: event.target.value }));
+                  setFieldErrors(current => ({ ...current, target: false }));
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -589,14 +624,14 @@ export default function EndpointsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="portal-endpoint-headers">Custom Headers (JSON)</Label>
-                  <Textarea
+                  <Label>Custom Headers</Label>
+                  <KeyValuePairsEditor
                     id="portal-endpoint-headers"
-                    rows={4}
-                    className="font-mono text-sm"
-                    placeholder='{"Authorization":"Bearer token"}'
                     value={formData.customHeaders}
-                    onChange={event => setFormData(current => ({ ...current, customHeaders: event.target.value }))}
+                    onChange={customHeaders => setFormData(current => ({ ...current, customHeaders }))}
+                    keyPlaceholder="Header name"
+                    valuePlaceholder="Header value"
+                    addLabel="Add header"
                   />
                 </div>
                 <div className="space-y-2">

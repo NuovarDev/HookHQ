@@ -72,7 +72,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         (variable: { name: string; example: string }) => [variable.name, variable.example]
       )
     );
-    const payload = exampleFromSchema(eventType?.schema ? (JSON.parse(eventType.schema) as JsonSchema) : undefined);
+    const payload = eventType?.examplePayload
+      ? JSON.parse(eventType.examplePayload)
+      : exampleFromSchema(eventType?.schema ? (JSON.parse(eventType.schema) as JsonSchema) : undefined);
     const { env } = await getCloudflareContext({ async: true });
     const response = await handleSendEventRequest({
       body: {

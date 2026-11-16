@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { Check, Copy, Edit, ExternalLink, Hash, Plus, Power, PowerOff, Trash2, Users } from "lucide-react";
 import EditableTemplate from "@/components/EditableTemplate";
 import EventTypeSelector from "@/components/shared/EventTypeSelector";
+import KeyValuePairsEditor, {
+  keyValuePairsFromRecord,
+  recordFromKeyValuePairs,
+  type KeyValuePair,
+} from "@/components/shared/KeyValuePairsEditor";
 import { EmptyStateCard, LoadingStateCard } from "@/components/shared/resource-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +52,7 @@ type EndpointGroupFormState = {
   failureAlertChannelType: "webhook" | "slack";
   failureAlertDestinationUrl: string;
   failureAlertEndpointIds: string[];
+  metadata: KeyValuePair[];
 };
 
 const initialFormState: EndpointGroupFormState = {
@@ -62,6 +68,7 @@ const initialFormState: EndpointGroupFormState = {
   failureAlertChannelType: "webhook",
   failureAlertDestinationUrl: "",
   failureAlertEndpointIds: [],
+  metadata: [],
 };
 
 function getEndpointTarget(endpoint: Endpoint) {
@@ -163,6 +170,7 @@ export default function EndpointGroupsTab() {
       failureAlertChannelType: group.failureAlerts.channelType,
       failureAlertDestinationUrl: group.failureAlerts.destinationUrl || "",
       failureAlertEndpointIds: group.failureAlerts.endpointIds,
+      metadata: keyValuePairsFromRecord(group.metadata),
     });
     setEditingGroup(group);
     setCreateDialogOpen(true);
@@ -185,6 +193,7 @@ export default function EndpointGroupsTab() {
           destinationUrl: formData.failureAlertDestinationUrl,
           endpointIds: formData.failureAlertEndpointIds,
         },
+        metadata: recordFromKeyValuePairs(formData.metadata),
       };
 
       if (editingGroup) {
@@ -317,7 +326,7 @@ export default function EndpointGroupsTab() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:pr-3">
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain px-1 py-4 sm:px-2">
               <div className="space-y-2">
                 <Label htmlFor="endpoint-group-name">Name *</Label>
                 <Input
@@ -337,6 +346,23 @@ export default function EndpointGroupsTab() {
                   placeholder="Optional description"
                 />
               </div>
+
+              <details className="rounded-md border p-4">
+                <summary className="cursor-pointer text-sm font-medium">Metadata (optional)</summary>
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Add metadata to organize and filter this endpoint group.
+                  </p>
+                  <KeyValuePairsEditor
+                    id="endpoint-group-metadata"
+                    value={formData.metadata}
+                    onChange={metadata => setFormData(current => ({ ...current, metadata }))}
+                    keyPlaceholder="Metadata key"
+                    valuePlaceholder="Metadata value"
+                    addLabel="Add metadata"
+                  />
+                </div>
+              </details>
 
               <div className="space-y-2">
                 <Label>Select Endpoints</Label>

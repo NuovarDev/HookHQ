@@ -86,9 +86,9 @@ export async function invalidateEndpointGroupCache(groupId: string, providedEnv?
  * Invalidate endpoint cache for a specific endpoint
  * This should be called whenever an endpoint is updated or deleted
  */
-export async function invalidateEndpointCache(endpointId: string): Promise<void> {
+export async function invalidateEndpointCache(endpointId: string, providedEnv?: CloudflareEnv): Promise<void> {
   try {
-    const { env } = await getCloudflareContext({ async: true });
+    const env = providedEnv ?? (await getCloudflareContext({ async: true })).env;
 
     // Delete the cached endpoint data
     await env.KV.delete(endpointId);

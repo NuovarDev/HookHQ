@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         name: eventType.name,
         description: eventType.description,
         schema: eventType.schema ? JSON.parse(eventType.schema) : null,
+        examplePayload: eventType.examplePayload ? JSON.parse(eventType.examplePayload) : null,
         variables: eventType.variables ? JSON.parse(eventType.variables) : [],
         enabled: eventType.enabled,
         createdAt: eventType.createdAt.toISOString(),

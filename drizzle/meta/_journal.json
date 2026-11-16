@@ -36,6 +36,13 @@
       "when": 1794781843339,
       "tag": "0004_dear_gorgon",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794791524600,
+      "tag": "0005_stale_nicolaos",
+      "breakpoints": true
     }
   ]
 }

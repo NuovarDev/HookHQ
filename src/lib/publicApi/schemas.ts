@@ -73,6 +73,17 @@ export const enabledQuerySchema = z.object({
     .describe('JSON object of exact metadata key-value pairs to match, e.g. {"tenant":"acme"}.'),
 });
 
+export const endpointListQuerySchema = enabledQuerySchema.extend({
+  endpointGroupId: z.string().min(1).optional().describe("Only return endpoints that belong to this endpoint group."),
+});
+
+export const endpointGroupDeleteQuerySchema = z.object({
+  deleteEndpoints: z
+    .enum(["true", "false"])
+    .optional()
+    .describe("When true, also delete every endpoint in the endpoint group. Requires endpoint delete permission."),
+});
+
 export const metadataSchema = z
   .record(
     z
@@ -375,6 +386,7 @@ export const eventTypeSchema = z
     name: z.string(),
     description: z.string().nullable().optional(),
     schema: genericObjectSchema.nullable().optional(),
+    examplePayload: genericObjectSchema.nullable().optional(),
     variables: z.array(eventTypeVariableSchema),
     enabled: z.boolean(),
     createdAt: z.string(),
@@ -387,6 +399,9 @@ export const eventTypeCreateSchema = z
     name: z.string().describe("Name of the event type."),
     description: z.string().optional().describe("Optional description for the event type."),
     schema: genericObjectSchema.optional().describe("Schema to validate the event payload against."),
+    examplePayload: genericObjectSchema
+      .optional()
+      .describe("Optional payload to use when sending a test event without an endpoint payload template."),
     variables: z
       .array(eventTypeVariableSchema)
       .optional()
@@ -400,6 +415,12 @@ export const eventTypeUpdateSchema = z
     name: z.string().optional().describe("Name of the event type."),
     description: z.string().optional().describe("Optional description for the event type."),
     schema: genericObjectSchema.optional().describe("Schema to validate the event payload against."),
+    examplePayload: genericObjectSchema
+      .nullable()
+      .optional()
+      .describe(
+        "Optional payload to use when sending a test event without an endpoint payload template. Set null to clear it."
+      ),
     variables: z
       .array(eventTypeVariableSchema)
       .optional()
