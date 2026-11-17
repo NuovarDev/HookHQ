@@ -1,7 +1,7 @@
 {
   "name": "@hookhq/landing",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "build": "next build",
@@ -18,20 +18,24 @@
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
   },
   "dependencies": {
-    "next": "15.3.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250813.0",
-    "@opennextjs/cloudflare": "^1.18.0",
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@opennextjs/cloudflare": "^1.20.17",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.35",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.33",
     "tailwindcss": "^3.4.15",
     "typescript": "^5",
-    "wrangler": "^4.80.0"
+    "wrangler": "^4.162.0"
+  },
+  "overrides": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
   }
 }

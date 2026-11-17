@@ -20,8 +20,8 @@ const config: Config = {
         panel: "var(--shadow)",
       },
       fontFamily: {
-        sans: ['"IBM Plex Sans"', '"Avenir Next"', '"Segoe UI"', "sans-serif"],
-        mono: ['"IBM Plex Mono"', "monospace"],
+        sans: ['"Avenir Next"', '"Segoe UI"', "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
     },
   },

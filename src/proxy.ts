@@ -2,7 +2,7 @@ import type { CloudflareSessionResponse } from "better-auth-cloudflare";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === "/setup/encryption-key") {

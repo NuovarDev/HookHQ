@@ -7,137 +7,88 @@ const points = [
   ["Multi-tenant", "Separate your environments, applications, and customers within one deployment."],
 ] as const;
 
-export function Hero({ deployUrl, docsUrl, repoUrl }: { deployUrl: string; docsUrl: string; repoUrl: string }) {
+export function Hero({ deployUrl, repoUrl }: { deployUrl: string; repoUrl: string }) {
   return (
-    <section className="grid items-stretch gap-6 min-[1081px]:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-      <article className="flex min-h-[36rem] flex-col justify-between border border-line bg-panel p-7 shadow-panel max-[760px]:p-4">
-        <div>
-          <h1 className="mb-4 font-mono text-[clamp(2.8rem,6vw,6rem)] uppercase leading-[0.94] tracking-[-0.03em]">
-            Ship events.
-            <br />
-            Control your delivery.
-          </h1>
-          <p className="mb-6 max-w-[42rem] text-[1.08rem] leading-[1.7] text-muted">
-            HookHQ is an open source Event Destinations platform for teams that need durable event delivery, endpoint
-            management, and more without depending on a closed SaaS.
-          </p>
-          <div className="mt-8 grid gap-4 [grid-template-columns:repeat(3,max-content)] max-[760px]:grid-cols-1">
-            <a
-              className="inline-flex min-h-11 items-center justify-center gap-2 border border-lineStrong bg-foreground px-4 text-[0.92rem] font-semibold text-background transition hover:-translate-y-px hover:border-foreground"
-              href={deployUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Deploy for free in seconds
-            </a>
-            <a
-              className="inline-flex min-h-11 items-center justify-center gap-2 border border-lineStrong bg-panel px-4 text-[0.92rem] font-semibold transition hover:-translate-y-px hover:border-foreground"
-              href={docsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Read docs
-            </a>
-            <a
-              className="inline-flex min-h-11 items-center justify-center gap-2 border border-lineStrong bg-panel px-4 text-[0.92rem] font-semibold transition hover:-translate-y-px hover:border-foreground"
-              href={repoUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View repository
-            </a>
-          </div>
+    <section className="hero">
+      <article className="hero-copy">
+        <p className="hero-kicker"><span aria-hidden="true" /> Open source Event Destinations</p>
+        <h1>Ship events.<br /><em>Control every delivery.</em></h1>
+        <p className="hero-summary">
+          HookHQ is an open source Event Destinations platform for teams that need durable event delivery, endpoint
+          management, and more without depending on a closed SaaS.
+        </p>
+        <div className="hero-actions">
+          <a className="button-primary" href={deployUrl} target="_blank" rel="noreferrer">Deploy for free in seconds</a>
+          <a className="button-secondary" href={repoUrl} target="_blank" rel="noreferrer">View repository</a>
         </div>
       </article>
 
-      <aside className="grid min-h-[36rem] grid-rows-[auto_auto_1fr_auto] border border-line bg-panel p-4 shadow-panel max-[760px]:p-4">
-        <div className="relative overflow-hidden border border-line bg-[radial-gradient(circle_at_center,var(--panel-soft),transparent_60%),var(--panel-strong)] p-4 mb-4">
-          <div className="relative grid min-h-64 items-center gap-4 min-[761px]:grid-cols-[1fr_10rem_1fr] max-[760px]:grid-cols-1 max-[760px]:justify-items-center">
-            <svg
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-[1] hidden h-full w-full min-[761px]:block"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-            >
-              <g className="text-foreground/80">
-                <line
-                  x1="14"
-                  y1="50"
-                  x2="43"
-                  y2="50"
-                  stroke="currentColor"
-                  strokeOpacity="0.55"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="57"
-                  y1="50"
-                  x2="84"
-                  y2="23"
-                  stroke="currentColor"
-                  strokeOpacity="0.55"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="57"
-                  y1="50"
-                  x2="86"
-                  y2="50"
-                  stroke="currentColor"
-                  strokeOpacity="0.65"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="57"
-                  y1="50"
-                  x2="84"
-                  y2="77"
-                  stroke="currentColor"
-                  strokeOpacity="0.55"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
-              </g>
-            </svg>
-
-            <div className="relative z-[2] flex justify-start max-[760px]:justify-center">
-              <div className="inline-flex min-h-14 min-w-32 items-center justify-center rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                API
-              </div>
-            </div>
-
-            <div className="relative z-[2] mx-auto flex h-24 w-24 items-center justify-center rounded-[1.6rem] border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_88%,black_12%)] shadow-panel">
-              <Image src="/img/logo.svg" alt="HookHQ" width={72} height={72} />
-            </div>
-
-            <div className="relative z-[2] grid justify-items-end gap-4 max-[760px]:justify-items-center">
-              <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/img/webhook.svg" alt="" width={20} height={20} aria-hidden="true" />
-                Webhooks
-              </div>
-              <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/img/sqs.svg" alt="" width={20} height={20} aria-hidden="true" />
-                SQS
-              </div>
-              <div className="inline-flex min-h-14 min-w-40 items-center justify-center gap-3 rounded-full border border-lineStrong bg-[color:color-mix(in_srgb,var(--panel-strong)_92%,black_8%)] px-4 font-mono text-[0.95rem] uppercase tracking-[0.08em] shadow-panel">
-                <Image src="/img/pubsub.svg" alt="" width={20} height={20} aria-hidden="true" />
-                Pub/Sub
-              </div>
-            </div>
-          </div>
+      <div className="route-surface">
+        <div className="route-surface-heading">
+          <span>One event. Any destination.</span>
+          <span>Designed for delivery</span>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 max-[760px]:grid-cols-1">
+        <div className="route-stage">
+          <svg aria-hidden="true" className="route-lines" viewBox="0 0 1120 400" preserveAspectRatio="none">
+            <path d="M 308 200 H 498" />
+            <path d="M 622 200 H 675 Q 700 200 700 175 V 123 Q 700 99 724 99 H 792" />
+            <path d="M 622 200 H 792" />
+            <path d="M 622 200 H 675 Q 700 200 700 225 V 276 Q 700 300 724 300 H 792" />
+            <path className="route-failure-branch" pathLength="1" d="M 560 200 V 360">
+              <animate attributeName="stroke-dashoffset" values="1;1;0;0;1;1" keyTimes="0;0.76;0.82;0.91;0.94;1" dur="28s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.76;0.79;0.91;0.94;1" dur="28s" repeatCount="indefinite" />
+            </path>
+            <circle className="route-event" r="5">
+              <animateMotion dur="4.8s" repeatCount="indefinite" path="M 308 200 H 560" keyPoints="0;0;1;1" keyTimes="0;0.12;0.48;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.1;0.12;0.46;0.48;1" dur="4.8s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event" r="5">
+              <animateMotion dur="4.8s" repeatCount="indefinite" path="M 560 200 H 675 Q 700 200 700 175 V 123 Q 700 99 724 99 H 792" keyPoints="0;0;1;1" keyTimes="0;0.48;0.78;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.47;0.48;0.76;0.78;1" dur="4.8s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event" r="5">
+              <animateMotion dur="4.8s" repeatCount="indefinite" path="M 560 200 H 792" keyPoints="0;0;1;1" keyTimes="0;0.48;0.78;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.47;0.48;0.76;0.78;1" dur="4.8s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event" r="5">
+              <animateMotion dur="4.8s" repeatCount="indefinite" path="M 560 200 H 675 Q 700 200 700 225 V 276 Q 700 300 724 300 H 792" keyPoints="0;0;1;1" keyTimes="0;0.48;0.78;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.47;0.48;0.76;0.78;1" dur="4.8s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event route-event-single" r="5">
+              <animateMotion begin="2.4s" dur="4.8s" repeatCount="indefinite" path="M 308 200 H 498 H 622 H 792" />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.04;0.9;1" begin="2.4s" dur="4.8s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event" r="5">
+              <animateMotion dur="28s" repeatCount="indefinite" path="M 308 200 H 498 H 622 H 675 Q 700 200 700 175 V 123 Q 700 99 724 99 H 792" keyPoints="0;0;1;1" keyTimes="0;0.49;0.64;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.48;0.49;0.63;0.64;1" dur="28s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event route-event-failure" r="5">
+              <animateMotion dur="28s" repeatCount="indefinite" path="M 792 99 H 724 Q 700 99 700 123 V 175 Q 700 200 675 200 H 560" keyPoints="0;0;1;1" keyTimes="0;0.64;0.76;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.63;0.64;0.75;0.76;1" dur="28s" repeatCount="indefinite" />
+            </circle>
+            <circle className="route-event route-event-failure" r="5">
+              <animateMotion dur="28s" repeatCount="indefinite" path="M 560 200 V 360" keyPoints="0;0;1;1" keyTimes="0;0.82;0.9;1" calcMode="linear" />
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.81;0.82;0.89;0.9;1" dur="28s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+          <div className="route-node route-source">Your API</div>
+          <div className="route-hub"><Image src="/img/logo.svg" alt="" width={68} height={68} /></div>
+          <div className="route-destinations">
+            <div className="route-node"><Image src="/img/webhook.svg" alt="" width={19} height={19} /> Webhooks</div>
+            <div className="route-node"><Image src="/img/sqs.svg" alt="" width={19} height={19} /> SQS</div>
+            <div className="route-node"><Image src="/img/pubsub.svg" alt="" width={19} height={19} /> Pub/Sub</div>
+          </div>
+          <div className="route-node route-alert"><span aria-hidden="true" /> Failure alert</div>
+        </div>
+        <div className="route-benefits">
           {points.map(([title, copy]) => (
-            <div key={title} className="border border-line bg-panelSoft px-4 py-4 text-[0.92rem] leading-[1.5]">
-              <strong className="mb-5 block text-[0.88rem] uppercase tracking-[0.08em]">{title}</strong>
-              {copy}
+            <div key={title} className="route-benefit">
+              <strong>{title}</strong>
+              <p>{copy}</p>
             </div>
           ))}
         </div>
-      </aside>
+      </div>
     </section>
   );
 }

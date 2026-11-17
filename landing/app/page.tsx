@@ -2,7 +2,6 @@ import { FeatureGrid } from "../components/FeatureGrid";
 import { Footer } from "../components/Footer";
 import { Header } from "../components/Header";
 import { Hero } from "../components/Hero";
-import { SectionTitle } from "../components/SectionTitle";
 import { features } from "../lib/content";
 
 const deployUrl =
@@ -13,15 +12,23 @@ const repoUrl = process.env.NEXT_PUBLIC_REPO_URL ?? "https://github.com/NuovarDe
 
 export default function HomePage() {
   return (
-    <div className="relative z-[1] min-h-screen">
+    <div className="relative isolate min-h-dvh overflow-hidden">
       <Header deployUrl={deployUrl} docsUrl={docsUrl} repoUrl={repoUrl} />
-      <main className="mx-auto w-[min(1280px,calc(100vw-2rem))] pb-16 pt-9 max-[760px]:w-[min(100vw-1rem,100%)] max-[760px]:pt-4">
-        <Hero deployUrl={deployUrl} docsUrl={docsUrl} repoUrl={repoUrl} />
+      <main className="landing-shell mx-auto w-full max-w-[1360px] px-5 pb-12 pt-7 sm:px-8 sm:pb-16 lg:px-10 lg:pt-10">
+        <Hero deployUrl={deployUrl} repoUrl={repoUrl} />
 
-        <section
-          id="features"
-          className="mt-4 grid items-start gap-4 max-[1080px]:grid-cols-1"
-        >
+        <section id="features" className="mt-24 sm:mt-32">
+          <div className="feature-intro mb-9 grid gap-5 sm:mb-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.72fr)] lg:items-end">
+            <div>
+              <h2 className="mt-4 max-w-[17ch] text-balance text-4xl font-medium tracking-tight sm:text-5xl">
+                Every event has a clear path forward.
+              </h2>
+            </div>
+            <p className="max-w-[48ch] text-pretty text-base leading-7 text-muted sm:justify-self-end sm:text-lg sm:leading-8">
+              A durable, self-hosted foundation for routing, observability, recovery, and a polished customer-facing
+              experience.
+            </p>
+          </div>
           <FeatureGrid features={features} />
         </section>
 
